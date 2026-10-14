@@ -49,3 +49,6 @@ supabase/.branches
 __pycache__/
 .venv/
 .pytest_cache/
+infra/sms-gateway/config.yml
+data/forecast/out/*
+!data/forecast/out/.gitkeep
