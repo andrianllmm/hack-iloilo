@@ -23,7 +23,55 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "staff": {
+            "facilities": {
+                  Row: {
+                    "base_load_kw": number,"created_at": string,"dry_yield_pct": number,"id": string,"idle_threshold_pct": number,"labor_minor_per_hour": number,"name": string,"notify_ahead_n": number,"operating_hours_per_day": number,"storage_capacity_kg": number,"tariff_minor_per_kwh": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "base_load_kw"?: number,"created_at"?: string,"dry_yield_pct"?: number,"id"?: string,"idle_threshold_pct"?: number,"labor_minor_per_hour"?: number,"name": string,"notify_ahead_n"?: number,"operating_hours_per_day": number,"storage_capacity_kg": number,"tariff_minor_per_kwh"?: number,"updated_at"?: string
+                  }
+                  Update: {
+                    "base_load_kw"?: number,"created_at"?: string,"dry_yield_pct"?: number,"id"?: string,"idle_threshold_pct"?: number,"labor_minor_per_hour"?: number,"name"?: string,"notify_ahead_n"?: number,"operating_hours_per_day"?: number,"storage_capacity_kg"?: number,"tariff_minor_per_kwh"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"machines": {
+                  Row: {
+                    "active": boolean,"capacity_kg": number | null,"code": string,"created_at": string,"cycle_hours": number | null,"facility_id": string,"id": string,"kg_per_hour": number | null,"rated_kw": number,"type": Database["public"]['Enums']["machine_type"],"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"capacity_kg"?: number | null,"code": string,"created_at"?: string,"cycle_hours"?: number | null,"facility_id": string,"id"?: string,"kg_per_hour"?: number | null,"rated_kw"?: number,"type": Database["public"]['Enums']["machine_type"],"updated_at"?: string
+                  }
+                  Update: {
+                    "active"?: boolean,"capacity_kg"?: number | null,"code"?: string,"created_at"?: string,"cycle_hours"?: number | null,"facility_id"?: string,"id"?: string,"kg_per_hour"?: number | null,"rated_kw"?: number,"type"?: Database["public"]['Enums']["machine_type"],"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "machines_facility_id_fkey"
+      columns: ["facility_id"]
+isOneToOne: false
+      referencedRelation: "facilities"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"municipalities": {
+                  Row: {
+                    "created_at": string,"id": string,"lat": number | null,"lng": number | null,"name": string,"psgc_code": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"lat"?: number | null,"lng"?: number | null,"name": string,"psgc_code": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"lat"?: number | null,"lng"?: number | null,"name"?: string,"psgc_code"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"staff": {
                   Row: {
                     "auth_user_id": string,"created_at": string,"id": string,"name": string,"role": Database["public"]['Enums']["staff_role"],"updated_at": string
                   }
@@ -37,6 +85,20 @@ export type Database = {
                   Relationships: [
                     
                   ]
+                },"varieties": {
+                  Row: {
+                    "code": string,"created_at": string,"id": string,"name": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "code": string,"created_at"?: string,"id"?: string,"name": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "code"?: string,"created_at"?: string,"id"?: string,"name"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 }
           }
           Views: {
@@ -46,7 +108,7 @@ export type Database = {
             [_ in never]: never
           }
           Enums: {
-            "staff_role": "encoder"|"manager"
+            "machine_type": "dryer"|"mill","staff_role": "encoder"|"manager"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -166,7 +228,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "staff_role": ["encoder", "manager"]
+            "machine_type": ["dryer", "mill"],"staff_role": ["encoder", "manager"]
           }
         }
 } as const
