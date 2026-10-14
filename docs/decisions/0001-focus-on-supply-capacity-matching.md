@@ -43,7 +43,7 @@ Frame the project as **filling idle capacity**, with **utilization** as the head
 - **Thin forecast data:** one year of OPA data and no procurement history yet. Use a rule-based model with fitted lags, label ranges honestly, and keep the forecast on top of the working flow rather than as the centerpiece.
 - **Conflicting capacity figures:** 40 t vs 56 t per drying load. Confirm with IRPC.
 - **Another team may go after forecasting too.** If so, lean on validation and evidence to stand out.
-- **Hard constraints:** SMS, Hiligaynon and English, Data Privacy Act compliance, and no replacing official receipts.
+- **Hard constraints:** SMS, English (Hiligaynon deferred), Data Privacy Act compliance, and no replacing official receipts.
 
 ## Next steps
 
