@@ -135,6 +135,20 @@ See `.env.example`. Validated in `src/lib/env.ts`.
 - At minimum, run linting for code changes.
 - Use Playwright/browser automation ONLY WHEN NEEDED for browser behavior, end-to-end verification, or visual inspection of UI changes. Prefer static inspection and existing tests when sufficient; avoid unnecessary browser interactions and screenshots.
 
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on `andrianllmm/hack-iloilo` via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: glossary in `PRD.md` (or `GLOSSARY.md` if created), decisions in `docs/decisions/`. See `docs/agents/domain.md`.
+
 ## Skills & Docs Reference
 
 [insert later]
