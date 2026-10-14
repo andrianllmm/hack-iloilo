@@ -8,9 +8,17 @@ const schema = z
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
     SMS_GATEWAY: z.enum(["simulator", "smsgate"]).default("simulator"),
     SMSGATE_URL: z.url().optional(),
-    SMSGATE_USERNAME: z.string().optional(),
-    SMSGATE_PASSWORD: z.string().optional(),
-    SMSGATE_SIGNING_KEY: z.string().optional(),
+    SMS_GATEWAY_USERNAME: z.string().min(1).optional(),
+    SMS_GATEWAY_PASSWORD: z.string().min(1).optional(),
+    SMS_GATEWAY_DEVICE_ID: z.string().min(1).optional(),
+    SMS_GATEWAY_SIM_NUMBER: z.coerce.number().int().positive().optional(),
+    SMS_GATEWAY_WEBHOOK_SIGNING_KEY: z.string().min(1).optional(),
+    SMS_GATEWAY_WEBHOOK_PORT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(65535)
+      .default(3000),
     // Optional: AI features fall back to templates without it.
     GOOGLE_GENERATIVE_AI_API_KEY: z.string().optional(),
   })
@@ -18,11 +26,21 @@ const schema = z
     (env) =>
       env.SMS_GATEWAY !== "smsgate" ||
       (env.SMSGATE_URL &&
-        env.SMSGATE_USERNAME &&
-        env.SMSGATE_PASSWORD &&
-        env.SMSGATE_SIGNING_KEY),
-    { message: "SMSGATE_* variables are required when SMS_GATEWAY=smsgate" },
-  );
+        env.SMS_GATEWAY_USERNAME &&
+        env.SMS_GATEWAY_PASSWORD &&
+        env.SMS_GATEWAY_WEBHOOK_SIGNING_KEY),
+    {
+      message:
+        "SMSGATE_URL, SMS_GATEWAY_USERNAME, SMS_GATEWAY_PASSWORD and SMS_GATEWAY_WEBHOOK_SIGNING_KEY are required when SMS_GATEWAY=smsgate",
+    },
+  )
+  // Keep existing gateway consumers working with the renamed environment inputs.
+  .transform((env) => ({
+    ...env,
+    SMSGATE_USERNAME: env.SMS_GATEWAY_USERNAME,
+    SMSGATE_PASSWORD: env.SMS_GATEWAY_PASSWORD,
+    SMSGATE_SIGNING_KEY: env.SMS_GATEWAY_WEBHOOK_SIGNING_KEY,
+  }));
 
 export type Env = z.infer<typeof schema>;
 
