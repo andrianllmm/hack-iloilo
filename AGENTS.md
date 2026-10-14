@@ -67,7 +67,7 @@ Sign in at http://localhost:3000 with `manager@irpc.test` or `encoder@irpc.test`
 | `pnpm db:types`            | Regenerate `src/lib/supabase/database.types.ts` |
 | `uv run pytest`            | Forecast tests (in `data/forecast/`)            |
 
-After changing the schema: add a migration, `pnpm db:reset`, `pnpm db:types`, and commit the migration with the regenerated types.
+After changing the schema: add a migration, `pnpm db:reset`, `pnpm db:types`, and commit the migration with the regenerated types. CI fails if the types are out of date. Merging migrations to `main` applies them to the hosted project (`.github/workflows/db-deploy.yml`; repo secrets `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_ID`). Never edit a migration that is already on `main`; add a new one.
 
 ## Environment Variables
 
