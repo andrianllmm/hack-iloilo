@@ -23,7 +23,57 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "bookings": {
+            "batches": {
+                  Row: {
+                    "bags": number | null,"batch_no": string,"byproducts": NonNullable<Json>,"client_id": string,"created_at": string,"damaged_pct": number | null,"doc_refs": NonNullable<Json>,"dried_kg": number | null,"dry_end": string | null,"dry_start": string | null,"dryer_id": string | null,"facility_id": string,"foreign_pct": number | null,"id": string,"immature_pct": number | null,"mc": number | null,"mc_out": number | null,"mill_end": string | null,"mill_id": string | null,"mill_in_kg": number | null,"mill_start": string | null,"net_kg": number | null,"ownership": Database["public"]['Enums']["batch_ownership"],"queue_entry_id": string | null,"rice_kg": number | null,"stage": Database["public"]['Enums']["batch_stage"],"updated_at": string,"variety_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "bags"?: number | null,"batch_no": string,"byproducts"?: NonNullable<Json>,"client_id": string,"created_at"?: string,"damaged_pct"?: number | null,"doc_refs"?: NonNullable<Json>,"dried_kg"?: number | null,"dry_end"?: string | null,"dry_start"?: string | null,"dryer_id"?: string | null,"facility_id": string,"foreign_pct"?: number | null,"id"?: string,"immature_pct"?: number | null,"mc"?: number | null,"mc_out"?: number | null,"mill_end"?: string | null,"mill_id"?: string | null,"mill_in_kg"?: number | null,"mill_start"?: string | null,"net_kg"?: number | null,"ownership": Database["public"]['Enums']["batch_ownership"],"queue_entry_id"?: string | null,"rice_kg"?: number | null,"stage"?: Database["public"]['Enums']["batch_stage"],"updated_at"?: string,"variety_id"?: string | null
+                  }
+                  Update: {
+                    "bags"?: number | null,"batch_no"?: string,"byproducts"?: NonNullable<Json>,"client_id"?: string,"created_at"?: string,"damaged_pct"?: number | null,"doc_refs"?: NonNullable<Json>,"dried_kg"?: number | null,"dry_end"?: string | null,"dry_start"?: string | null,"dryer_id"?: string | null,"facility_id"?: string,"foreign_pct"?: number | null,"id"?: string,"immature_pct"?: number | null,"mc"?: number | null,"mc_out"?: number | null,"mill_end"?: string | null,"mill_id"?: string | null,"mill_in_kg"?: number | null,"mill_start"?: string | null,"net_kg"?: number | null,"ownership"?: Database["public"]['Enums']["batch_ownership"],"queue_entry_id"?: string | null,"rice_kg"?: number | null,"stage"?: Database["public"]['Enums']["batch_stage"],"updated_at"?: string,"variety_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "batches_client_id_fkey"
+      columns: ["client_id"]
+isOneToOne: false
+      referencedRelation: "clients"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "batches_dryer_id_fkey"
+      columns: ["dryer_id"]
+isOneToOne: false
+      referencedRelation: "machines"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "batches_facility_id_fkey"
+      columns: ["facility_id"]
+isOneToOne: false
+      referencedRelation: "facilities"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "batches_mill_id_fkey"
+      columns: ["mill_id"]
+isOneToOne: false
+      referencedRelation: "machines"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "batches_queue_entry_id_fkey"
+      columns: ["queue_entry_id"]
+isOneToOne: true
+      referencedRelation: "queue_entries"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "batches_variety_id_fkey"
+      columns: ["variety_id"]
+isOneToOne: false
+      referencedRelation: "varieties"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"bookings": {
                   Row: {
                     "booked_by_phone": string,"channel": Database["public"]['Enums']["booking_channel"],"client_id": string,"created_at": string,"est_kg": number,"facility_id": string,"flex_days": number,"id": string,"preferred_date": string,"ref": string,"scheduled_date": string,"service": Database["public"]['Enums']["service"],"status": Database["public"]['Enums']["booking_status"],"updated_at": string
                   }
@@ -75,6 +125,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"dispatches": {
+                  Row: {
+                    "batch_id": string,"buyer_id": string,"created_at": string,"dispatched_at": string,"id": string,"kg": number,"or_ref": string | null,"price_minor_per_kg": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "batch_id": string,"buyer_id": string,"created_at"?: string,"dispatched_at"?: string,"id"?: string,"kg": number,"or_ref"?: string | null,"price_minor_per_kg": number,"updated_at"?: string
+                  }
+                  Update: {
+                    "batch_id"?: string,"buyer_id"?: string,"created_at"?: string,"dispatched_at"?: string,"id"?: string,"kg"?: number,"or_ref"?: string | null,"price_minor_per_kg"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "dispatches_batch_id_fkey"
+      columns: ["batch_id"]
+isOneToOne: false
+      referencedRelation: "batches"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "dispatches_buyer_id_fkey"
+      columns: ["buyer_id"]
+isOneToOne: false
+      referencedRelation: "clients"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"facilities": {
                   Row: {
                     "base_load_kw": number,"created_at": string,"dry_yield_pct": number,"id": string,"idle_threshold_pct": number,"labor_minor_per_hour": number,"name": string,"notify_ahead_n": number,"operating_hours_per_day": number,"storage_capacity_kg": number,"tariff_minor_per_kwh": number,"updated_at": string
@@ -122,6 +198,44 @@ isOneToOne: false
                   }
                   Relationships: [
                     
+                  ]
+                },"queue_entries": {
+                  Row: {
+                    "booking_id": string | null,"checked_in_at": string,"client_id": string,"created_at": string,"facility_id": string,"finished_at": string | null,"id": string,"offer_id": string | null,"service": Database["public"]['Enums']["service"],"started_at": string | null,"status": Database["public"]['Enums']["queue_status"],"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "booking_id"?: string | null,"checked_in_at"?: string,"client_id": string,"created_at"?: string,"facility_id": string,"finished_at"?: string | null,"id"?: string,"offer_id"?: string | null,"service": Database["public"]['Enums']["service"],"started_at"?: string | null,"status"?: Database["public"]['Enums']["queue_status"],"updated_at"?: string
+                  }
+                  Update: {
+                    "booking_id"?: string | null,"checked_in_at"?: string,"client_id"?: string,"created_at"?: string,"facility_id"?: string,"finished_at"?: string | null,"id"?: string,"offer_id"?: string | null,"service"?: Database["public"]['Enums']["service"],"started_at"?: string | null,"status"?: Database["public"]['Enums']["queue_status"],"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "queue_entries_booking_id_fkey"
+      columns: ["booking_id"]
+isOneToOne: false
+      referencedRelation: "bookings"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "queue_entries_client_id_fkey"
+      columns: ["client_id"]
+isOneToOne: false
+      referencedRelation: "clients"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "queue_entries_facility_id_fkey"
+      columns: ["facility_id"]
+isOneToOne: false
+      referencedRelation: "facilities"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "queue_entries_offer_id_fkey"
+      columns: ["offer_id"]
+isOneToOne: false
+      referencedRelation: "sell_offers"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"sell_offers": {
                   Row: {
@@ -220,7 +334,7 @@ isOneToOne: false
             [_ in never]: never
           }
           Enums: {
-            "booking_channel": "sms"|"staff","booking_status": "confirmed"|"reschedule_proposed"|"arrived"|"cancelled"|"no_show","client_kind": "farmer"|"coop"|"trader"|"buyer","machine_type": "dryer"|"mill","sell_offer_status": "offered"|"accepted"|"declined"|"arrived"|"withdrawn","service": "drying"|"milling","sms_direction": "inbound"|"outbound","sms_prompt_kind": "ai_confirm"|"reschedule","sms_prompt_status": "open"|"accepted"|"declined"|"expired","sms_status": "received"|"processed"|"queued"|"sent"|"failed","staff_role": "encoder"|"manager"
+            "batch_ownership": "custom"|"irpc","batch_stage": "received"|"drying"|"stored"|"milling"|"milled"|"dispatched","booking_channel": "sms"|"staff","booking_status": "confirmed"|"reschedule_proposed"|"arrived"|"cancelled"|"no_show","client_kind": "farmer"|"coop"|"trader"|"buyer","machine_type": "dryer"|"mill","queue_status": "waiting"|"serving"|"done"|"left","sell_offer_status": "offered"|"accepted"|"declined"|"arrived"|"withdrawn","service": "drying"|"milling","sms_direction": "inbound"|"outbound","sms_prompt_kind": "ai_confirm"|"reschedule","sms_prompt_status": "open"|"accepted"|"declined"|"expired","sms_status": "received"|"processed"|"queued"|"sent"|"failed","staff_role": "encoder"|"manager"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -340,7 +454,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "booking_channel": ["sms", "staff"],"booking_status": ["confirmed", "reschedule_proposed", "arrived", "cancelled", "no_show"],"client_kind": ["farmer", "coop", "trader", "buyer"],"machine_type": ["dryer", "mill"],"sell_offer_status": ["offered", "accepted", "declined", "arrived", "withdrawn"],"service": ["drying", "milling"],"sms_direction": ["inbound", "outbound"],"sms_prompt_kind": ["ai_confirm", "reschedule"],"sms_prompt_status": ["open", "accepted", "declined", "expired"],"sms_status": ["received", "processed", "queued", "sent", "failed"],"staff_role": ["encoder", "manager"]
+            "batch_ownership": ["custom", "irpc"],"batch_stage": ["received", "drying", "stored", "milling", "milled", "dispatched"],"booking_channel": ["sms", "staff"],"booking_status": ["confirmed", "reschedule_proposed", "arrived", "cancelled", "no_show"],"client_kind": ["farmer", "coop", "trader", "buyer"],"machine_type": ["dryer", "mill"],"queue_status": ["waiting", "serving", "done", "left"],"sell_offer_status": ["offered", "accepted", "declined", "arrived", "withdrawn"],"service": ["drying", "milling"],"sms_direction": ["inbound", "outbound"],"sms_prompt_kind": ["ai_confirm", "reschedule"],"sms_prompt_status": ["open", "accepted", "declined", "expired"],"sms_status": ["received", "processed", "queued", "sent", "failed"],"staff_role": ["encoder", "manager"]
           }
         }
 } as const
