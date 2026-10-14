@@ -233,6 +233,40 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"prescription_decisions": {
+                  Row: {
+                    "created_at": string,"decided_by": string,"id": string,"key": string,"kind": Database["public"]['Enums']["prescription_kind"],"status": Database["public"]['Enums']["prescription_status"],"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"decided_by": string,"id"?: string,"key": string,"kind": Database["public"]['Enums']["prescription_kind"],"status": Database["public"]['Enums']["prescription_status"],"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"decided_by"?: string,"id"?: string,"key"?: string,"kind"?: Database["public"]['Enums']["prescription_kind"],"status"?: Database["public"]['Enums']["prescription_status"],"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "prescription_decisions_decided_by_fkey"
+      columns: ["decided_by"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"prescription_notes": {
+                  Row: {
+                    "created_at": string,"id": string,"key": string,"text": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"key": string,"text": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"key"?: string,"text"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"prices": {
                   Row: {
                     "buy_base_minor_per_kg": number,"buy_reference_mc": number,"buy_rules": NonNullable<Json>,"created_at": string,"drying_fee_minor_per_kg": number,"effective_date": string,"facility_id": string,"id": string,"milling_fee_minor_per_kg": number,"rice_minor_per_kg": number,"updated_at": string
@@ -414,7 +448,7 @@ isOneToOne: false
             [_ in never]: never
           }
           Enums: {
-            "batch_ownership": "custom"|"irpc","batch_stage": "received"|"drying"|"stored"|"milling"|"milled"|"dispatched","booking_channel": "sms"|"staff","booking_status": "confirmed"|"reschedule_proposed"|"arrived"|"cancelled"|"no_show","client_kind": "farmer"|"coop"|"trader"|"buyer","forecast_source": "opa-2025"|"demo-synthetic","machine_type": "dryer"|"mill","queue_status": "waiting"|"serving"|"done"|"left","sell_offer_status": "offered"|"accepted"|"declined"|"arrived"|"withdrawn","service": "drying"|"milling","sms_direction": "inbound"|"outbound","sms_prompt_kind": "ai_confirm"|"reschedule","sms_prompt_status": "open"|"accepted"|"declined"|"expired","sms_status": "received"|"processed"|"queued"|"sent"|"failed","staff_role": "encoder"|"manager"
+            "batch_ownership": "custom"|"irpc","batch_stage": "received"|"drying"|"stored"|"milling"|"milled"|"dispatched","booking_channel": "sms"|"staff","booking_status": "confirmed"|"reschedule_proposed"|"arrived"|"cancelled"|"no_show","client_kind": "farmer"|"coop"|"trader"|"buyer","forecast_source": "opa-2025"|"demo-synthetic","machine_type": "dryer"|"mill","prescription_kind": "move_bookings"|"fill_idle"|"mill_full_loads"|"store_mill_later","prescription_status": "accepted"|"dismissed","queue_status": "waiting"|"serving"|"done"|"left","sell_offer_status": "offered"|"accepted"|"declined"|"arrived"|"withdrawn","service": "drying"|"milling","sms_direction": "inbound"|"outbound","sms_prompt_kind": "ai_confirm"|"reschedule","sms_prompt_status": "open"|"accepted"|"declined"|"expired","sms_status": "received"|"processed"|"queued"|"sent"|"failed","staff_role": "encoder"|"manager"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -534,7 +568,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "batch_ownership": ["custom", "irpc"],"batch_stage": ["received", "drying", "stored", "milling", "milled", "dispatched"],"booking_channel": ["sms", "staff"],"booking_status": ["confirmed", "reschedule_proposed", "arrived", "cancelled", "no_show"],"client_kind": ["farmer", "coop", "trader", "buyer"],"forecast_source": ["opa-2025", "demo-synthetic"],"machine_type": ["dryer", "mill"],"queue_status": ["waiting", "serving", "done", "left"],"sell_offer_status": ["offered", "accepted", "declined", "arrived", "withdrawn"],"service": ["drying", "milling"],"sms_direction": ["inbound", "outbound"],"sms_prompt_kind": ["ai_confirm", "reschedule"],"sms_prompt_status": ["open", "accepted", "declined", "expired"],"sms_status": ["received", "processed", "queued", "sent", "failed"],"staff_role": ["encoder", "manager"]
+            "batch_ownership": ["custom", "irpc"],"batch_stage": ["received", "drying", "stored", "milling", "milled", "dispatched"],"booking_channel": ["sms", "staff"],"booking_status": ["confirmed", "reschedule_proposed", "arrived", "cancelled", "no_show"],"client_kind": ["farmer", "coop", "trader", "buyer"],"forecast_source": ["opa-2025", "demo-synthetic"],"machine_type": ["dryer", "mill"],"prescription_kind": ["move_bookings", "fill_idle", "mill_full_loads", "store_mill_later"],"prescription_status": ["accepted", "dismissed"],"queue_status": ["waiting", "serving", "done", "left"],"sell_offer_status": ["offered", "accepted", "declined", "arrived", "withdrawn"],"service": ["drying", "milling"],"sms_direction": ["inbound", "outbound"],"sms_prompt_kind": ["ai_confirm", "reschedule"],"sms_prompt_status": ["open", "accepted", "declined", "expired"],"sms_status": ["received", "processed", "queued", "sent", "failed"],"staff_role": ["encoder", "manager"]
           }
         }
 } as const
