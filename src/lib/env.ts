@@ -7,7 +7,7 @@ const schema = z
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
     SMS_GATEWAY: z.enum(["simulator", "smsgate"]).default("simulator"),
-    SMSGATE_URL: z.url().optional(),
+    SMS_GATEWAY_URL: z.url().optional(),
     SMS_GATEWAY_USERNAME: z.string().min(1).optional(),
     SMS_GATEWAY_PASSWORD: z.string().min(1).optional(),
     SMS_GATEWAY_DEVICE_ID: z.string().min(1).optional(),
@@ -25,13 +25,13 @@ const schema = z
   .refine(
     (env) =>
       env.SMS_GATEWAY !== "smsgate" ||
-      (env.SMSGATE_URL &&
+      (env.SMS_GATEWAY_URL &&
         env.SMS_GATEWAY_USERNAME &&
         env.SMS_GATEWAY_PASSWORD &&
         env.SMS_GATEWAY_WEBHOOK_SIGNING_KEY),
     {
       message:
-        "SMSGATE_URL, SMS_GATEWAY_USERNAME, SMS_GATEWAY_PASSWORD and SMS_GATEWAY_WEBHOOK_SIGNING_KEY are required when SMS_GATEWAY=smsgate",
+        "SMS_GATEWAY_URL, SMS_GATEWAY_USERNAME, SMS_GATEWAY_PASSWORD and SMS_GATEWAY_WEBHOOK_SIGNING_KEY are required when SMS_GATEWAY=smsgate",
     },
   )
   // Keep existing gateway consumers working with the renamed environment inputs.

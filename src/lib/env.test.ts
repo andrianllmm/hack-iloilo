@@ -9,7 +9,7 @@ beforeEach(() => {
   vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service");
   vi.stubEnv("SMS_GATEWAY", "simulator");
   for (const key of [
-    "SMSGATE_URL",
+    "SMS_GATEWAY_URL",
     "SMS_GATEWAY_USERNAME",
     "SMS_GATEWAY_PASSWORD",
     "SMS_GATEWAY_DEVICE_ID",
@@ -30,7 +30,7 @@ describe("env", () => {
 
   it("reads the renamed credentials and maps them for existing SMS consumers", async () => {
     vi.stubEnv("SMS_GATEWAY", "smsgate");
-    vi.stubEnv("SMSGATE_URL", "https://gateway.example.com");
+    vi.stubEnv("SMS_GATEWAY_URL", "https://gateway.example.com");
     vi.stubEnv("SMS_GATEWAY_USERNAME", "test-user");
     vi.stubEnv("SMS_GATEWAY_PASSWORD", "test-password");
     vi.stubEnv("SMS_GATEWAY_WEBHOOK_SIGNING_KEY", "test-signing-key");
@@ -39,6 +39,7 @@ describe("env", () => {
     vi.stubEnv("SMS_GATEWAY_WEBHOOK_PORT", "4000");
     const { env } = await import("./env");
     expect(env()).toMatchObject({
+      SMS_GATEWAY_URL: "https://gateway.example.com",
       SMSGATE_USERNAME: "test-user",
       SMSGATE_PASSWORD: "test-password",
       SMSGATE_SIGNING_KEY: "test-signing-key",

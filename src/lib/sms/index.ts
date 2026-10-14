@@ -15,7 +15,7 @@ export function smsGateway(): SmsGateway {
   gateway =
     e.SMS_GATEWAY === "smsgate"
       ? new SmsGateGateway(
-          e.SMSGATE_URL!,
+          e.SMS_GATEWAY_URL!,
           e.SMSGATE_USERNAME!,
           e.SMSGATE_PASSWORD!,
         )
