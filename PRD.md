@@ -13,6 +13,26 @@ This web app with an SMS channel shows IRPC what's coming weeks ahead and sugges
 
 IRPC is the first facility. Nothing about IRPC, rice or Iloilo is hardcoded, so other facilities, crops and regions only need their own data.
 
+A farmer's journey by SMS (figures illustrative):
+
+```mermaid
+sequenceDiagram
+  actor F as Farmer
+  participant A as App
+  actor E as Encoder
+  F->>A: PLANT 1.5 RC222 01/07
+  A-->>F: Harvest window Oct 14–24
+  F->>A: QUOTE 23% 5000
+  A-->>F: ~₱20.4/kg, ~₱102,000 (estimate)
+  F->>A: BOOK DRY 5000 20/10 ±3
+  A-->>F: Confirmed K7P2QX
+  A-->>F: New date Oct 22? Reply HO A4
+  F->>A: HO A4
+  A-->>F: Your turn is near
+  E->>A: Receiving: 4,980 kg, 23% MC
+  A-->>F: Final price ₱101,592
+```
+
 ## Glossary
 
 | Term                 | Meaning                                                                              |
@@ -65,10 +85,29 @@ Each module is a vertical slice that one person owns end to end: screens, SMS, l
 
 Main flow:
 
+```mermaid
+flowchart LR
+  offer[Sell offer M9] --> gate
+  booking[Booking M6] --> gate
+  walkin[Walk-in] --> gate
+  gate[Gate queue M7] --> recv[Receiving M10]
+  recv -->|IRPC buys| buy[Price + purchase M9]
+  recv -->|custom service| dry
+  buy --> dry[Drying] --> store[Storage] --> mill[Milling M10]
+  mill -->|IRPC-owned| sale[Sale M11]
+  mill -->|custom| pickup[Owner pickup]
+  sale --> cost[Cost and margin M12]
+  pickup --> cost
 ```
-Sell offer (M9) or booking (M6) → gate check-in (M7) → receiving (M10)
-  → purchase (M9, bought palay only) → drying, storage, milling (M10)
-  → sale (M11) → cost and margin (M12)
+
+Plan, act, re-plan:
+
+```mermaid
+flowchart LR
+  inputs["Bookings · offers · plantings · forecast"] --> cap[Capacity page M13]
+  cap -->|overload / idle| rx[Prescription M14]
+  rx -->|manager accepts| act["Texts clients · moves bookings · schedules milling"]
+  act --> inputs
 ```
 
 ### M1. Facility Setup
@@ -319,6 +358,17 @@ All views:
 - Label each number's source (confirmed booking, accepted offer, declared planting, forecast) and give a low–high range. Demo forecast data is labelled.
 - Flag overloaded days with the overflow in tonnes, and flag idle stretches.
 - Open the same breakdown on click: amount by source, the bookings behind it, and that day's suggestions.
+
+What feeds the pools (solid = firm, dashed = estimate; only firm sources trigger overload):
+
+```mermaid
+flowchart LR
+  c[Confirmed bookings] --> dryer
+  o[Accepted offers] --> dryer
+  d[Declared plantings] -.-> dryer
+  f[Forecast] -.-> dryer
+  dryer["Dryer t/day"] --> storage["Storage ≤ 1,100 t"] --> mill["Mill t/day"] --> out[Sold / picked up]
+```
 
 **P0**
 
