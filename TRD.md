@@ -6,26 +6,26 @@ How we build the [PRD](PRD.md). Module numbers (M1–M14) match.
 
 - One Next.js app on Vercel, with Supabase for the database and auth. All free tiers.
 - One folder per module, holding its screens, logic, data, SMS and tests.
-- Clients use SMS through textbee.dev. The demo runs on a built-in simulator.
+- Clients use SMS through a self-hosted SMS Gateway for Android server (SMSGate). The demo runs on a built-in simulator.
 - AI (Gemini) only turns texts and photos into structured data, and a person confirms it.
 - The forecast is trained offline in Python. The app reads only the exported parameters.
 - No IRPC- or rice-specific code. Facilities, crops and regions are data.
 
 ## Stack
 
-| Part              | Choice                                                        | Why                                                |
-| ----------------- | ------------------------------------------------------------- | -------------------------------------------------- |
-| App               | Next.js (App Router), strict TypeScript, server actions       | One app for screens and the SMS webhook            |
-| UI                | Tailwind, shadcn/ui, shadcn charts                            | Matches our design system                          |
-| Database, auth    | Supabase: Postgres, Auth, RLS                                 | Free, hosted, per-row access rules                 |
-| Data access       | supabase-js, `supabase gen types`, Supabase CLI migrations    | No ORM, so queries run as the user and RLS applies |
-| Validation        | Zod                                                           | One schema per form, SMS command and AI result     |
-| i18n              | next-intl, one file per locale (`en`, `hil`)                  | Also serves SMS templates and keywords             |
-| SMS               | textbee.dev (Android phone and SIM), plus a web simulator     | Free tier, inbound webhook, no sender-ID approval  |
-| AI                | Vercel AI SDK with `@ai-sdk/google` (Gemini Flash, free tier) | Structured output from Zod schemas                 |
-| Hosting           | Vercel Hobby, Supabase `ap-southeast-1`                       | Free, and the region nearest the Philippines       |
-| Forecast training | Python (pandas, openpyxl, SciPy), offline                     | Exports the M8 parameters                          |
-| Tooling           | pnpm, Vitest, ESLint, Prettier, commitlint                    |                                                    |
+| Part              | Choice                                                                  | Why                                                                |
+| ----------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| App               | Next.js (App Router), strict TypeScript, server actions                 | One app for screens and the SMS webhook                            |
+| UI                | Tailwind, shadcn/ui, shadcn charts                                      | Matches our design system                                          |
+| Database, auth    | Supabase: Postgres, Auth, RLS                                           | Free, hosted, per-row access rules                                 |
+| Data access       | supabase-js, `supabase gen types`, Supabase CLI migrations              | No ORM, so queries run as the user and RLS applies                 |
+| Validation        | Zod                                                                     | One schema per form, SMS command and AI result                     |
+| i18n              | next-intl, one file per locale (`en`, `hil`)                            | Also serves SMS templates and keywords                             |
+| SMS               | SMS Gateway for Android (SMSGate), private server, plus a web simulator | Open source, self-hosted, no message caps, signed inbound webhooks |
+| AI                | Vercel AI SDK with `@ai-sdk/google` (Gemini Flash, free tier)           | Structured output from Zod schemas                                 |
+| Hosting           | Vercel Hobby, Supabase `ap-southeast-1`                                 | Free, and the region nearest the Philippines                       |
+| Forecast training | Python (pandas, openpyxl, SciPy), offline                               | Exports the M8 parameters                                          |
+| Tooling           | pnpm, Vitest, ESLint, Prettier, commitlint                              |                                                                    |
 
 Scaffold with `create-next-app` and `shadcn init`, then pin versions.
 
@@ -33,8 +33,10 @@ Scaffold with `create-next-app` and `shadcn init`, then pin versions.
 
 ```mermaid
 flowchart LR
-  farmer["Farmer / booker<br/>(basic phone)"] <-->|SMS| gw["Android phone<br/>textbee.dev app"]
-  gw <-->|"webhook / send-sms API"| app
+  farmer["Farmer / booker<br/>(basic phone)"] <-->|SMS| phone["Android phone + SIM<br/>SMSGate app"]
+  phone <-->|"push / sync"| gw["SMSGate private server<br/>(Docker + MariaDB)"]
+  gw -->|"sms:received webhook"| app
+  app -->|"POST /api/3rdparty/v1/messages"| gw
   staff["Facility staff<br/>(browser)"] --> app
   sim["SMS simulator page"] --> app
   subgraph vercel["Vercel"]
@@ -68,6 +70,7 @@ src/
 supabase/migrations/      <timestamp>_<module>.sql
 data/forecast/            Python: parse OPA data, train M8
 messages/<locale>.json    UI text, SMS templates and keywords, by module
+infra/sms-gateway/        Docker Compose for the SMSGate server and MariaDB
 ```
 
 | File          | Contents                                      |
@@ -130,11 +133,24 @@ interface SmsGateway {
 
 - `SimulatorGateway`:
   - Only stores messages, and shows a phone screen per number.
-  - It's admin-only and disabled when `SMS_GATEWAY=textbee`, since it can impersonate any phone.
-- `TextbeeGateway`:
-  - Sends through textbee's `send-sms` API.
-  - Inbound texts arrive at `POST /api/sms/inbound`, deduped on the gateway message ID.
-- Each facility has its own gateway phone (`facilities.sms_device_id`), which routes inbound texts to that facility.
+  - It's admin-only and disabled when `SMS_GATEWAY=smsgate`, since it can impersonate any phone.
+- `SmsGateGateway`:
+  - Sends with `POST {SMSGATE_URL}/api/3rdparty/v1/messages`, using HTTP Basic auth with the device credentials.
+  - Inbound texts arrive at `POST /api/sms/inbound` from an `sms:received` webhook. Register one webhook per device with `POST /3rdparty/v1/webhooks` and `device_id`.
+  - Verify `X-Signature`, an HMAC-SHA256 of the raw body + `X-Timestamp` using the signing key. Reject timestamps more than 5 minutes off.
+  - Dedupe on `payload.messageId`. The phone retries failed webhooks for up to about 2 days.
+  - Reply 2xx within 30 s. Heavy work runs after the response is sent.
+- Each facility has its own gateway phone (`facilities.sms_device_id` = the SMSGate device ID), which routes inbound texts to that facility.
+
+**Server setup** (`infra/sms-gateway/`):
+
+- Image: `ghcr.io/android-sms-gateway/server`, with MariaDB, set up by Docker Compose.
+- `config.yml` sets `gateway.mode: private` and a `private_token` that the phone also uses.
+- HTTPS is required:
+  - Hackathon: run on a team laptop behind a Cloudflare Tunnel (free).
+  - Pilot: a small VPS behind a reverse proxy.
+- Phone: in the app, set **Settings → Cloud Server** to `https://<host>/api/mobile/v1` with the private token, then connect. Push goes through the public `api.sms-gate.app` relay, or SSE straight from our server. No Firebase setup is needed.
+- Vercel can't run this server, so it's the only part of the system outside Vercel and Supabase.
 
 ### AI helper (`lib`)
 
@@ -411,7 +427,7 @@ Prompts expire after 24 hours. `YES <booking ref>` also answers reschedule promp
 ```mermaid
 sequenceDiagram
   participant P as Phone
-  participant G as textbee / simulator
+  participant G as SMSGate / simulator
   participant S as M3 SMS
   participant A as M2 Accounts
   participant AI as Gemini
@@ -795,22 +811,23 @@ Each rule is a pure function:
 | ----------------------------------------------------------- | ---------------------------------------- |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | App                                      |
 | `SUPABASE_SERVICE_ROLE_KEY`                                 | SMS webhook, seed                        |
-| `SMS_GATEWAY`                                               | `simulator` or `textbee`                 |
-| `TEXTBEE_API_KEY`                                           | textbee (device IDs are in `facilities`) |
-| `SMS_WEBHOOK_SECRET`                                        | Verifying inbound webhooks               |
+| `SMS_GATEWAY`                                               | `simulator` or `smsgate`                 |
+| `SMSGATE_URL`                                               | Private server base URL                  |
+| `SMSGATE_USERNAME`, `SMSGATE_PASSWORD`                      | Basic auth for sending and webhook setup |
+| `SMSGATE_SIGNING_KEY`                                       | Verifying `sms:received` webhooks        |
 | `GOOGLE_GENERATIVE_AI_API_KEY`                              | Gemini                                   |
 
 ## Costs and limits
 
-Everything is free except prepaid load for the gateway SIM.
+Everything is free except prepaid load for the gateway SIM and, for a pilot, a small VPS for the SMS server.
 
-| Service          | Limit                                                    | Handling                                    |
-| ---------------- | -------------------------------------------------------- | ------------------------------------------- |
-| Supabase Free    | Pauses after 7 idle days, and auth email is rate-limited | Seeded staff accounts, no emails            |
-| Vercel Hobby     | Non-commercial use only, cron at most daily              | No cron. A pilot needs Pro or another host. |
-| textbee.dev Free | 1 phone, 50 texts/day, 300/month                         | Simulator for the demo, SMSGate for volume  |
-| Gemini Free      | Rate limits, and prompts may be used by Google           | Non-AI fallback. A pilot moves to paid.     |
-| GitHub Actions   | 2,000 min/month on private repos                         | Lint and typecheck only                     |
+| Service               | Limit                                                                                                                      | Handling                                                                                           |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Supabase Free         | Pauses after 7 idle days, and auth email is rate-limited                                                                   | Seeded staff accounts, no emails                                                                   |
+| Vercel Hobby          | Non-commercial use only, cron at most daily                                                                                | No cron. A pilot needs Pro or another host.                                                        |
+| SMSGate (self-hosted) | No app limits. Carrier load and fair-use apply. The server needs a Docker host with HTTPS, and push uses the public relay. | Laptop + Cloudflare Tunnel for the event. A VPS for the pilot. The simulator is the demo fallback. |
+| Gemini Free           | Rate limits, and prompts may be used by Google                                                                             | Non-AI fallback. A pilot moves to paid.                                                            |
+| GitHub Actions        | 2,000 min/month on private repos                                                                                           | Lint and typecheck only                                                                            |
 
 ## Open questions
 
