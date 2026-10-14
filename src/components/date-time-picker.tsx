@@ -2,39 +2,16 @@
 
 import { DatePicker } from "@/components/date-picker";
 import { TimePicker } from "@/components/time-picker";
-
-const manilaParts = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Asia/Manila",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-});
-
-/** Any ISO timestamp as Manila `{ date: "YYYY-MM-DD", time: "HH:mm" }`. */
-export function splitManila(iso: string): { date: string; time: string } {
-  const p = Object.fromEntries(
-    manilaParts.formatToParts(new Date(iso)).map((x) => [x.type, x.value]),
-  );
-  return {
-    date: `${p.year}-${p.month}-${p.day}`,
-    time: `${p.hour}:${p.minute}`,
-  };
-}
-
-/** Manila date and time as a `timestamptz`-ready ISO string. */
-export function joinManila(date: string, time: string): string {
-  return `${date}T${time}:00+08:00`;
-}
+import { joinManila, splitManila } from "@/lib/dates";
 
 export type DateTimePickerProps = {
   /** ISO timestamp, e.g. from a `timestamptz` column. */
   value?: string;
   /** Emits `YYYY-MM-DDTHH:mm:00+08:00`. */
   onChange?: (value: string | undefined) => void;
+  /** Earliest selectable day, as an ISO timestamp or `YYYY-MM-DD`. */
   min?: string;
+  /** Latest selectable day, as an ISO timestamp or `YYYY-MM-DD`. */
   max?: string;
   /** Time used when only a date has been picked. */
   defaultTime?: string;
@@ -62,8 +39,8 @@ export function DateTimePicker({
       <DatePicker
         id={id}
         value={current?.date}
-        min={min}
-        max={max}
+        min={min && toManilaDate(min)}
+        max={max && toManilaDate(max)}
         disabled={disabled}
         aria-invalid={ariaInvalid}
         onChange={(date) =>
@@ -84,4 +61,9 @@ export function DateTimePicker({
       />
     </div>
   );
+}
+
+// A bare `YYYY-MM-DD` parses as UTC midnight, which is still that day in Manila.
+function toManilaDate(value: string): string {
+  return splitManila(value).date;
 }

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { addDays, daysBetween, todayManila } from "./dates";
+import {
+  addDays,
+  daysBetween,
+  joinManila,
+  splitManila,
+  todayManila,
+} from "./dates";
 
 describe("addDays", () => {
   it("crosses month and year ends", () => {
@@ -19,5 +25,21 @@ describe("daysBetween", () => {
 describe("todayManila", () => {
   it("is already tomorrow in Manila after 16:00 UTC", () => {
     expect(todayManila(new Date("2026-10-15T16:30:00Z"))).toBe("2026-10-16");
+  });
+});
+
+describe("splitManila", () => {
+  it("reads a UTC timestamp as Manila wall time", () => {
+    expect(splitManila("2026-10-15T17:30:00Z")).toEqual({
+      date: "2026-10-16",
+      time: "01:30",
+    });
+  });
+
+  it("round-trips joinManila", () => {
+    expect(splitManila(joinManila("2026-10-15", "08:15"))).toEqual({
+      date: "2026-10-15",
+      time: "08:15",
+    });
   });
 });
