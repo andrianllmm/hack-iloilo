@@ -1,20 +1,13 @@
 "use client";
 
-import { CalendarIcon } from "lucide-react";
-
 import {
   formatPickerDate,
   fromPickerDate,
-  pickerBounds,
+  PickerPopover,
   toPickerDate,
+  usePickerBounds,
 } from "@/components/date-picker";
-import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 
 /** Inclusive range of `YYYY-MM-DD` dates. */
 export type DateRangeValue = { from?: string; to?: string };
@@ -22,7 +15,9 @@ export type DateRangeValue = { from?: string; to?: string };
 export type DateRangePickerProps = {
   value?: DateRangeValue;
   onChange?: (value: DateRangeValue | undefined) => void;
+  /** Earliest selectable date, `YYYY-MM-DD`. */
   min?: string;
+  /** Latest selectable date, `YYYY-MM-DD`. */
   max?: string;
   placeholder?: string;
   disabled?: boolean;
@@ -37,57 +32,44 @@ export function DateRangePicker({
   min,
   max,
   placeholder = "Pick dates",
-  disabled,
-  id,
-  "aria-invalid": ariaInvalid,
-  className,
+  ...trigger
 }: DateRangePickerProps) {
   const from = toPickerDate(value?.from);
   const to = toPickerDate(value?.to);
+  const bounds = usePickerBounds(min, max);
 
   return (
-    <Popover>
-      <PopoverTrigger
-        render={
-          <Button
-            id={id}
-            variant="outline"
-            disabled={disabled}
-            aria-invalid={ariaInvalid}
-            className={className}
-          />
-        }
-      >
-        <CalendarIcon data-icon="inline-start" />
-        {value?.from ? (
-          value.to ? (
-            `${formatPickerDate(value.from)} – ${formatPickerDate(value.to)}`
-          ) : (
-            formatPickerDate(value.from)
-          )
-        ) : (
-          <span className="text-muted-foreground">{placeholder}</span>
-        )}
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+    <PickerPopover
+      label={
+        value?.from
+          ? value.to
+            ? `${formatPickerDate(value.from)} – ${formatPickerDate(value.to)}`
+            : formatPickerDate(value.from)
+          : undefined
+      }
+      placeholder={placeholder}
+      {...trigger}
+    >
+      {(close) => (
         <Calendar
           mode="range"
           numberOfMonths={2}
           selected={from ? { from, to } : undefined}
           defaultMonth={from}
-          disabled={pickerBounds(min, max)}
-          onSelect={(range) =>
-            onChange?.(
-              range
-                ? {
-                    from: fromPickerDate(range.from),
-                    to: fromPickerDate(range.to),
-                  }
-                : undefined,
-            )
-          }
+          disabled={bounds}
+          onSelect={(range) => {
+            const next = range?.from
+              ? {
+                  from: fromPickerDate(range.from),
+                  to: fromPickerDate(range.to),
+                }
+              : undefined;
+            onChange?.(next);
+            // Close once a second, different day completes the range.
+            if (next?.to && next.to !== next.from) close();
+          }}
         />
-      </PopoverContent>
-    </Popover>
+      )}
+    </PickerPopover>
   );
 }

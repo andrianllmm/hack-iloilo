@@ -56,13 +56,55 @@ export function DatePicker({
   min,
   max,
   placeholder = "Pick a date",
+  ...trigger
+}: DatePickerProps) {
+  const selected = toPickerDate(value);
+  const bounds = usePickerBounds(min, max);
+
+  return (
+    <PickerPopover
+      label={value ? formatPickerDate(value) : undefined}
+      placeholder={placeholder}
+      {...trigger}
+    >
+      {(close) => (
+        <Calendar
+          mode="single"
+          selected={selected}
+          defaultMonth={selected}
+          captionLayout="dropdown"
+          disabled={bounds}
+          onSelect={(date) => {
+            onChange?.(fromPickerDate(date));
+            close();
+          }}
+        />
+      )}
+    </PickerPopover>
+  );
+}
+
+type PickerPopoverProps = {
+  label?: string;
+  placeholder: string;
+  disabled?: boolean;
+  id?: string;
+  "aria-invalid"?: boolean;
+  className?: string;
+  children: (close: () => void) => React.ReactNode;
+};
+
+/** Outline button that opens a calendar popover. */
+export function PickerPopover({
+  label,
+  placeholder,
   disabled,
   id,
   "aria-invalid": ariaInvalid,
   className,
-}: DatePickerProps) {
+  children,
+}: PickerPopoverProps) {
   const [open, setOpen] = React.useState(false);
-  const selected = toPickerDate(value);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -78,27 +120,18 @@ export function DatePicker({
         }
       >
         <CalendarIcon data-icon="inline-start" />
-        {value ? (
-          formatPickerDate(value)
-        ) : (
-          <span className="text-muted-foreground">{placeholder}</span>
-        )}
+        {label ?? <span className="text-muted-foreground">{placeholder}</span>}
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={selected}
-          defaultMonth={selected}
-          captionLayout="dropdown"
-          disabled={pickerBounds(min, max)}
-          onSelect={(date) => {
-            onChange?.(fromPickerDate(date));
-            setOpen(false);
-          }}
-        />
+        {children(() => setOpen(false))}
       </PopoverContent>
     </Popover>
   );
+}
+
+/** react-day-picker `disabled` matchers for `YYYY-MM-DD` bounds. */
+export function usePickerBounds(min?: string, max?: string) {
+  return React.useMemo(() => pickerBounds(min, max), [min, max]);
 }
 
 export function pickerBounds(min?: string, max?: string) {
