@@ -1,0 +1,4 @@
+pnpm-lock.yaml
+data/opa/
+src/lib/supabase/database.types.ts
+supabase/.temp
