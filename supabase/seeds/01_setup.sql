@@ -4,8 +4,10 @@
 --   IRPC facility  f0000000-0000-0000-0000-000000000001
 -- Look up machines by code (D1–D6, M1), varieties by code, municipalities by psgc_code.
 --
--- Confirmed: storage 1,100 t; dryers 5 × 10 t + 1 × 6 t (spec sheet); mill ~3.1 t/h (sample run).
--- UNCONFIRMED placeholders (flag in Settings until IRPC confirms; see PRD open questions):
+-- Confirmed: storage 1,100 t.
+-- UNCONFIRMED (flag in Settings until IRPC confirms; see PRD open questions):
+--   dryers                   5 × 10 t + 1 × 6 t (spec sheet; feasibility study says 5 × 8 t)
+--   mill kg_per_hour         3100    (sample run; spec sheet 400 bags/day, challenge form 50 t/day)
 --   operating_hours_per_day  16      (gives mill ~50 t/day, matching the challenge form)
 --   dryer cycle_hours        8       (not recorded)
 --   dryer rated_kw           15 each (unknown)

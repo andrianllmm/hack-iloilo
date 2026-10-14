@@ -16,7 +16,7 @@ src/
   components/ui/    shadcn/ui components (generated; edit sparingly)
   components/       app-level components (sidebar, nav, placeholders)
   modules/<name>/   one per PRD module (M1–M10): logic.ts, queries.ts, actions.ts, sms.ts, components/
-  lib/              env, Supabase clients, SMS gateway, AI helper
+  lib/              env, Supabase clients, SMS gateway, AI helper, dates, formatters, refs
   proxy.ts          session refresh and login redirect
 supabase/           config, migrations, seeds/ (local dev via Docker)
 data/opa/raw/       source data from IRPC/OPA (read-only)
