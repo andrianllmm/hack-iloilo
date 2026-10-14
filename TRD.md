@@ -1,37 +1,35 @@
 # TRD: Post-Harvest Facility Capacity Planning Platform
 
+How we build the [PRD](PRD.md). Module numbers (M1–M14) match.
+
 ## Summary
 
-The [PRD](PRD.md) says what we're building. This doc says how. Module numbers (M1 to M14) match the PRD.
-
-The short version:
-
-- One Next.js app on Vercel, with Supabase for the database and logins. Everything is on free tiers.
-- The code is split by module. Each module has its own folder with its screens, logic, data access, SMS commands and tests.
-- Farmers use SMS. The demo runs on a built-in phone simulator. A real phone running textbee.dev is the upgrade.
-- AI (Gemini) only turns messy texts and form photos into structured data, and a person always confirms the result.
-- The harvest forecast is trained offline in Python. The app only reads the numbers it produces.
-- Nothing about IRPC or rice is in the code. It all lives in data, so other facilities, crops and regions can be added later.
+- One Next.js app on Vercel, with Supabase for the database and auth. All free tiers.
+- One folder per module, holding its screens, logic, data, SMS and tests.
+- Clients use SMS through textbee.dev. The demo runs on a built-in simulator.
+- AI (Gemini) only turns texts and photos into structured data, and a person confirms it.
+- The forecast is trained offline in Python. The app reads only the exported parameters.
+- No IRPC- or rice-specific code. Facilities, crops and regions are data.
 
 ## Stack
 
-| Part              | We use                                                                            | Why                                                                 |
-| ----------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| App               | Next.js (App Router), TypeScript in strict mode, server actions                   | One app serves the screens and the SMS webhook. Most of us know it. |
-| UI                | Tailwind CSS, shadcn/ui, shadcn charts                                            | Matches our design system.                                          |
-| Database, logins  | Supabase: Postgres, Auth, Row Level Security (RLS)                                | Free, hosted, and handles logins and per-row access rules.          |
-| Database access   | supabase-js, types from `supabase gen types`, SQL migrations via the Supabase CLI | No ORM. Queries run as the logged-in user, so RLS applies.          |
-| Validation        | Zod                                                                               | One schema per form, SMS command and AI result.                     |
-| Translations      | next-intl, one file per language (`en`, `hil` for now)                            | Also works outside React, for SMS texts and keywords.               |
-| SMS               | textbee.dev on an Android phone with a SIM, plus a web simulator                  | Free tier, receives texts through a webhook, no sender-ID approval. |
-| AI                | Vercel AI SDK with `@ai-sdk/google` (Gemini Flash, free tier)                     | Returns structured data that matches a Zod schema.                  |
-| Hosting           | Vercel Hobby, Supabase in `ap-southeast-1` (Singapore)                            | Free, and the closest region to the Philippines.                    |
-| Forecast training | Python (pandas, openpyxl, SciPy), run on a laptop                                 | Trains the M8 model. The app only reads the exported numbers.       |
-| Tooling           | pnpm, Vitest, ESLint, Prettier, commitlint                                        | See [Testing and CI](#testing-and-ci).                              |
+| Part              | Choice                                                        | Why                                                |
+| ----------------- | ------------------------------------------------------------- | -------------------------------------------------- |
+| App               | Next.js (App Router), strict TypeScript, server actions       | One app for screens and the SMS webhook            |
+| UI                | Tailwind, shadcn/ui, shadcn charts                            | Matches our design system                          |
+| Database, auth    | Supabase: Postgres, Auth, RLS                                 | Free, hosted, per-row access rules                 |
+| Data access       | supabase-js, `supabase gen types`, Supabase CLI migrations    | No ORM, so queries run as the user and RLS applies |
+| Validation        | Zod                                                           | One schema per form, SMS command and AI result     |
+| i18n              | next-intl, one file per locale (`en`, `hil`)                  | Also serves SMS templates and keywords             |
+| SMS               | textbee.dev (Android phone and SIM), plus a web simulator     | Free tier, inbound webhook, no sender-ID approval  |
+| AI                | Vercel AI SDK with `@ai-sdk/google` (Gemini Flash, free tier) | Structured output from Zod schemas                 |
+| Hosting           | Vercel Hobby, Supabase `ap-southeast-1`                       | Free, and the region nearest the Philippines       |
+| Forecast training | Python (pandas, openpyxl, SciPy), offline                     | Exports the M8 parameters                          |
+| Tooling           | pnpm, Vitest, ESLint, Prettier, commitlint                    |                                                    |
 
-Start the repo with `create-next-app` and `shadcn init`, then pin exact versions.
+Scaffold with `create-next-app` and `shadcn init`, then pin versions.
 
-## How the pieces connect
+## System context
 
 ```mermaid
 flowchart LR
@@ -46,13 +44,11 @@ flowchart LR
   app -->|"text / image extraction"| ai["Gemini API"]
 ```
 
-Farmers text a phone running the textbee app. textbee forwards each text to our app, and our replies go back the same way. In the demo, the simulator page stands in for the phones. Staff use the app in a browser. The app stores everything in Supabase and only calls Gemini to read messy texts and form photos.
-
 ## Code layout
 
 ```
 src/
-  app/                    pages and API routes only; they call into modules
+  app/                    pages and API routes only, calling into modules
   modules/
     facility-setup/       M1
     accounts/             M2
@@ -68,29 +64,26 @@ src/
     batch-costing/        M12
     capacity/             M13
     prescriptions/        M14
-  lib/                    shared plumbing only: Supabase client, SMS gateway, AI helper, UI kit
-supabase/migrations/      one migration per module: <timestamp>_<module>.sql
-data/forecast/            Python scripts that parse OPA data and train the M8 model
-messages/<locale>.json    UI text, SMS templates and SMS keywords, grouped by module
+  lib/                    Supabase client, SMS gateway, AI helper, UI kit
+supabase/migrations/      <timestamp>_<module>.sql
+data/forecast/            Python: parse OPA data, train M8
+messages/<locale>.json    UI text, SMS templates and keywords, by module
 ```
 
-Every module folder has the same files:
+| File          | Contents                                      |
+| ------------- | --------------------------------------------- |
+| `index.ts`    | The only exports other modules may import     |
+| `logic.ts`    | Pure functions (math, rules), the test target |
+| `queries.ts`  | Reads                                         |
+| `actions.ts`  | Server actions (writes)                       |
+| `sms.ts`      | The module's SMS commands and templates       |
+| `components/` | Screens and widgets                           |
+| `*.test.ts`   | Tests                                         |
 
-| File          | What goes in it                                                                          |
-| ------------- | ---------------------------------------------------------------------------------------- |
-| `index.ts`    | The functions other modules may call. Nothing else is imported from outside.             |
-| `logic.ts`    | Pure functions: math and rules, with no database or framework calls. Tests target these. |
-| `queries.ts`  | Database reads.                                                                          |
-| `actions.ts`  | Server actions, which do the writes.                                                     |
-| `sms.ts`      | The module's SMS commands and texts, if it has any.                                      |
-| `components/` | The module's screens and widgets.                                                        |
-| `*.test.ts`   | Tests, if the module has any.                                                            |
+- Modules call each other's `index.ts` directly. There's no event bus, queue or cron.
+- Dependencies point one way, so there are no cycles. An action that spans modules is orchestrated in its `src/app` server action. For example, saving the receiving form calls M10 `saveReceiving`, then M9 `createPurchase` for bought palay.
 
-Modules call each other's `index.ts` functions directly. There's no event bus, queue or cron. For example, when staff check a client in at the gate, M7 calls M6's `markArrived`. When M7 starts serving someone, it texts the next clients in line.
-
-Dependencies only point one way, so there are no cycles. When one screen action spans two modules that would otherwise need each other, the server action in `src/app` calls both in order. Saving the receiving form is the main case: the action calls M10's `saveReceiving`, then M9's `createPurchase` if IRPC is buying the palay. M10 never calls M9.
-
-Who calls whom (M1 and M4 are left out because nearly everything uses them):
+Dependencies (M1 and M4 omitted, since nearly all modules use them):
 
 ```mermaid
 flowchart BT
@@ -99,8 +92,7 @@ flowchart BT
   M6[M6 Booking] --> M2 & M3
   M7[M7 Queue] --> M2 & M3 & M6
   M8[M8 Forecast] --> M2 & M3
-  M9[M9 Palay Buying] --> M3 & M5
-  M9[M9 Palay Buying] --> M10
+  M9[M9 Palay Buying] --> M3 & M5 & M10
   M10[M10 Batches] --> M7
   M11[M11 Sales] --> M3 & M5 & M9 & M10
   M12[M12 Costing] --> M5 & M9 & M10 & M11
@@ -110,23 +102,23 @@ flowchart BT
 
 ## Rules for all code
 
-- **Every facility's data is separate.** Each settings and operations table has a `facility_id`. The prototype has one facility, IRPC. Adding another means adding rows. It needs no new code, schema or deploy.
-- **No rice in the code.** Crop names, stage labels, grades, form fields, places, languages, buyer types and prices all come from tables or translation files. Code never mentions rice, IRPC, Iloilo or Hiligaynon. Seed data and translation files can.
-- **Units.**
-  - Weights are whole kilograms.
-  - Money is whole centavos. The column suffix `_minor` means the currency's smallest unit, set by `facilities.currency`.
-  - Moisture content (MC) is a percent, stored as `numeric(4,1)`.
-- **Time.** Dates use the facility's time zone (Asia/Manila for IRPC). Columns are `date` or `timestamptz`.
-- **Standard columns.** Every table has `id` (UUID), `created_at` and `updated_at`.
-- **Access.** Every screen action and SMS command calls M2's `can()` before doing anything. RLS is on for every table as a second line of defense. M2 has the details.
-- **Service role key.** Only the SMS webhook and the seed script use it. The webhook acts on behalf of the phone number that sent the text.
+- **Tenancy:** every settings and operations table has `facility_id`. A new facility is new rows, with no new code or deploy.
+- **No domain in code:** crop names, stage labels, grades, form fields, places, languages, buyer types and prices live in tables or translation files.
+- **Units:**
+  - Weight: integer kg.
+  - Money: integer minor units (`_minor`, centavos for PHP, per `facilities.currency`).
+  - MC: `numeric(4,1)` %.
+- **Time:** the facility's time zone (Asia/Manila). Columns are `date` or `timestamptz`.
+- **Every table:** `id` (UUID), `created_at`, `updated_at`.
+- **Access:** every action and SMS command calls M2 `can()`. RLS is on for every table as a backstop.
+- **Service role key:** only the SMS webhook and seed use it.
 
 ## Shared plumbing
 
-### Logins
+### Auth
 
-- **Staff** log in with email and password through Supabase Auth. The seed script creates their accounts, with email confirmation turned off.
-- **Clients and bookers** don't log in. They're identified by phone number over SMS. Web login for them is P1, using a one-time code sent by SMS.
+- Staff use Supabase email and password. Accounts come from the seed, with email confirmation off.
+- Clients and bookers are identified by phone over SMS. Web login by SMS one-time code is P1.
 
 ### SMS gateway (`lib`)
 
@@ -136,33 +128,35 @@ interface SmsGateway {
 }
 ```
 
-- **`SimulatorGateway`** only saves messages. The simulator page shows a phone screen per number, so the demo never depends on a mobile network. Only admins can open it, and it's switched off when `SMS_GATEWAY=textbee`, since it can send texts as any phone.
-- **`TextbeeGateway`** sends through textbee's `send-sms` API. Incoming texts reach us through textbee's webhook at `POST /api/sms/inbound`.
-- The `SMS_GATEWAY` environment variable picks one.
-- Each facility has its own gateway phone (`facilities.sms_device_id`). An incoming text goes to the facility whose phone received it.
-- If textbee delivers the same text twice, we process it once. We dedupe on textbee's message ID.
+- `SimulatorGateway`:
+  - Only stores messages, and shows a phone screen per number.
+  - It's admin-only and disabled when `SMS_GATEWAY=textbee`, since it can impersonate any phone.
+- `TextbeeGateway`:
+  - Sends through textbee's `send-sms` API.
+  - Inbound texts arrive at `POST /api/sms/inbound`, deduped on the gateway message ID.
+- Each facility has its own gateway phone (`facilities.sms_device_id`), which routes inbound texts to that facility.
 
 ### AI helper (`lib`)
 
-- One function, `extract(schema, input)`, sends text or an image to Gemini and gets back data matching a Zod schema.
-- A person always confirms AI output before anything is saved.
-- If Gemini fails or hits its rate limit, the app falls back to the non-AI path: a help text, or an empty form.
+- `extract(schema, input)` sends text or an image to Gemini and returns data matching the Zod schema.
+- A person confirms all output before it's saved.
+- On failure or rate limit, the app falls back to a help text or an empty form.
 
-### Translations (`lib`)
+### i18n (`lib`)
 
-- Keys look like `<module>.<key>`, e.g. `booking.confirmed`.
-- Crop-specific words come from keys stored on the crop. For example, `crops.rice.processing` is "Milling" in English.
-- SMS keywords live in the translation files too, so a new language brings its own keywords.
-- SMS texts use the same files through next-intl's `createTranslator`.
-- SMS templates stick to plain GSM-7 characters. One text holds 160 characters, and no template may run past two texts.
+- Keys use `<module>.<key>`. Crop words come from keys on the crop (`crops.rice.processing` = "Milling").
+- SMS keywords live in the translation files, so each language brings its own.
+- SMS uses next-intl `createTranslator`. Templates use GSM-7 only, max 2 segments (320 characters).
 
 ## Data model
 
-This diagram shows only keys and links. Each module section lists its full columns.
+Keys and links only; module sections list the columns. Settings and operations tables have `facility_id`, but only the main links are drawn. `crops`, `varieties`, `localities`, `profiles` and `clients` are shared across facilities. These tables are not drawn:
 
-- Every settings and operations table has a `facility_id`. Only the main links to `facilities` are drawn.
-- `crops`, `varieties`, `localities`, `profiles` and `clients` are shared by all facilities.
-- `prices`, `catchment_shares`, `regional_crop_stats`, `forecast_params` and `orders` aren't drawn. They link to `facilities`, `crops`, `localities` or `clients`.
+- `prices`
+- `catchment_shares`
+- `regional_crop_stats`
+- `forecast_params`
+- `orders`
 
 ```mermaid
 erDiagram
@@ -315,115 +309,104 @@ erDiagram
 
 ## Modules
 
-Each section covers only the technical side. The PRD lists the features.
+Technical details only. The PRD lists features.
 
 ### M1. Facility Setup
-
-**Tables**
 
 | Table        | Columns                                                                                                                                                                                                                                                                                                                                                    |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `facilities` | `name`, `locality_id`, `timezone`, `currency`, `default_locale`, `sms_device_id`, `storage_capacity_kg`, `operating_hours_per_day`, `base_load_kw`, `tariff_minor_per_kwh`, `labor_minor_per_hour`, `shrink_factor`, `idle_threshold_pct`, `forecast_window_days`, `forecast_range_pct`, `notify_ahead_n`, `buyer_types` (jsonb), `doc_ref_fields` (jsonb) |
-| `machines`   | `facility_id`, `stage` (`drying` or `processing`), `code`, `capacity_kg` (per load, dryers only), `cycle_hours`, `kg_per_hour` (processing only), `rated_kw`, `active`                                                                                                                                                                                     |
+| `machines`   | `facility_id`, `stage` (`drying`, `processing`), `code`, `capacity_kg` (per load, dryers), `cycle_hours`, `kg_per_hour` (processing), `rated_kw`, `active`                                                                                                                                                                                                 |
 | `crops`      | `code`, `name_key`, `requires_drying`, `target_final_mc`, `processing_label_key`, `output_types` (jsonb: main output, grades, by-products)                                                                                                                                                                                                                 |
 | `varieties`  | `crop_id`, `code`, `name`, `maturity_days`, `default_yield_kg_per_ha`                                                                                                                                                                                                                                                                                      |
-| `localities` | `psgc_code`, `name`, `level` (region, province, municipality or barangay), `parent_id`, `lat`, `lng`                                                                                                                                                                                                                                                       |
+| `localities` | `psgc_code`, `name`, `level`, `parent_id`, `lat`, `lng`                                                                                                                                                                                                                                                                                                    |
 
-A few `facilities` columns need explaining:
+| Column               | Meaning                                              |
+| -------------------- | ---------------------------------------------------- |
+| `base_load_kw`       | Power drawn on any working day, whatever the volume  |
+| `shrink_factor`      | Drying loss beyond water (handling, cleaning)        |
+| `idle_threshold_pct` | Load below this share of capacity is idle            |
+| `notify_ahead_n`     | How many in line get "turn is near"                  |
+| `doc_ref_fields`     | Paper-form numbers recorded (IRPC: WTS no., WSR no.) |
 
-| Column               | Meaning                                                                         |
-| -------------------- | ------------------------------------------------------------------------------- |
-| `base_load_kw`       | Power the plant draws on any working day, however little it processes           |
-| `shrink_factor`      | Extra weight lost in drying beyond the water, from handling and cleaning        |
-| `idle_threshold_pct` | Load below this share of capacity counts as idle                                |
-| `notify_ahead_n`     | How many clients in line get the "your turn is near" text                       |
-| `doc_ref_fields`     | The paper-form numbers this facility records, e.g. WTS no. and WSR no. for IRPC |
+**Exports:** `getFacility(id)`, `dryingCapacityKgPerDay(facility, machines)`, `processingCapacityKgPerDay(facility, machines)`.
 
-**Functions for other modules:** `getFacility(id)`, `dryingCapacityKgPerDay(facility, machines)`, `processingCapacityKgPerDay(facility, machines)`.
-
-**How capacity is worked out**
-
-- Drying per day = for each active dryer, `capacity_kg` × how many full cycles fit in a working day (`operating_hours_per_day` ÷ `cycle_hours`, rounded down). Add them up.
-- Processing per day = for each active processing machine, `kg_per_hour` × `operating_hours_per_day`. Add them up.
+- Drying per day = Σ active dryers' `capacity_kg` × ⌊`operating_hours_per_day` ÷ `cycle_hours`⌋.
+- Processing per day = Σ active processors' `kg_per_hour` × `operating_hours_per_day`.
 - Crops with `requires_drying = false` skip the dryers.
 
-**Seed data** (`pnpm seed`)
+**Seed (`pnpm seed`):**
 
 - PSGC places for Western Visayas.
-- Rice, with its varieties, MC target, "milling" label, grades (WMR, dasdas, brown rice) and by-products (bran, brewer, broken).
-- IRPC as a facility:
-  - Dryers from the spec sheet: 5 × 10 t + 1 × 6 t. The 40 t alternative sits in a comment.
+- Rice:
+  - Its varieties, MC target and "milling" label.
+  - Grades: WMR, dasdas and brown rice.
+  - By-products: bran, brewer and broken.
+- IRPC:
+  - Dryers of 5 × 10 t + 1 × 6 t (the 40 t alternative in a comment).
   - One mill.
-  - Its paper-form numbers (WTS no., WSR no.) and its buyer types.
+  - Its form fields and buyer types.
 - Staff accounts.
-- About 30 farmers in 3 Pototan co-ops, with their booker links approved.
-- A few traders and stores as buyers and custom-milling clients.
-- Buyers modelled on IRPC's anonymized top-20 client list.
-- Today's prices, a few accepted sell offers, and a queue in progress.
-- A peak-season scenario with at least one overloaded day and one idle stretch.
+- About 30 farmers in 3 Pototan co-ops, with approved booker links.
+- Traders and stores, plus buyers modelled on IRPC's anonymized top-20 list.
+- Today's prices, accepted sell offers and a live queue.
+- A peak scenario with at least one overloaded day and one idle stretch.
 
 ### M2. Accounts and Access
 
-M2 keeps two kinds of records apart:
+There are two kinds of record:
 
-- **Profiles** are people with a phone number: farmers, bookers, staff. They send texts and log in.
-- **Clients** are who IRPC does business with: a farmer, co-op, trader, store or institution. Clients own palay and buy rice. Each client has a contact profile. For a farmer, the client and the profile are the same person.
+- **Profiles** are people with phones: farmers, bookers, staff.
+- **Clients** are business parties: farmer, co-op, trader, store or institution. Each has a contact profile. A farmer is both a client and a profile.
 
-**Tables**
+| Table               | Columns                                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `profiles`          | `auth_user_id` (only for logins), `name`, `phone` (E.164, unique), `locale`, `locality_id`, `registry_ids` (jsonb, e.g. RSBSA) |
+| `clients`           | `kind`, `name`, `contact_profile_id`, `locality_id`, `coop_id`, `buyer_type`                                                   |
+| `client_facilities` | `client_id`, `facility_id`, `first_seen_at`, written on first booking, check-in, sale or purchase                              |
+| `facility_members`  | `facility_id`, `profile_id`, `role` (`encoder`, `manager`, `admin`)                                                            |
+| `booker_links`      | `booker_profile_id`, `client_id`, `status` (`pending`, `approved`), `created_by` (`sms`, `staff`)                              |
 
-| Table               | Columns                                                                                                                                                                                                                       |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `profiles`          | `auth_user_id` (empty unless the person logs in), `name`, `phone` (international format, unique), `locale`, `locality_id` (barangay), `registry_ids` (jsonb, e.g. RSBSA no.)                                                  |
-| `clients`           | `kind` (`farmer`, `coop`, `trader`, `store`, `institution`), `name`, `contact_profile_id`, `locality_id`, `coop_id` (a `coop` client, for farmers), `buyer_type` (one of a facility's `buyer_types`, if the client buys rice) |
-| `client_facilities` | `client_id`, `facility_id`, `first_seen_at`. Written the first time a client books, checks in, sells or buys at a facility.                                                                                                   |
-| `facility_members`  | `facility_id`, `profile_id`, `role` (`encoder`, `manager` or `admin`)                                                                                                                                                         |
-| `booker_links`      | `booker_profile_id`, `client_id`, `status` (`pending` or `approved`), `created_by` (`sms` or `staff`)                                                                                                                         |
+**Exports:** `findOrRegisterByPhone(phone)`, `resolveClient(sender, forPhone?)`, `can(actor, action, resource)`.
 
-**Functions for other modules:** `findOrRegisterByPhone(phone)`, `resolveClient(sender, forPhone?)`, `can(actor, action, resource)`.
+**`resolveClient`** resolves a `FOR <phone>` suffix to a client:
 
-**`resolveClient`** handles texts that end in `FOR <phone>`, meaning "I'm acting for this client".
+- An approved link returns the client.
+- Otherwise it creates a `pending` link and texts the client an approval prompt, holding the command until `HO <code>` (P1).
+- At P0, links auto-approve. Staff-made links are approved immediately.
 
-- If a link exists and is approved, it returns that client.
-- If not, it creates a `pending` link and texts the client's contact a prompt to approve it (P1). Until they reply `HO <code>`, the command is held.
-- At P0, links are approved automatically, and the demo seed creates them.
-- Links that staff create in person are approved straight away.
+**`can()`** is a pure function encoding the PRD permission table. Every server action and SMS handler calls it first.
 
-**`can(actor, action, resource)`** is one pure function in `logic.ts` that encodes the PRD's "who can do what" table. Every server action and every SMS handler calls it before doing anything.
+- Actors: staff, with their role at the facility, or an SMS sender, with their linked clients.
+- Actions: `booking.create`, `booking.cancel`, `queue.checkIn`, `batch.record`, `price.set`, `purchase.override`, `sale.record`, `cost.view`, `prescription.decide`, `facility.configure`, `simulator.use`, and so on.
+- On refusal, SMS replies with `accounts.notAllowed` and actions throw.
 
-- **Actors:**
-  - a staff member, with their role at that facility
-  - an SMS sender, with the clients they're linked to
-- **Actions** are named strings, such as `booking.create`, `booking.cancel`, `queue.checkIn`, `batch.record`, `price.set`, `purchase.override`, `sale.record`, `cost.view`, `prescription.decide`, `facility.configure` and `simulator.use`.
-- On a refusal, SMS handlers reply with the `accounts.notAllowed` text, and server actions throw.
+**RLS** backs up `can()` for reads:
 
-**Database rules (RLS).** These back up `can()` for reads, so a bug in a screen can't leak data.
+- Staff read and write operations rows for their facilities.
+- Staff see clients only through `client_facilities` (P1; at P0, all clients).
+- Only managers and admins see costs, and only admins write settings.
+- Web clients (P1) see rows they own, booked, or are approved-linked to.
+- SMS handlers use the service role, which bypasses RLS, so `can()` is mandatory there.
 
-- Staff can read and write operations rows for facilities in their `facility_members`.
-- Staff can read a client only if `client_facilities` links that client to one of their facilities (P1; at P0, any staff member can read all clients).
-- Only managers and admins can read cost views. Only admins can write settings.
-- A logged-in client (P1 web) can read rows where they own the palay, are the booker, or are linked through an approved `booker_links` row.
-- SMS handlers run with the service role key, which skips RLS. That's why every handler must call `can()` first.
-
-**Tests:** `can()` cases for each row of the permission table, including a stranger trying to cancel someone else's booking.
+**Tests:** `can()` for every row of the permission table, including a stranger cancelling someone's booking.
 
 ### M3. SMS
 
-**Tables**
+- `sms_messages`: `direction`, `phone`, `body`, `gateway_id` (unique), `parsed` (jsonb), `via_ai`, `status`.
+- `sms_prompts`: `phone`, `code` (2 characters), `kind` (`ai_confirm`, `link_approval`, `reschedule`), `payload` (jsonb), `expires_at`, `status`. There's one row per yes/no question sent.
 
-- `sms_messages` with `direction`, `phone`, `body`, `gateway_id` (unique), `parsed` (jsonb), `via_ai`, `status`.
-- `sms_prompts` with `phone`, `code` (2 characters), `kind` (`ai_confirm`, `link_approval`, `reschedule`), `payload` (jsonb), `expires_at`, `status`. One row for every text that asks a yes/no question.
+**Exports:** `registerCommand({ keywords, schema, parse, handle })`, `sendTemplate(profile, key, vars)`.
 
-**Yes/no replies.** Every question the app texts ends with its code, e.g. "Reply HO A4 or INDI A4", so a reply with a code is never ambiguous. A bare `HO`, `YES`, `INDI` or `NO` with no code is resolved like this:
+**Yes/no replies:** every question ends with its code ("Reply HO A4 or INDI A4"). A bare `HO`, `YES`, `INDI` or `NO`:
 
-1. If the phone has exactly one open prompt, the reply answers it.
-2. If it has several, the app asks which one, listing each code with a few words about it.
-3. If it has none, the reply gets the help text.
+1. answers the phone's only open prompt;
+2. if several are open, gets a text asking which one, listing their codes;
+3. if none are open, gets the help text.
 
-Prompts expire after 24 hours. A booking's own reference code (`YES K7P2QX`) also works for reschedule prompts.
+Prompts expire after 24 hours. `YES <booking ref>` also answers reschedule prompts.
 
-**Functions for other modules:** `registerCommand({ keywords, schema, parse, handle })`, `sendTemplate(profile, key, vars)`.
-
-**What happens to an incoming text**
+**Inbound flow:**
 
 ```mermaid
 sequenceDiagram
@@ -455,62 +438,57 @@ sequenceDiagram
   G->>P: SMS
 ```
 
-In words:
-
-1. Find or register the sender by phone number.
-2. Try each module's keyword command. The first one that matches handles the text, after checking `can()`.
-3. If none match, ask Gemini to turn the text into one of the known commands (P1). Reply "Did you mean …?" with a prompt code, and wait for `HO <code>` before doing anything.
-4. If that fails too, send a help text.
+1. Find or register the sender.
+2. Match a keyword command, check `can()`, and hand off to the owning module.
+3. With no match (P1), Gemini maps the text to a command. The app replies "Did you mean …?" with a code and waits for `HO <code>`.
+4. Otherwise, send the help text.
 
 **Tests:** keyword parsing.
 
 ### M4. Language
 
-**Function for other modules:** `t(profile, key, vars)` returns an SMS text in the person's language. If the person has no language set, it uses the facility's default.
-
-Web screens get their language from a cookie or the logged-in profile, through next-intl.
-
-The available languages are whatever files exist in `messages/`. Adding one is adding a file.
-
-A native Hiligaynon speaker on the team must check all Hiligaynon text and keywords.
+- `t(profile, key, vars)` returns SMS text in the profile's locale, falling back to the facility default.
+- Web screens get their locale from a cookie or the profile.
+- Locales are the files in `messages/`.
+- A native speaker must check all Hiligaynon text and keywords.
 
 ### M5. Pricing
 
-**Table:** `prices`, one row per facility, crop and date. Rows are only ever added, never edited, so old prices stay on record.
+`prices` is append-only, with one row per facility, crop and `effective_date`.
 
-| Column                                     | Meaning                                                                                                             |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `facility_id`, `crop_id`, `effective_date` | Which facility, crop and day the prices apply to                                                                    |
-| `buy_base_minor_per_kg`                    | Palay buying price at the reference MC                                                                              |
-| `buy_reference_mc`                         | The MC the base price assumes (25% for IRPC)                                                                        |
-| `buy_rules` (jsonb)                        | Deduction factors, e.g. `{ damaged: 0.25, immature: 0.10, foreign: 1.0, sack_kg: 0.1 }`, and the MC adjustment rule |
-| `drying_fee_minor_per_kg`                  | Drying fee, per wet kilo                                                                                            |
-| `processing_fee_minor_per_kg`              | Milling fee, per kilo of rice out                                                                                   |
-| `sell_minor_per_kg` (jsonb)                | Selling price per output grade, e.g. `{ WMR: 4700 }`                                                                |
+| Column                        | Meaning                                                                                      |
+| ----------------------------- | -------------------------------------------------------------------------------------------- |
+| `buy_base_minor_per_kg`       | Palay buying price at the reference MC                                                       |
+| `buy_reference_mc`            | 25% for IRPC                                                                                 |
+| `buy_rules` (jsonb)           | Deductions (`{ damaged: 0.25, immature: 0.10, foreign: 1.0, sack_kg: 0.1 }`) and the MC rule |
+| `drying_fee_minor_per_kg`     | Per wet kg                                                                                   |
+| `processing_fee_minor_per_kg` | Per kg of rice out                                                                           |
+| `sell_minor_per_kg` (jsonb)   | Per grade, e.g. `{ WMR: 4700 }`                                                              |
 
-**Function for other modules:** `priceOn(facilityId, cropId, date)`.
+**Exports:** `priceOn(facilityId, cropId, date)`. Dated prices are P0 because M12 needs them. The history screen is P1.
 
-Keeping every price by date is P0, because M12 costs each batch at the prices of its own dates. Only the price history screen is P1.
-
-**SMS commands:** `PRICE` / `PRESYO`, `RATES` / `BAYAD`.
+**SMS:** `PRICE` / `PRESYO`, `RATES` / `BAYAD`.
 
 ### M6. Booking
 
-**Table:** `bookings` with:
+`bookings` columns:
 
 - `facility_id`, `crop_id`
-- `ref`, a 6-character code that clients use in texts
-- `type`: `drying` or `processing`
-- `client_id` (who owns the palay), `booker_profile_id` (who made the booking)
-- `channel`: `sms`, `staff` or `web`
-- `est_kg`, `preferred_date`, `flex_days` (how many days either way the client can move), `scheduled_date`
+- `ref` (a 6-character code)
+- `type` (`drying`, `processing`)
+- `client_id`, `booker_profile_id`
+- `channel` (`sms`, `staff`, `web`)
+- `est_kg`, `preferred_date`, `flex_days`, `scheduled_date`
 - `status`
 
-**Functions for other modules:** `bookingsBetween(from, to)`, `findByRef(ref)`, `proposeReschedule(bookingId, date)`, `markArrived(bookingId)`.
+**Exports:** `bookingsBetween(from, to)`, `findByRef(ref)`, `proposeReschedule(bookingId, date)`, `markArrived(bookingId)`.
 
-**When a booking is confirmed.** A new booking is confirmed straight away if that day's confirmed bookings plus this one fit within the dryer or mill capacity from M1. M6 checks this with its own bookings only, so it doesn't depend on M13. If it doesn't fit, the booking stays `requested`. The client gets a "request received, we'll confirm or suggest a date" text, and staff confirm it or propose another date.
+**Confirmation:**
 
-**Allowed status changes.** `logic.ts` rejects anything else.
+- A booking auto-confirms if that day's confirmed bookings plus this one fit M1 capacity. The check uses M6's own data, so there's no M13 dependency.
+- Otherwise it stays `requested`, the client gets a "request received" text, and staff confirm or propose a date.
+
+**Status changes** (`logic.ts` rejects all others):
 
 ```mermaid
 stateDiagram-v2
@@ -527,160 +505,153 @@ stateDiagram-v2
   no_show --> [*]
 ```
 
-**SMS commands**
+**SMS:**
 
-| Command | Format                                               | Example (rice)           |
+| Command | Format                                               | Example                  |
 | ------- | ---------------------------------------------------- | ------------------------ |
 | Book    | `BOOK DRY\|<processing word> <kg> <dd/mm> [±<days>]` | `BOOK DRY 5000 20/10 ±3` |
-| Answer  | `YES <ref>` or `NO <ref>`                            | `YES K7P2QX`             |
+| Answer  | `YES <ref>` / `NO <ref>`                             | `YES K7P2QX`             |
 | Cancel  | `CANCEL <ref>`                                       | `CANCEL K7P2QX`          |
 
-- Book accepts `FOR <phone>` at the end, to book for someone else.
-- Hiligaynon aliases: `RESERBA` (book), `HO` / `INDI` (yes / no).
-- The processing word comes from the crop's translation entry: `MILL` / `GALING` for rice.
-- Every command calls `can()`. Only the client's contact or an approved booker can answer or cancel.
+- `FOR <phone>` books for someone else.
+- Aliases: `RESERBA`, `HO`, `INDI`.
+- The processing word comes from the crop (`MILL` / `GALING`).
+- Only the client's contact or an approved booker can answer or cancel.
 
 ### M7. Queue
 
-**Table:** `queue_entries` with `facility_id`, `service` (`drying`, `processing` or `selling`), `client_id`, `booking_id` (empty for walk-ins), `offer_id` (for palay sold to IRPC), `checked_in_at`, `started_at`, `finished_at`, `status` (`waiting`, `serving`, `done` or `left`), `position`.
+`queue_entries` columns:
 
-**Functions for other modules:** `checkIn({ bookingRef | phone | walkIn })`, `start(entryId)`, `finish(entryId)`, `lineFor(service)`.
+- `facility_id`
+- `service` (`drying`, `processing`, `selling`)
+- `client_id`, `booking_id` (empty for walk-ins), `offer_id`
+- `checked_in_at`, `started_at`, `finished_at`
+- `status` (`waiting`, `serving`, `done`, `left`), `position`
 
-**How it works**
+**Exports:** `checkIn({ bookingRef | phone | walkIn })`, `start(entryId)`, `finish(entryId)`, `lineFor(service)`.
 
-- `checkIn` creates an entry at the end of that service's line. If it has a booking, it calls M6's `markArrived`.
-- `start` marks the entry as being served, then texts the next `notify_ahead_n` waiting clients that their turn is near. M10 opens the receiving form from a started entry, so the batch knows its client, booking or offer.
-- `finish` closes the entry.
-- The order is first come, first served. Booked clients don't jump the line in P0; that rule is a setting for later.
-- The live queue screen refreshes through Supabase Realtime, or by polling every few seconds if that's simpler.
+- `checkIn` appends to the service's line and calls M6 `markArrived` for bookings.
+- `start` marks the entry as serving and texts the next `notify_ahead_n` clients. M10's receiving form opens from the started entry.
+- The line is first come, first served at P0. Priority for booked clients is a later setting.
+- The live screen updates through Supabase Realtime, or by polling.
 
-**SMS command:** `STATUS` replies with the sender's place in each line they're in (P1).
+**SMS (P1):** `STATUS` returns the sender's place in line.
 
-**Tests:** line order, and the "turn is near" texts going to the right clients.
+**Tests:** line order and the recipients of "turn is near".
 
 ### M8. Harvest Forecast
 
-M8 answers one question: how many kilos should reach this facility on each upcoming day? It has two sources.
+There are two sources: declared plantings (farm level) and a model for everyone else (municipality level).
 
-1. **Declared plantings.** A farmer tells us what they planted, and we work out when it'll be ready.
-2. **The forecast model.** For everyone who hasn't told us, we use municipal planting reports and a model trained on last year's real data.
+| Table                   | Columns                                                                                                                                                         |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `planting_declarations` | `client_id`, `booker_profile_id`, `locality_id`, `area_ha` (`numeric(6,2)`), `variety_id`, `planted_on`                                                         |
+| `regional_crop_stats`   | `locality_id`, `crop_id`, `period_start`, `period_end`, `kind` (`planted`, `harvested`), `area_ha`, `production_kg`, `source` (`opa-2025`, `demo-synthetic`, …) |
+| `forecast_params`       | `crop_id`, `locality_id` (null = province), `lag_weights` (jsonb), `yield_kg_per_ha`, `residual_p10`, `residual_p90`, `trained_on`, `metrics` (jsonb)           |
+| `catchment_shares`      | `facility_id`, `crop_id`, `locality_id`, `share`                                                                                                                |
 
-**Tables**
+`regional_crop_stats` and `forecast_params` are regional and shared by facilities.
 
-| Table                   | Columns                                                                                                                                                             |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `planting_declarations` | `client_id`, `booker_profile_id`, `locality_id`, `area_ha` (`numeric(6,2)`), `variety_id`, `planted_on`                                                             |
-| `regional_crop_stats`   | `locality_id`, `crop_id`, `period_start`, `period_end`, `kind` (`planted` or `harvested`), `area_ha`, `production_kg`, `source` (e.g. `opa-2025`, `demo-synthetic`) |
-| `forecast_params`       | `crop_id`, `locality_id` (empty = province-wide), `lag_weights` (jsonb), `yield_kg_per_ha`, `residual_p10`, `residual_p90`, `trained_on`, `metrics` (jsonb)         |
-| `catchment_shares`      | `facility_id`, `crop_id`, `locality_id`, `share`                                                                                                                    |
+**Exports:** `expectedArrivals(facilityId, from, to)` returns kg per day for each source (`declared`, `forecast`), each with low and high values.
 
-`regional_crop_stats` and `forecast_params` describe a region, not a facility, so every facility in that region shares them.
+**Declared plantings:**
 
-**Function for other modules:** `expectedArrivals(facilityId, from, to)` returns kilos per day for each source (`declared` and `forecast`), each with a low and a high value.
+- Harvest window = `planted_on` + `maturity_days` ± `forecast_window_days`.
+- kg = `area_ha` × yield ± `forecast_range_pct`, weighted toward the middle of the window.
 
-**Declared plantings**
+**Model** (municipalities harvest about 100 days after planting):
 
-- Expected harvest date = planting date + the variety's `maturity_days`.
-- The harvest window is that date ± `forecast_window_days`.
-- Kilos = hectares × the variety's yield, ± `forecast_range_pct`.
-- The kilos are spread over the window, with most of them in the middle.
+- harvest(m, t) = Σₖ wₖ × planted(m, t − k) × yield(m), with k = 5–9 half-months.
+- arrivals = harvest × `catchment_shares.share`, spread evenly within each half-month.
+- The range comes from held-out residuals (p10 to p90).
+- Fallback order:
+  1. The municipality's own parameters.
+  2. Pooled parameters, for flagged municipalities.
+  3. Last year's harvest × share, when there's no planting report.
 
-**Forecast model**
+**SMS:** `PLANT <ha> <variety> <dd/mm>` / `TANOM …`, with optional `FOR <phone>`.
 
-The idea: what a municipality plants now, it harvests about 100 days later. The model learns from real 2025 data how planted hectares turn into harvested tonnes, and how long that takes.
+**Data loading:**
 
-- Harvest in a municipality for a half-month = a weighted sum of what it planted 5, 6, 7, 8 and 9 half-months earlier, × that municipality's yield per hectare. The weights come from training and say how much of each earlier planting gets harvested now.
-- Arrivals at the facility = that harvest × the facility's usual share of the municipality (`catchment_shares`).
-- Each half-month's kilos are spread evenly across its days.
-- The low–high range comes from the model's real errors on data it didn't train on: the 10th and 90th percentiles.
+- `pnpm import:stats <file.csv>` takes one format for all regions: `psgc_code, crop, period_start, period_end, kind, area_ha, production_kg, source`. Each new source needs a converter.
+- `pnpm import:model <params.json>`.
+- `share` = IRPC's 2021–2023 purchases from a municipality ÷ that municipality's yearly harvest.
 
-When a municipality lacks good data, the model falls back in this order:
+**Training** (`data/forecast/`, by hand):
 
-1. The municipality's own trained numbers.
-2. The province-wide numbers, for the three municipalities with bad data.
-3. Last year's harvest × share, if there's no planting report for that period at all.
+1. Parse the OPA file (see the appendix).
+2. Fit:
+   - Lag weights with non-negative least squares, pooled across municipalities.
+   - Yield per municipality = t harvested ÷ ha harvested.
+   - Batad, Maasin and San Dionisio (harvested under 70% of planted) use the pooled parameters.
+3. Evaluate leave-one-municipality-out, storing the results in `metrics`.
+4. Export `params.json` and the cleaned CSV.
 
-**SMS command:** `PLANT <ha> <variety> <dd/mm>` / `TANOM …`, with optional `FOR <phone>`.
+First run:
 
-**Loading data**
+| Result                        | Value                          |
+| ----------------------------- | ------------------------------ |
+| Weights for lags 5–9          | ≈ 0.15, 0.41, 0.31, 0.09, 0.03 |
+| Planting to harvest           | ≈ 100 days                     |
+| R², province                  | ≈ 0.91                         |
+| R², municipality × half-month | ≈ 0.5                          |
+| Lead time                     | ≈ 80 days                      |
 
-- `pnpm import:stats <file.csv>` loads planting and harvest reports. Every region uses the same columns: `psgc_code, crop, period_start, period_end, kind, area_ha, production_kg, source`. A new data source needs a small converter script that writes this format.
-- `pnpm import:model <params.json>` loads the trained model numbers.
-- Each `catchment_shares` value = IRPC's 2021–2023 purchases from a municipality ÷ that municipality's yearly harvest.
+**Demo data:** a 2026 planting report generated from 2025 data:
 
-**Training** (`data/forecast/`, Python, run by hand)
+- Each municipality is shifted by up to ±1 half-month and scaled by up to ±15%.
+- It's stored as `demo-synthetic` and labelled in the UI.
+- It's never used for training or evaluation.
 
-1. **Parse** the OPA spreadsheet. It has traps, listed in [Appendix: OPA spreadsheet notes](#appendix-opa-spreadsheet-notes).
-2. **Fit**:
-   - The lag weights are fitted across all municipalities together, with non-negative least squares, so no weight comes out negative.
-   - Yield per municipality = tonnes harvested ÷ hectares harvested.
-   - Batad, Maasin and San Dionisio harvested less than 70% of what they planted, so their data is suspect. They use the province-wide numbers.
-3. **Test** by holding out one municipality at a time, training on the rest, and checking how well the model predicts the one held out. Save the scores in `metrics`.
-4. **Export** `params.json`, plus a CSV of the cleaned data for `import:stats`.
-
-What the first trial run found:
-
-| Result                                   | Value                                 |
-| ---------------------------------------- | ------------------------------------- |
-| Weights for lags 5 to 9 half-months      | about 0.15, 0.41, 0.31, 0.09, 0.03    |
-| Typical time from planting to harvest    | about 100 days                        |
-| Accuracy for the whole province          | R² ≈ 0.91 (good)                      |
-| Accuracy per municipality per half-month | R² ≈ 0.5 (noisy)                      |
-| Warning time it gives                    | about 80 days after a planting report |
-
-**Demo data.** There's no real 2026 planting report yet. A script makes one from the 2025 planting data, shifting each municipality by up to one half-month and scaling it by up to ±15%. It's saved with `source = 'demo-synthetic'`, and the capacity page labels it as demo data. It's never used for training or testing the model.
-
-**Tests:** the model applied with fixed numbers, the fallback order, and the declared-planting window math.
+**Tests:** the kernel with fixed parameters, the fallback order, and the declared-window math.
 
 ### M9. Palay Buying
 
-**Tables**
+| Table         | Columns                                                                                                                                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `sell_offers` | `facility_id`, `crop_id`, `client_id`, `booker_profile_id`, `variety_id`, `est_kg`, `harvest_date`, `status` (`offered`, `accepted`, `declined`, `arrived`, `withdrawn`)                               |
+| `purchases`   | `facility_id`, `batch_id`, `client_id`, `price_date`, `net_kg`, `paid_kg`, `price_minor_per_kg`, `total_minor`, `deductions` (jsonb, kg per reason), `override_reason`, `overridden_by`, `voucher_ref` |
 
-| Table         | Columns                                                                                                                                                                                                                      |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sell_offers` | `facility_id`, `crop_id`, `client_id`, `booker_profile_id`, `variety_id`, `est_kg`, `harvest_date`, `status` (`offered`, `accepted`, `declined`, `arrived`, `withdrawn`)                                                     |
-| `purchases`   | `facility_id`, `batch_id`, `client_id`, `price_date`, `net_kg`, `paid_kg` (after deductions), `price_minor_per_kg`, `total_minor`, `deductions` (jsonb, kilos per reason), `override_reason`, `overridden_by`, `voucher_ref` |
+**Exports:** `quote(facilityId, cropId, mc, kg?)`, `priceFromReceiving(receiving, prices)`, `createPurchase(batchId)`, `acceptedOffersBetween(from, to)`, `purchaseCost(batchId)`.
 
-**Functions for other modules:** `quote(facilityId, cropId, mc, kg?)`, `priceFromReceiving(receiving, prices)`, `createPurchase(batchId)`, `acceptedOffersBetween(from, to)`, `purchaseCost(batchId)`.
+**Price** (following the Receiving Report):
 
-**How the price is worked out** (pure functions in `logic.ts`, following the paper Receiving Report)
+1. Start from `buy_base_minor_per_kg` at `buy_reference_mc`.
+2. Adjust for MC with the `buy_rules` rule. The default pays for dry matter: × (100 − MC) ÷ (100 − reference MC). It's unconfirmed, so it's a setting.
+3. Deduct weight: damaged × 0.25, immature × 0.10, foreign × 1.0, and `sack_kg` per sack.
+4. Total = paid kg × adjusted price.
 
-1. Start from the day's `buy_base_minor_per_kg`, which assumes the palay is at `buy_reference_mc`.
-2. Adjust for MC with the rule in `buy_rules`. The default rule pays for dry matter: price × (100 − actual MC) ÷ (100 − reference MC). IRPC hasn't confirmed this, so it's a setting.
-3. Take off weight for quality: damaged kilos × 0.25, immature kilos × 0.10, foreign matter kilos × 1.0, and sacks at `sack_kg` each. The factors come from `buy_rules`.
-4. Total = paid kilos × adjusted price per kilo.
+A quote skips step 3 and is labelled an estimate.
 
-A quote runs steps 1, 2 and 4 with no quality deductions, so the reply says "estimate".
+`createPurchase` reads M10's receiving record, prices it and saves `purchases`. The receiving server action calls it for bought palay. The encoder sees the result, and the client gets a text.
 
-`createPurchase(batchId)` reads the batch's receiving record from M10, runs `priceFromReceiving`, and saves the `purchases` row. The receiving page's server action calls it right after M10 saves the form, for palay that IRPC is buying. The encoder sees the price, and the client gets a text.
-
-**SMS commands**
+**SMS:**
 
 | Command | Format                                      | Example                 |
 | ------- | ------------------------------------------- | ----------------------- |
 | Quote   | `QUOTE <mc>% [<kg>]` / `PRESYO KO …`        | `QUOTE 23% 5000`        |
 | Sell    | `SELL <kg> <variety> <dd/mm>` / `BALIGYA …` | `SELL 3000 RC222 25/10` |
 
-`SELL` accepts `FOR <phone>`. Accepted offers feed M13 as expected arrivals.
+`SELL` accepts `FOR <phone>`. Accepted offers feed M13.
 
-**Tests:** the price math against IRPC's sample procurement forms (8,763 kg at ₱21/kg = ₱184,023), MC above and below the reference, and each deduction.
+**Tests:** IRPC's sample form (8,763 kg × ₱21 = ₱184,023), MC above and below the reference, and each deduction.
 
 ### M10. Batch Records
 
-**Tables**
+| Table              | Columns                                                                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `batches`          | `facility_id`, `batch_no`, `queue_entry_id`, `booking_id` or `offer_id`, `client_id`, `ownership` (`custom`, `facility`), `stage`, `variety_id`, `closed_at` |
+| `batch_receiving`  | `batch_id`, `doc_refs` (jsonb, per `doc_ref_fields`), `bags`, `gross_kg`, `net_kg`, `mc`, `damaged_pct`, `immature_pct`, `foreign_pct`                       |
+| `batch_drying`     | `batch_id`, `machine_id`, `mc_in`, `mc_out`, `started_at`, `ended_at`, `dried_kg`, `bags_out`                                                                |
+| `batch_processing` | `batch_id`, `machine_id`, `input_kg`, `started_at`, `ended_at`, `outputs` (jsonb, kg per output type)                                                        |
 
-| Table              | Columns                                                                                                                                                                   |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `batches`          | `facility_id`, `batch_no`, `queue_entry_id`, `booking_id` or `offer_id` (optional), `client_id`, `ownership` (`custom` or `facility`), `stage`, `variety_id`, `closed_at` |
-| `batch_receiving`  | `batch_id`, `doc_refs` (jsonb, using the facility's `doc_ref_fields`), `bags`, `gross_kg`, `net_kg`, `mc`, `damaged_pct`, `immature_pct`, `foreign_pct`                   |
-| `batch_drying`     | `batch_id`, `machine_id`, `mc_in`, `mc_out`, `started_at`, `ended_at`, `dried_kg`, `bags_out`                                                                             |
-| `batch_processing` | `batch_id`, `machine_id`, `input_kg`, `started_at`, `ended_at`, `outputs` (jsonb: kilos per output type)                                                                  |
+**Exports:** `saveReceiving(queueEntryId, form)`, `storageStockOn(date)`, `milledStock(facilityId)`, `batchWithStages(id)`, `scheduledProcessing(from, to)`, `markReleased(batchId)`.
 
-**Functions for other modules:** `saveReceiving(queueEntryId, form)`, `storageStockOn(date)`, `milledStock(facilityId)`, `batchWithStages(id)`, `scheduledProcessing(from, to)`, `markReleased(batchId)`.
-
-- The receiving form opens from a started M7 queue entry. Saving it creates the batch. The pricing step for bought palay happens in M9 (see the dependency rule under Code layout).
-
-**Stages** only move forward. Drying is skipped for processing-only bookings and for crops that don't need drying. A batch is `released` once all its milled output has left storage, whether the client picked it up or M11 sold it. The `stage` values are `received`, `drying`, `stored`, `processing`, `processed`, `released` and `closed`. Screens show the crop's labels, so for rice `processing` reads "Milling" and `processed` reads "Milled", matching the PRD.
+- Receiving opens from a started queue entry and creates the batch. Pricing for bought palay happens in M9.
+- Stages move forward only.
+  - Drying is skipped for palay that's already dry and for crops that don't need drying.
+  - `released` means all milled output has left storage, picked up or sold.
+  - Screens use crop labels, so rice shows `processing` as "Milling" and `processed` as "Milled".
 
 ```mermaid
 stateDiagram-v2
@@ -695,187 +666,169 @@ stateDiagram-v2
   closed --> [*]
 ```
 
-**Math**
+**Math:**
 
-- Expected dried weight = wet kilos × (100 − MC before) ÷ (100 − MC after) × `shrink_factor`. The batch stores the actual dried weight once it's known.
-  - Example from IRPC's sample form: 11,704 kg dried from 23% to 13.5% (the form's recorded final MC) works out to 11,704 × 77 ÷ 86.5 = 10,419 kg before shrink. The form records 9,295 kg. That gap is what `shrink_factor` covers. (With a 14% target instead, it would be 10,479 kg.)
-- Recovery = main output kilos ÷ input kilos. The crop's `output_types` says which output is the main one.
+- Expected dried kg = wet kg × (100 − MC in) ÷ (100 − MC out) × `shrink_factor`. Actual dried kg is stored.
+  - Sample form: 11,704 kg dried from 23% to 13.5% gives 11,704 × 77 ÷ 86.5 = 10,419 kg before shrink, against 9,295 kg recorded. `shrink_factor` covers the gap. At 14%, it would be 10,479 kg.
+- Recovery = main output kg ÷ input kg, with the main output taken from `output_types`.
 
-**Photo to form (P1).** The encoder uploads a photo of a paper form. `extract` reads it into the stage form's Zod schema. The form opens filled in, and the encoder checks and saves it. Photos aren't kept.
+**Photo to form (P1):** `extract` fills the stage form's schema from a photo, and the encoder confirms. Photos aren't stored.
 
-**Tests:** shrink and recovery math, and the stage rules.
+**Tests:** shrink, recovery, and stage transitions.
 
 ### M11. Sales and Dispatch
 
-**Tables**
+| Table         | Columns                                                                                                                |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `sales`       | `facility_id`, `client_id` (buyer), `sold_at`, `grade`, `qty_kg`, `unit_price_minor`, `or_ref`                         |
+| `sale_lines`  | `sale_id`, `batch_id`, `qty_kg`                                                                                        |
+| `orders` (P1) | `facility_id`, `client_id`, `grade`, `qty_kg`, `pickup_date`, `status` (`reserved`, `ready`, `picked_up`, `cancelled`) |
 
-| Table         | Columns                                                                                                                                 |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `sales`       | `facility_id`, `client_id` (the buyer), `sold_at`, `grade`, `qty_kg`, `unit_price_minor`, `or_ref` (official receipt or invoice number) |
-| `sale_lines`  | `sale_id`, `batch_id`, `qty_kg`. Which batches the rice in a sale came from.                                                            |
-| `orders` (P1) | `facility_id`, `client_id`, `grade`, `qty_kg`, `pickup_date`, `status` (`reserved`, `ready`, `picked_up`, `cancelled`)                  |
+**Exports:** `availableStock(facilityId)`, `salesForBatch(batchId)`, `batchesForSale(saleId)`, `traceBatch(batchId)`.
 
-A sale can draw from several batches, and a batch can go to several sales. `sale_lines` is what makes tracing work in both directions.
-
-**Functions for other modules:** `availableStock(facilityId)`, `salesForBatch(batchId)`, `batchesForSale(saleId)`, `traceBatch(batchId)`.
-
-`traceBatch` puts a batch's whole trail together: queue entry (M7, through the batch), stages (M10), purchase (M9) and sales. It lives here because M11 is the most downstream module that holds trail data, so it can read all the others without a cycle.
-
-**How it works**
-
-- A sale is for one grade (`sales.grade`). Its `sale_lines` draw that grade from each batch, so a batch's remaining kilos of a grade = its `outputs[grade]` − the `sale_lines` kilos of sales with that grade.
-- Available stock per grade = the sum of that across batches − kilos reserved by open orders.
-- When a sale is recorded, `logic.ts` picks source batches oldest first, among batches that still have that grade. Staff can change the pick before saving.
-- When a batch has nothing left in storage, M11 calls M10's `markReleased`.
+- `sale_lines` links sales to batches many-to-many, which makes tracing work both ways.
+- A sale is one grade. A batch's remaining kg of a grade = `outputs[grade]` − the `sale_lines` kg of sales of that grade.
+- Available stock per grade = Σ remaining − open order reservations.
+- Picking takes batches oldest first among those holding the grade. Staff can change it.
+- An empty batch triggers M10 `markReleased`.
+- `traceBatch` builds the trail: queue entry, stages, purchase and sales. It lives here because M11 is the most downstream module.
 - An order marked `ready` texts the buyer (P1).
 
-**Tests:** oldest-first picking per grade, and stock never going below zero.
+**Tests:** oldest-first picking per grade, and stock never negative.
 
 ### M12. Batch Costing
 
-No tables. M12 calculates costs on the fly from M10's stage records, M1's settings, M5's prices, M9's purchases and M11's sales.
+There are no tables. Sources are M10 stages, M1 settings, M5 prices, M9 purchases and M11 sales.
 
-**Function for other modules:** `batchCost(batchId)` returns cost, revenue, margin, and margin per kilo of input and per kilo of main output.
-
-It loads the batch's stages, plus every other stage at the same facility that overlaps them in time, and passes both to the pure function `costFromStages(stages, overlappingStages, facility, prices)` in `logic.ts`. The overlapping stages are what make the base-load split possible.
-
-**Math**
+**Exports:** `batchCost(batchId)` returns cost, revenue, margin, and margin per input kg and per output kg. It loads the batch's stages plus the facility's overlapping stages and calls the pure `costFromStages(stages, overlappingStages, facility, prices)`.
 
 - Electricity:
-  - Each stage's hours × that machine's `rated_kw` × `tariff_minor_per_kwh`.
-  - Plus the plant's `base_load_kw` for the same hours × the same tariff. When stages of different batches overlap in time, each hour of base load is split evenly among the stages running in that hour.
+  - Stage hours × machine `rated_kw` × tariff.
+  - Plus `base_load_kw` × hours × tariff, with each hour split evenly among the stages running in it.
 - Labor = stage hours × `labor_minor_per_hour`.
 - Revenue:
-  - Custom service: drying and milling fees at the prices in effect on each stage's date.
-  - IRPC-owned: the batch's `sale_lines` value from M11 − its purchase cost from M9.
+  - Custom service: fees at each stage date's prices.
+  - IRPC-owned: the batch's `sale_lines` value − its purchase cost.
 
-**Tests:** IRPC's sample forms: the drying batch (11,704 kg in) and the milling run (9,295 kg in, 3 hours).
+**Tests:** the sample drying batch (11,704 kg) and milling run (9,295 kg, 3 h).
 
 ### M13. Capacity
 
-No tables. It only reads from other modules. All views on the page share one data function, so they can't disagree.
+There are no tables. All views share one function.
 
-**Function for other modules:** `capacityByDay(facilityId, from, to)` returns, for each day and each pool (`drying`, `storage`, `processing`):
+**Exports:** `capacityByDay(facilityId, from, to)` returns, per day and pool (`drying`, `storage`, `processing`):
 
-- expected load by source (`confirmed`, `offer`, `declared`, `forecast`), each low and high
+- load by source (`confirmed`, `offer`, `declared`, `forecast`), with low and high values
 - capacity
 - an `overloaded` flag
 - an `idle` flag
 
-**Math** (pure functions over M6 bookings, M8 arrivals, M9 accepted sell offers, M10 stock and planned processing, and M1 capacity)
+Inputs are M6 bookings, M8 arrivals, M9 accepted offers, M10 stock and planned processing, and M1 capacity.
 
-- Storage today = storage yesterday + what went in − what went to processing. For crops that skip drying, received palay goes straight into storage. Anything above `storage_capacity_kg` shows as overflow.
-- A day is **overloaded** when confirmed + offer + declared load is above capacity. The forecast alone doesn't trigger it.
-- A day is **idle** when even the high estimate is below `idle_threshold_pct` of capacity.
-- It's recalculated on every page load, with no cache and no cron.
+- Storage(d) = storage(d−1) + in − out to processing, with anything over `storage_capacity_kg` counted as overflow. Crops without drying go straight to storage.
+- Overloaded: confirmed + offer + declared load exceeds capacity. Forecast alone never triggers it.
+- Idle: the high estimate is below `idle_threshold_pct` of capacity.
+- It's recomputed on each load, with no cache or cron.
 
-**Views** (tabs on one page, `src/app/capacity`)
+**Views** (tabs at `src/app/capacity`, with one shared day-breakdown panel):
 
-| View     | Built from                                                                                    | Chart                                                |
-| -------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Headline | `capacityByDay` totals, M12 electricity per kilo                                              | Number tiles                                         |
-| Chart    | `capacityByDay`                                                                               | Stacked bars or areas, capacity line (shadcn charts) |
-| Days     | `capacityByDay`                                                                               | Table grid                                           |
-| Season   | `capacityByMonth`: past months from M10 batch stage times, future months from `capacityByDay` | Heatmap (a grid of colored cells)                    |
-| Map      | M8 `expectedArrivals` per municipality, `localities.lat` / `lng`                              | Bubble map (Leaflet with OpenStreetMap tiles, free)  |
-| Today    | M7 queue entries, M10 stage start and end times                                               | Timeline per machine                                 |
-| Flow     | `capacityByDay` summed over a week                                                            | Four boxes with arrows                               |
+| View     | Data                                                           | Chart                                      |
+| -------- | -------------------------------------------------------------- | ------------------------------------------ |
+| Headline | `capacityByDay` totals, M12 ₱/kg                               | Tiles                                      |
+| Chart    | `capacityByDay`                                                | Stacked bars or areas with a capacity line |
+| Days     | `capacityByDay`                                                | Grid                                       |
+| Season   | `capacityByMonth` (past from M10, future from `capacityByDay`) | Heatmap                                    |
+| Map      | M8 per municipality, `localities.lat`/`lng`                    | Bubbles (Leaflet + OpenStreetMap, free)    |
+| Today    | M7 entries, M10 stage times                                    | Timeline per machine                       |
+| Flow     | Weekly `capacityByDay`                                         | Four boxes with arrows                     |
 
-- The map needs a centre point per municipality. PSGC has no coordinates, so `localities` gets `lat` and `lng`, filled from OpenStreetMap for the region we seed.
-- The day breakdown panel is one shared component that every view opens.
+PSGC has no coordinates, so `lat`/`lng` are filled from OpenStreetMap for seeded places.
 
 **Tests:** overflow and idle detection, and the monthly rollup.
 
 ### M14. Prescriptions
 
-**Table:** `prescription_decisions` with `kind`, `key` (a hash of the suggestion's inputs), `status` (`accepted` or `dismissed`), `decided_by`. Suggestions are recalculated from `capacityByDay()` every time; only the manager's decisions are saved.
+`prescription_decisions`: `kind`, `key` (a hash of the inputs), `status` (`accepted`, `dismissed`), `decided_by`. Suggestions are recomputed from `capacityByDay()`; only decisions are stored.
 
-**The rules** (one pure function each)
+Each rule is a pure function:
 
-- **Move bookings off a busy day.**
-  1. For each overloaded drying day, take its flexible bookings, biggest first.
-  2. Move each to the nearest day within its `flex_days` that has room.
-  3. Stop when the overflow is gone or nothing else can move. Report what's left.
+- **Move bookings:**
+  1. For each overloaded drying day, take its flexible bookings, largest first.
+  2. Move each to the nearest day within `flex_days` that has room.
+  3. Stop when the overflow clears or nothing can move, and report any remainder.
 
-  Accepting a move calls M6's `proposeReschedule`, which texts the client.
+  Accepting calls M6 `proposeReschedule`, which texts the client.
 
-- **Process in full loads** (milling, for rice):
-  - With S kilos in storage and H days to work with, compare two plans: running full days (S ÷ daily capacity, rounded up) against spreading S over all H days.
-  - Electricity per plan = machine kW × hours run + `base_load_kw` × `operating_hours_per_day` × days run.
-  - Return the suggested dates, the cost per kilo of each plan, and the saving.
-- **Store now, process later.** Send overflow from busy processing days to storage, then fill the nearest idle processing days that storage can supply.
-- **Fill idle days.** For an idle stretch, list farmers and co-ops with no open booking, biggest past volume first, and draft a text with current rates and buying prices.
-- **Plain-language summary (P2).** Gemini gets only the calculated numbers and writes one or two sentences. The numbers are shown next to its text.
+- **Full-load processing:**
+  - For stock S over H days, compare full days (⌈S ÷ daily capacity⌉) with spreading over all H days.
+  - Electricity = machine kW × hours + `base_load_kw` × `operating_hours_per_day` × days run.
+  - Return the dates, ₱/kg for each plan, and the saving.
+- **Store, process later:** move processing overflow into storage, then fill the nearest idle processing days that storage can supply.
+- **Fill idle days:** list farmers and co-ops with no open booking, by past volume, and draft a text with rates and buying prices.
+- **Summary (P2):** Gemini gets only the computed numbers, and the numbers are shown next to its text.
 
-**Tests:** a 30 t overflow with three flexible bookings, and full-load against spread-out cost per kilo.
+**Tests:** a 30 t overflow with three flexible bookings, and full-load against spread ₱/kg.
 
-## Adding a facility, crop, region or language
+## Replication and scaling
 
-| To add     | Steps                                                                                                                      | Code change                              |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| A facility | Add rows to `facilities`, `machines`, `prices` and `facility_members`. Set up a gateway phone.                             | None                                     |
-| A crop     | Add rows to `crops` and `varieties`. Add its labels and keywords to each translation file.                                 | None                                     |
-| A region   | Load its PSGC places. Convert its planting and harvest reports to the standard CSV, import them, and retrain the forecast. | A converter, if the source format is new |
-| A language | Add `messages/<locale>.json` with screens, SMS texts and keywords.                                                         | None                                     |
+| To add   | Steps                                                                                   | Code change                 |
+| -------- | --------------------------------------------------------------------------------------- | --------------------------- |
+| Facility | Rows in `facilities`, `machines`, `prices` and `facility_members`, plus a gateway phone | None                        |
+| Crop     | Rows in `crops` and `varieties`, plus labels and keywords per locale                    | None                        |
+| Region   | PSGC places, stats CSV import, and forecast retraining                                  | A converter for new formats |
+| Language | `messages/<locale>.json`                                                                | None                        |
 
-How it scales:
-
-- **One app, many facilities.** All facilities share one database, kept apart by `facility_id` and RLS. Indexes start with `facility_id`.
-- **The work per page stays small.** The capacity page and suggestions only look at one facility's next few weeks. Load grows with the number of facilities, not with years of history. If pages get slow, move `capacityByDay()` into a Postgres function or cache it per facility.
-- **A provincial view later** is just a query across facilities. It needs no schema change.
-- **The limit.** The stage model is receive → dry (optional) → store → process → dispatch. It fits rice, corn, coffee, cacao and copra. Cold-chain produce would need new stage types.
+- **One database for all facilities**, isolated by `facility_id` and RLS. Indexes lead with `facility_id`.
+- **Bounded compute:** each page covers one facility's next few weeks. If it gets slow, move `capacityByDay()` into Postgres or cache it.
+- **A provincial view** is a cross-facility query, with no schema change.
+- **Limit:** receive → dry (optional) → store → process → dispatch fits rice, corn, coffee, cacao and copra, but not cold chains.
 
 ## Testing and CI
 
-- **Tests.** A handful of Vitest tests on the numbers the demo shows. Each module section lists its tests. We don't test UI, run end-to-end tests or track coverage.
-- **CI.** GitHub Actions runs lint and typecheck on every PR. Vercel builds a preview for every PR.
-- **Forecast training** isn't in CI. Re-run it by hand when new reports arrive, and commit the new `params.json` and `metrics`.
+- **Vitest** covers only the numbers the demo shows (listed per module). There are no UI or end-to-end tests and no coverage targets.
+- **CI:** GitHub Actions runs lint and typecheck per PR, and Vercel builds previews.
+- **Forecast training** runs by hand, outside CI. Commit the new `params.json` and `metrics` after each run.
 
 ## Environment variables
 
-| Name                                                        | Used by                                                       |
-| ----------------------------------------------------------- | ------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | The app                                                       |
-| `SUPABASE_SERVICE_ROLE_KEY`                                 | SMS webhook and seed script                                   |
-| `SMS_GATEWAY`                                               | `simulator` or `textbee`                                      |
-| `TEXTBEE_API_KEY`                                           | textbee gateway. Each facility's phone ID is in `facilities`. |
-| `SMS_WEBHOOK_SECRET`                                        | Checking that incoming webhooks really come from textbee      |
-| `GOOGLE_GENERATIVE_AI_API_KEY`                              | Gemini                                                        |
+| Name                                                        | Used by                                  |
+| ----------------------------------------------------------- | ---------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | App                                      |
+| `SUPABASE_SERVICE_ROLE_KEY`                                 | SMS webhook, seed                        |
+| `SMS_GATEWAY`                                               | `simulator` or `textbee`                 |
+| `TEXTBEE_API_KEY`                                           | textbee (device IDs are in `facilities`) |
+| `SMS_WEBHOOK_SECRET`                                        | Verifying inbound webhooks               |
+| `GOOGLE_GENERATIVE_AI_API_KEY`                              | Gemini                                   |
 
-## Costs and free-tier limits
+## Costs and limits
 
-Everything is free except prepaid load for the gateway phone's SIM.
+Everything is free except prepaid load for the gateway SIM.
 
-| Service          | Limit to know about                                                                 | What we do                                                                          |
-| ---------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Supabase Free    | Pauses after 7 days without use. Its built-in email sends only a few per hour.      | Fine for the event. Staff accounts come from the seed, with no emails.              |
-| Vercel Hobby     | Non-commercial use only. Cron runs at most once a day.                              | We don't use cron. A real pilot needs Vercel Pro or another host.                   |
-| textbee.dev Free | 1 phone, 50 texts a day, 300 a month                                                | The demo uses the simulator. For more texts, switch to SMSGate, which is free.      |
-| Gemini Free      | Limits per minute and per day. Google may use what we send to improve its products. | The non-AI fallback covers hitting the limits. A real pilot moves to the paid tier. |
-| GitHub Actions   | Free for public repos. Private repos get 2,000 minutes a month.                     | CI only runs lint and typecheck.                                                    |
+| Service          | Limit                                                    | Handling                                    |
+| ---------------- | -------------------------------------------------------- | ------------------------------------------- |
+| Supabase Free    | Pauses after 7 idle days, and auth email is rate-limited | Seeded staff accounts, no emails            |
+| Vercel Hobby     | Non-commercial use only, cron at most daily              | No cron. A pilot needs Pro or another host. |
+| textbee.dev Free | 1 phone, 50 texts/day, 300/month                         | Simulator for the demo, SMSGate for volume  |
+| Gemini Free      | Rate limits, and prompts may be used by Google           | Non-AI fallback. A pilot moves to paid.     |
+| GitHub Actions   | 2,000 min/month on private repos                         | Lint and typecheck only                     |
 
 ## Open questions
 
-- **Machine power and base load.** IRPC hasn't confirmed them. The seed uses placeholders, and the cost screens label those figures as estimates.
-- **Day-level dryer capacity.** We plan dryer capacity per day. Per-cycle slots might be needed later; day-level is enough for P0.
+- **Machine kW and base load** are unconfirmed. The seed uses placeholders, and the UI labels them as estimates.
+- **Dryer capacity** is per day at P0. Per-cycle slots may come later.
 
 ## Appendix: OPA spreadsheet notes
 
-File: `data/opa/raw/ANNUAL REPORT PROVINCIAL DATA 2025.xlsx`. Row and column numbers start at 0.
+The file is `data/opa/raw/ANNUAL REPORT PROVINCIAL DATA 2025.xlsx`, with 0-indexed rows and columns.
 
-**Planting sheet ("BY MUNICIPALITY (Planting)")**
-
-- Each place is a 24-row block, one row per half-month. The place names are correct.
-- Hectares planted are in column 74. Irrigated is column 17, rainfed column 59.
-
-**Harvest sheet ("BY MUNICIPALITY (harvesting)")**
-
-- The place names on data rows are shifted for 18 places. Pototan's real data is labelled "Pavia", for example.
-- Each place's total row has the correct name. Find each total row and take the 24 rows above it.
-- Hectares harvested are in column 72.
-- For production, add columns 62, 65, 68 and 71. Column 74 has a wrong value for Zarraga, Jan 16 to 31.
-
-**Checks**
-
-- The places must add up to the provincial total.
-- Planted against harvested hectares per place: anything outside 0.7 to 1.3 gets flagged. Batad, Maasin and San Dionisio fail this check.
+- **Planting sheet:**
+  - 24-row blocks per place, one row per half-month, with correct names.
+  - Planted ha is in column 74 (irrigated 17, rainfed 59).
+- **Harvest sheet:**
+  - Data-row names are shifted for 18 places. Pototan's data, for example, is labelled "Pavia".
+  - Use each place's total row, which is correctly named, and the 24 rows above it.
+  - Harvested ha is in column 72.
+  - Production is the sum of columns 62, 65, 68 and 71. Column 74 has a bad Zarraga value for Jan 16–31.
+- **Checks:**
+  - Places must sum to the provincial total.
+  - Harvested-to-planted ratios outside 0.7–1.3 are flagged. Batad, Maasin and San Dionisio fail.
