@@ -123,6 +123,38 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"sell_offers": {
+                  Row: {
+                    "booked_by_phone": string,"client_id": string,"created_at": string,"est_kg": number,"facility_id": string,"harvest_date": string,"id": string,"ref": string,"status": Database["public"]['Enums']["sell_offer_status"],"updated_at": string,"variety_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "booked_by_phone": string,"client_id": string,"created_at"?: string,"est_kg": number,"facility_id": string,"harvest_date": string,"id"?: string,"ref": string,"status"?: Database["public"]['Enums']["sell_offer_status"],"updated_at"?: string,"variety_id"?: string | null
+                  }
+                  Update: {
+                    "booked_by_phone"?: string,"client_id"?: string,"created_at"?: string,"est_kg"?: number,"facility_id"?: string,"harvest_date"?: string,"id"?: string,"ref"?: string,"status"?: Database["public"]['Enums']["sell_offer_status"],"updated_at"?: string,"variety_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "sell_offers_client_id_fkey"
+      columns: ["client_id"]
+isOneToOne: false
+      referencedRelation: "clients"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "sell_offers_facility_id_fkey"
+      columns: ["facility_id"]
+isOneToOne: false
+      referencedRelation: "facilities"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "sell_offers_variety_id_fkey"
+      columns: ["variety_id"]
+isOneToOne: false
+      referencedRelation: "varieties"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"sms_messages": {
                   Row: {
                     "body": string,"created_at": string,"direction": Database["public"]['Enums']["sms_direction"],"gateway_id": string | null,"id": string,"parsed": Json | null,"phone": string,"status": Database["public"]['Enums']["sms_status"],"updated_at": string,"via_ai": boolean
@@ -188,7 +220,7 @@ isOneToOne: false
             [_ in never]: never
           }
           Enums: {
-            "booking_channel": "sms"|"staff","booking_status": "confirmed"|"reschedule_proposed"|"arrived"|"cancelled"|"no_show","client_kind": "farmer"|"coop"|"trader"|"buyer","machine_type": "dryer"|"mill","service": "drying"|"milling","sms_direction": "inbound"|"outbound","sms_prompt_kind": "ai_confirm"|"reschedule","sms_prompt_status": "open"|"accepted"|"declined"|"expired","sms_status": "received"|"processed"|"queued"|"sent"|"failed","staff_role": "encoder"|"manager"
+            "booking_channel": "sms"|"staff","booking_status": "confirmed"|"reschedule_proposed"|"arrived"|"cancelled"|"no_show","client_kind": "farmer"|"coop"|"trader"|"buyer","machine_type": "dryer"|"mill","sell_offer_status": "offered"|"accepted"|"declined"|"arrived"|"withdrawn","service": "drying"|"milling","sms_direction": "inbound"|"outbound","sms_prompt_kind": "ai_confirm"|"reschedule","sms_prompt_status": "open"|"accepted"|"declined"|"expired","sms_status": "received"|"processed"|"queued"|"sent"|"failed","staff_role": "encoder"|"manager"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -308,7 +340,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "booking_channel": ["sms", "staff"],"booking_status": ["confirmed", "reschedule_proposed", "arrived", "cancelled", "no_show"],"client_kind": ["farmer", "coop", "trader", "buyer"],"machine_type": ["dryer", "mill"],"service": ["drying", "milling"],"sms_direction": ["inbound", "outbound"],"sms_prompt_kind": ["ai_confirm", "reschedule"],"sms_prompt_status": ["open", "accepted", "declined", "expired"],"sms_status": ["received", "processed", "queued", "sent", "failed"],"staff_role": ["encoder", "manager"]
+            "booking_channel": ["sms", "staff"],"booking_status": ["confirmed", "reschedule_proposed", "arrived", "cancelled", "no_show"],"client_kind": ["farmer", "coop", "trader", "buyer"],"machine_type": ["dryer", "mill"],"sell_offer_status": ["offered", "accepted", "declined", "arrived", "withdrawn"],"service": ["drying", "milling"],"sms_direction": ["inbound", "outbound"],"sms_prompt_kind": ["ai_confirm", "reschedule"],"sms_prompt_status": ["open", "accepted", "declined", "expired"],"sms_status": ["received", "processed", "queued", "sent", "failed"],"staff_role": ["encoder", "manager"]
           }
         }
 } as const
