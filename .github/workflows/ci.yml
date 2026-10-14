@@ -21,6 +21,20 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
+  db:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.120.0
+      - name: Apply migrations
+        run: supabase db start
+      - name: Check generated types are up to date
+        run: |
+          supabase gen types typescript --local > src/lib/supabase/database.types.ts
+          git diff --exit-code src/lib/supabase/database.types.ts
+
   forecast:
     runs-on: ubuntu-latest
     defaults:
