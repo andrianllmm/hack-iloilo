@@ -23,7 +23,33 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "facilities": {
+            "clients": {
+                  Row: {
+                    "coop_id": string | null,"created_at": string,"id": string,"kind": Database["public"]['Enums']["client_kind"],"municipality_id": string | null,"name": string,"phone": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "coop_id"?: string | null,"created_at"?: string,"id"?: string,"kind": Database["public"]['Enums']["client_kind"],"municipality_id"?: string | null,"name": string,"phone": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "coop_id"?: string | null,"created_at"?: string,"id"?: string,"kind"?: Database["public"]['Enums']["client_kind"],"municipality_id"?: string | null,"name"?: string,"phone"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "clients_coop_id_fkey"
+      columns: ["coop_id"]
+isOneToOne: false
+      referencedRelation: "clients"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "clients_municipality_id_fkey"
+      columns: ["municipality_id"]
+isOneToOne: false
+      referencedRelation: "municipalities"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"facilities": {
                   Row: {
                     "base_load_kw": number,"created_at": string,"dry_yield_pct": number,"id": string,"idle_threshold_pct": number,"labor_minor_per_hour": number,"name": string,"notify_ahead_n": number,"operating_hours_per_day": number,"storage_capacity_kg": number,"tariff_minor_per_kwh": number,"updated_at": string
                   }
@@ -108,7 +134,7 @@ isOneToOne: false
             [_ in never]: never
           }
           Enums: {
-            "machine_type": "dryer"|"mill","staff_role": "encoder"|"manager"
+            "client_kind": "farmer"|"coop"|"trader"|"buyer","machine_type": "dryer"|"mill","staff_role": "encoder"|"manager"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -228,7 +254,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "machine_type": ["dryer", "mill"],"staff_role": ["encoder", "manager"]
+            "client_kind": ["farmer", "coop", "trader", "buyer"],"machine_type": ["dryer", "mill"],"staff_role": ["encoder", "manager"]
           }
         }
 } as const
