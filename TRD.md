@@ -2,7 +2,7 @@
 
 ## Summary
 
-The [PRD](PRD.md) says what we're building. This doc says how. Module numbers (M1 to M11) match the PRD.
+The [PRD](PRD.md) says what we're building. This doc says how. Module numbers (M1 to M14) match the PRD.
 
 The short version:
 
@@ -88,6 +88,8 @@ Every module folder has the same files:
 
 Modules call each other's `index.ts` functions directly. There's no event bus, queue or cron. For example, when staff check a client in at the gate, M7 calls M6's `markArrived`. When M7 starts serving someone, it texts the next clients in line.
 
+Dependencies only point one way, so there are no cycles. When one screen action spans two modules that would otherwise need each other, the server action in `src/app` calls both in order. Saving the receiving form is the main case: the action calls M10's `saveReceiving`, then M9's `createPurchase` if IRPC is buying the palay. M10 never calls M9.
+
 Who calls whom (M1 and M4 are left out because nearly everything uses them):
 
 ```mermaid
@@ -95,11 +97,12 @@ flowchart BT
   M3[M3 SMS] --> M2[M2 Accounts]
   M5[M5 Pricing] --> M3
   M6[M6 Booking] --> M2 & M3
-  M7[M7 Queue] --> M3 & M6
+  M7[M7 Queue] --> M2 & M3 & M6
   M8[M8 Forecast] --> M2 & M3
   M9[M9 Palay Buying] --> M3 & M5
-  M10[M10 Batches] --> M7 & M9
-  M11[M11 Sales] --> M3 & M5 & M10
+  M9[M9 Palay Buying] --> M10
+  M10[M10 Batches] --> M7
+  M11[M11 Sales] --> M3 & M5 & M9 & M10
   M12[M12 Costing] --> M5 & M9 & M10 & M11
   M13[M13 Capacity] --> M6 & M7 & M8 & M9 & M10 & M12
   M14[M14 Prescriptions] --> M3 & M6 & M12 & M13
@@ -381,7 +384,7 @@ M2 keeps two kinds of records apart:
 **`resolveClient`** handles texts that end in `FOR <phone>`, meaning "I'm acting for this client".
 
 - If a link exists and is approved, it returns that client.
-- If not, it creates a `pending` link and texts the client's contact to approve it with `HO` (P1). Until then the command is held.
+- If not, it creates a `pending` link and texts the client's contact a prompt to approve it (P1). Until they reply `HO <code>`, the command is held.
 - At P0, links are approved automatically, and the demo seed creates them.
 - Links that staff create in person are approved straight away.
 
@@ -405,7 +408,18 @@ M2 keeps two kinds of records apart:
 
 ### M3. SMS
 
-**Table:** `sms_messages` with `direction`, `phone`, `body`, `gateway_id` (unique), `parsed` (jsonb), `via_ai`, `status`.
+**Tables**
+
+- `sms_messages` with `direction`, `phone`, `body`, `gateway_id` (unique), `parsed` (jsonb), `via_ai`, `status`.
+- `sms_prompts` with `phone`, `code` (2 characters), `kind` (`ai_confirm`, `link_approval`, `reschedule`), `payload` (jsonb), `expires_at`, `status`. One row for every text that asks a yes/no question.
+
+**Yes/no replies.** Every question the app texts ends with its code, e.g. "Reply HO A4 or INDI A4", so a reply with a code is never ambiguous. A bare `HO`, `YES`, `INDI` or `NO` with no code is resolved like this:
+
+1. If the phone has exactly one open prompt, the reply answers it.
+2. If it has several, the app asks which one, listing each code with a few words about it.
+3. If it has none, the reply gets the help text.
+
+Prompts expire after 24 hours. A booking's own reference code (`YES K7P2QX`) also works for reschedule prompts.
 
 **Functions for other modules:** `registerCommand({ keywords, schema, parse, handle })`, `sendTemplate(profile, key, vars)`.
 
@@ -418,7 +432,7 @@ sequenceDiagram
   participant S as M3 SMS
   participant A as M2 Accounts
   participant AI as Gemini
-  participant H as Module handler (M5 to M9)
+  participant H as Owning module (e.g. M6 Booking)
   P->>G: SMS
   G->>S: POST /api/sms/inbound
   S->>S: dedupe on gateway_id
@@ -429,8 +443,8 @@ sequenceDiagram
   else no match (P1)
     S->>AI: extract(command schemas, text)
     alt command extracted
-      S-->>P: "Did you mean …? Reply HO/INDI"
-      P->>S: HO
+      S-->>P: "Did you mean …? Reply HO A4 / INDI A4"
+      P->>S: HO A4
       S->>H: handle(pending command)
       H-->>S: reply
     else nothing usable or AI down
@@ -445,7 +459,7 @@ In words:
 
 1. Find or register the sender by phone number.
 2. Try each module's keyword command. The first one that matches handles the text, after checking `can()`.
-3. If none match, ask Gemini to turn the text into one of the known commands (P1). Reply "Did you mean …?" and wait for HO (yes) before doing anything.
+3. If none match, ask Gemini to turn the text into one of the known commands (P1). Reply "Did you mean …?" with a prompt code, and wait for `HO <code>` before doing anything.
 4. If that fails too, send a help text.
 
 **Tests:** keyword parsing.
@@ -476,6 +490,8 @@ A native Hiligaynon speaker on the team must check all Hiligaynon text and keywo
 
 **Function for other modules:** `priceOn(facilityId, cropId, date)`.
 
+Keeping every price by date is P0, because M12 costs each batch at the prices of its own dates. Only the price history screen is P1.
+
 **SMS commands:** `PRICE` / `PRESYO`, `RATES` / `BAYAD`.
 
 ### M6. Booking
@@ -492,12 +508,14 @@ A native Hiligaynon speaker on the team must check all Hiligaynon text and keywo
 
 **Functions for other modules:** `bookingsBetween(from, to)`, `findByRef(ref)`, `proposeReschedule(bookingId, date)`, `markArrived(bookingId)`.
 
+**When a booking is confirmed.** A new booking is confirmed straight away if that day's confirmed bookings plus this one fit within the dryer or mill capacity from M1. M6 checks this with its own bookings only, so it doesn't depend on M13. If it doesn't fit, the booking stays `requested`. The client gets a "request received, we'll confirm or suggest a date" text, and staff confirm it or propose another date.
+
 **Allowed status changes.** `logic.ts` rejects anything else.
 
 ```mermaid
 stateDiagram-v2
   [*] --> requested
-  requested --> confirmed
+  requested --> confirmed: fits the day's capacity, or staff confirm
   requested --> cancelled
   confirmed --> reschedule_proposed: M14 accepted
   reschedule_proposed --> confirmed: client replies YES (new date) or NO (keeps date)
@@ -623,7 +641,7 @@ What the first trial run found:
 | `sell_offers` | `facility_id`, `crop_id`, `client_id`, `booker_profile_id`, `variety_id`, `est_kg`, `harvest_date`, `status` (`offered`, `accepted`, `declined`, `arrived`, `withdrawn`)                                                     |
 | `purchases`   | `facility_id`, `batch_id`, `client_id`, `price_date`, `net_kg`, `paid_kg` (after deductions), `price_minor_per_kg`, `total_minor`, `deductions` (jsonb, kilos per reason), `override_reason`, `overridden_by`, `voucher_ref` |
 
-**Functions for other modules:** `quote(facilityId, cropId, mc, kg?)`, `priceFromReceiving(receiving, prices)`, `acceptedOffersBetween(from, to)`, `purchaseCost(batchId)`.
+**Functions for other modules:** `quote(facilityId, cropId, mc, kg?)`, `priceFromReceiving(receiving, prices)`, `createPurchase(batchId)`, `acceptedOffersBetween(from, to)`, `purchaseCost(batchId)`.
 
 **How the price is worked out** (pure functions in `logic.ts`, following the paper Receiving Report)
 
@@ -634,7 +652,7 @@ What the first trial run found:
 
 A quote runs steps 1, 2 and 4 with no quality deductions, so the reply says "estimate".
 
-`priceFromReceiving` runs when M10 saves a receiving form for a batch that IRPC is buying. It creates the `purchases` row. The encoder sees the result, and the client gets a text.
+`createPurchase(batchId)` reads the batch's receiving record from M10, runs `priceFromReceiving`, and saves the `purchases` row. The receiving page's server action calls it right after M10 saves the form, for palay that IRPC is buying. The encoder sees the price, and the client gets a text.
 
 **SMS commands**
 
@@ -658,18 +676,17 @@ A quote runs steps 1, 2 and 4 with no quality deductions, so the reply says "est
 | `batch_drying`     | `batch_id`, `machine_id`, `mc_in`, `mc_out`, `started_at`, `ended_at`, `dried_kg`, `bags_out`                                                                             |
 | `batch_processing` | `batch_id`, `machine_id`, `input_kg`, `started_at`, `ended_at`, `outputs` (jsonb: kilos per output type)                                                                  |
 
-**Functions for other modules:** `storageStockOn(date)`, `milledStock(facilityId)`, `batchWithStages(id)`, `scheduledProcessing(from, to)`, `traceBatch(id)`.
+**Functions for other modules:** `saveReceiving(queueEntryId, form)`, `storageStockOn(date)`, `milledStock(facilityId)`, `batchWithStages(id)`, `scheduledProcessing(from, to)`, `markReleased(batchId)`.
 
-- The receiving form opens from a started M7 queue entry. Saving it creates the batch. If IRPC is buying the palay, saving also calls M9's `priceFromReceiving`.
-- `traceBatch` puts the whole trail together: queue entry (M7), stages, purchase (M9) and sales (M11).
+- The receiving form opens from a started M7 queue entry. Saving it creates the batch. The pricing step for bought palay happens in M9 (see the dependency rule under Code layout).
 
-**Stages** only move forward. Drying is skipped for processing-only bookings and for crops that don't need drying. A batch is `released` once all its milled output has left storage, whether the client picked it up or M11 sold it.
+**Stages** only move forward. Drying is skipped for processing-only bookings and for crops that don't need drying. A batch is `released` once all its milled output has left storage, whether the client picked it up or M11 sold it. The `stage` values are `received`, `drying`, `stored`, `processing`, `processed`, `released` and `closed`. Screens show the crop's labels, so for rice `processing` reads "Milling" and `processed` reads "Milled", matching the PRD.
 
 ```mermaid
 stateDiagram-v2
   [*] --> received
   received --> drying
-  received --> stored: no drying needed
+  received --> stored: already dry, or crop needs no drying
   drying --> stored
   stored --> processing
   processing --> processed
@@ -681,7 +698,7 @@ stateDiagram-v2
 **Math**
 
 - Expected dried weight = wet kilos × (100 − MC before) ÷ (100 − MC after) × `shrink_factor`. The batch stores the actual dried weight once it's known.
-  - Example from IRPC's sample form: 11,704 kg at 23% works out to 10,419 kg before shrink, but the form records 9,295 kg. That gap is what `shrink_factor` covers.
+  - Example from IRPC's sample form: 11,704 kg dried from 23% to 13.5% (the form's recorded final MC) works out to 11,704 × 77 ÷ 86.5 = 10,419 kg before shrink. The form records 9,295 kg. That gap is what `shrink_factor` covers. (With a 14% target instead, it would be 10,479 kg.)
 - Recovery = main output kilos ÷ input kilos. The crop's `output_types` says which output is the main one.
 
 **Photo to form (P1).** The encoder uploads a photo of a paper form. `extract` reads it into the stage form's Zod schema. The form opens filled in, and the encoder checks and saves it. Photos aren't kept.
@@ -700,28 +717,33 @@ stateDiagram-v2
 
 A sale can draw from several batches, and a batch can go to several sales. `sale_lines` is what makes tracing work in both directions.
 
-**Functions for other modules:** `availableStock(facilityId)`, `salesForBatch(batchId)`, `batchesForSale(saleId)`.
+**Functions for other modules:** `availableStock(facilityId)`, `salesForBatch(batchId)`, `batchesForSale(saleId)`, `traceBatch(batchId)`.
+
+`traceBatch` puts a batch's whole trail together: queue entry (M7, through the batch), stages (M10), purchase (M9) and sales. It lives here because M11 is the most downstream module that holds trail data, so it can read all the others without a cycle.
 
 **How it works**
 
-- Available stock = M10's milled stock per grade − kilos already in `sale_lines` − kilos reserved by open orders.
-- When a sale is recorded, `logic.ts` picks source batches oldest first. Staff can change the pick before saving.
-- When a batch's milled stock reaches zero, M10 moves it to `released`.
+- A sale is for one grade (`sales.grade`). Its `sale_lines` draw that grade from each batch, so a batch's remaining kilos of a grade = its `outputs[grade]` − the `sale_lines` kilos of sales with that grade.
+- Available stock per grade = the sum of that across batches − kilos reserved by open orders.
+- When a sale is recorded, `logic.ts` picks source batches oldest first, among batches that still have that grade. Staff can change the pick before saving.
+- When a batch has nothing left in storage, M11 calls M10's `markReleased`.
 - An order marked `ready` texts the buyer (P1).
 
-**Tests:** oldest-first picking, and stock never going below zero.
+**Tests:** oldest-first picking per grade, and stock never going below zero.
 
 ### M12. Batch Costing
 
 No tables. M12 calculates costs on the fly from M10's stage records, M1's settings, M5's prices, M9's purchases and M11's sales.
 
-**Function for other modules:** `batchCost(batch)` returns cost, revenue, margin, and margin per kilo of input and per kilo of main output.
+**Function for other modules:** `batchCost(batchId)` returns cost, revenue, margin, and margin per kilo of input and per kilo of main output.
+
+It loads the batch's stages, plus every other stage at the same facility that overlaps them in time, and passes both to the pure function `costFromStages(stages, overlappingStages, facility, prices)` in `logic.ts`. The overlapping stages are what make the base-load split possible.
 
 **Math**
 
 - Electricity:
   - Each stage's hours × that machine's `rated_kw` × `tariff_minor_per_kwh`.
-  - Plus the plant's `base_load_kw` for the same hours × the same tariff. When two batches run at the same time, they split the base load.
+  - Plus the plant's `base_load_kw` for the same hours × the same tariff. When stages of different batches overlap in time, each hour of base load is split evenly among the stages running in that hour.
 - Labor = stage hours × `labor_minor_per_hour`.
 - Revenue:
   - Custom service: drying and milling fees at the prices in effect on each stage's date.

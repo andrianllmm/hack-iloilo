@@ -72,7 +72,7 @@ The wording below uses the IRPC rice pilot. In the product, "milling" is the fac
 | M8. Harvest Forecast    | What will arrive, and when                    | Clients, bookers, manager | M1, M2, M3, M4               |
 | M9. Palay Buying        | Quotes, prices and purchases of palay         | Clients, encoder, manager | M2, M3, M5, M10              |
 | M10. Batch Records      | Digital paper forms, from the gate to storage | Encoder, manager, clients | M1, M2, M7                   |
-| M11. Sales and Dispatch | Selling milled rice to first-hand buyers      | Encoder, manager, buyers  | M3, M5, M10                  |
+| M11. Sales and Dispatch | Selling milled rice to first-hand buyers      | Encoder, manager, buyers  | M3, M5, M9, M10              |
 | M12. Batch Costing      | Cost and margin per batch                     | Manager                   | M1, M5, M9, M10, M11         |
 | M13. Capacity           | Load against capacity, in several views       | Manager                   | M1, M6, M7, M8, M9, M10, M12 |
 | M14. Prescriptions      | Suggested actions                             | Manager, clients          | M3, M6, M12, M13             |
@@ -181,7 +181,7 @@ Every price the facility sets, in one place.
 **P1, if time allows**
 
 - A public mobile page with today's prices.
-- Price history, so old batches are costed at the prices of their day.
+- A screen showing price history. (Old prices are always kept, even at P0, so each batch is costed at the prices of its own day.)
 
 ### M6. Booking
 
@@ -192,7 +192,8 @@ Reserving a slot ahead of time, for planning. What happens on the day itself is 
 - Book a drying or milling slot: estimated kilos, preferred date, and how many days either way the client can move. Any client can book: farmers, co-ops, or traders bringing palay for custom milling.
 - Book for someone else. The booking keeps both the booker and the client who owns the palay.
 - A list of upcoming bookings per service and day.
-- Texts for: booking confirmed (with a reference code), and a new date proposed (reply to accept or decline).
+- A booking is confirmed straight away if the day still has room among confirmed bookings. Otherwise it waits for staff, who confirm it or propose another date.
+- Texts for: request received, booking confirmed (with a reference code), and a new date proposed (reply to accept or decline).
 
 **P1, if time allows**
 
@@ -270,7 +271,9 @@ The paper forms, made digital. A batch follows one lot of palay from the gate th
 
 **P0, must have**
 
-- Stages: received → drying → stored (dried) → milling → stored (milled) → released (picked up by the owner or sold) → closed. A milling-only booking starts at "stored (dried)".
+- Stages: received → drying → stored → milling → milled → released → closed.
+  - "Stored" means dried palay waiting in storage. "Milled" means milled rice waiting in storage. "Released" means all of it has left, picked up by the owner or sold.
+  - Palay that arrives already dry, as in a milling-only booking, skips drying: received → stored.
 - Receiving starts from the queue entry, so the batch is already linked to its client and booking.
 - One form per stage, with the same fields as the paper forms:
   - Receiving: tally sheet and stock receipt numbers, bags, gross and net weight, variety, MC, quality sample (damaged, immature, foreign matter).
@@ -278,7 +281,6 @@ The paper forms, made digital. A batch follows one lot of palay from the gate th
   - Milling: kilos in, start and end time, output by grade, by-products.
 - Drying shrink and milling recovery (rice out ÷ palay in) are calculated automatically.
 - Ownership: either custom service (the client's palay) or IRPC-owned (palay IRPC bought).
-- Look up a batch's full trail by batch number, client or buyer: gate, stages, purchase and sales.
 
 **P1, if time allows**
 
@@ -300,6 +302,7 @@ Selling milled rice to first-hand buyers, and tracing every sale back to its bat
 - Milled rice available to sell, by grade, from M10's storage.
 - Record a sale: buyer, grade, kilos, price, and the official receipt or invoice number. The app picks the source batches, oldest first, and staff can change them. One sale can draw from several batches, and one batch can go to several buyers.
 - Buyers are clients with a buyer type: wholesaler, retailer, institution, municipal drop-point, or the ₱20/kg program.
+- Look up a batch's full trail by batch number, client or buyer: gate, stages, purchase and sales.
 
 **P1, if time allows**
 
