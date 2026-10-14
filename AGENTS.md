@@ -4,29 +4,96 @@
 
 This project is for the ILOILO PROVINCE STARTUP HACKATHON, read guidelines in GUIDELINES.md if you need more context.
 
-[insert later]
+A capacity planning platform for the Iloilo Rice Processing Complex (IRPC): clients book drying/milling, offer palay and get quotes by SMS; staff see dryer, storage and mill load weeks ahead and act on suggested actions. Read `PRD.md` (what) and `TRD.md` (how) before working on a module. Decisions live in `docs/decisions/`.
 
 ## Project Structure
 
-[insert later]
+```
+src/
+  app/(app)/        staff pages behind login (sidebar layout)
+  app/login/        staff sign-in
+  app/api/          route handlers (SMS inbound webhook)
+  components/ui/    shadcn/ui components (generated; edit sparingly)
+  components/       app-level components (sidebar, nav, placeholders)
+  modules/<name>/   one per PRD module (M1–M10): logic.ts, queries.ts, actions.ts, sms.ts, components/
+  lib/              env, Supabase clients, SMS gateway, AI helper
+  proxy.ts          session refresh and login redirect
+supabase/           config, migrations, seed (local dev via Docker)
+data/opa/raw/       source data from IRPC/OPA (read-only)
+data/forecast/      Python (uv): train the arrival forecast offline
+infra/sms-gateway/  Docker Compose for the SMSGate server
+```
+
+Module folders: `setup` (M1), `accounts` (M2), `sms` (M3), `booking` (M4), `buying` (M5), `gate` (M6), `pricing` (M7), `forecast` (M8), `capacity` (M9), `prescriptions` (M10).
 
 ## Tech Stack
 
-[insert later]
+- Next.js 16 (App Router, Cache Components, server actions), strict TypeScript
+- Tailwind CSS 4, shadcn/ui (Base UI), shadcn charts (Recharts)
+- Supabase (Postgres, Auth) via supabase-js and `@supabase/ssr`; Supabase CLI for local dev, migrations and types
+- Zod, React Hook Form
+- Vercel AI SDK with `@ai-sdk/google` (Gemini)
+- SMSGate (self-hosted SMS gateway for Android) plus a web simulator
+- Python (uv, pandas, openpyxl, SciPy) for the offline forecast
+- pnpm, Vitest, ESLint, Prettier, commitlint, Husky, lint-staged
 
 ## Quick Start
 
-[insert later]
+Requires Node 24, pnpm, Docker and (for the forecast) uv.
+
+```sh
+pnpm install
+pnpm db:start                  # local Supabase in Docker
+cp .env.example .env.local     # fill keys from `pnpm db:status`
+pnpm dev
+```
+
+Sign in at http://localhost:3000 with `manager@irpc.test` or `encoder@irpc.test` (password `password123`). Supabase Studio: http://127.0.0.1:54323.
 
 ## Commands
 
-[insert later]
+| Command                    | Does                                            |
+| -------------------------- | ----------------------------------------------- |
+| `pnpm dev`                 | Start the app                                   |
+| `pnpm build`               | Production build                                |
+| `pnpm lint`                | ESLint                                          |
+| `pnpm format`              | Prettier write (`format:check` to verify)       |
+| `pnpm typecheck`           | Generate route types and run `tsc`              |
+| `pnpm test`                | Vitest (`test:watch` for watch mode)            |
+| `pnpm db:start` / `:stop`  | Start/stop local Supabase                       |
+| `pnpm db:status`           | Local URLs and keys                             |
+| `pnpm db:reset`            | Re-apply migrations and `supabase/seed.sql`     |
+| `pnpm db:migration <name>` | New migration file                              |
+| `pnpm db:types`            | Regenerate `src/lib/supabase/database.types.ts` |
+| `uv run pytest`            | Forecast tests (in `data/forecast/`)            |
+
+After changing the schema: add a migration, `pnpm db:reset`, `pnpm db:types`, and commit the migration with the regenerated types. CI fails if the types are out of date. Merging migrations to `main` applies them to the hosted project (`.github/workflows/db-deploy.yml`; repo secrets `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_ID`). Never edit a migration that is already on `main`; add a new one.
 
 ## Environment Variables
 
-[insert later]
+See `.env.example`. Validated in `src/lib/env.ts`.
+
+| Name                                                        | Used by                                    |
+| ----------------------------------------------------------- | ------------------------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | App, auth                                  |
+| `SUPABASE_SERVICE_ROLE_KEY`                                 | Server data access, SMS webhook, seed      |
+| `SMS_GATEWAY`                                               | `simulator` (default) or `smsgate`         |
+| `SMSGATE_URL`, `SMSGATE_USERNAME`, `SMSGATE_PASSWORD`       | Sending SMS, webhook setup                 |
+| `SMSGATE_SIGNING_KEY`                                       | Verifying inbound webhooks                 |
+| `GOOGLE_GENERATIVE_AI_API_KEY`                              | Gemini (optional; falls back to templates) |
 
 ## Code Conventions
+
+### Modules
+
+- `logic.ts` is pure (no I/O) and imports no other module. Unit-test it.
+- Cross-module calls live only in `actions.ts` and `queries.ts`.
+- All database access is server-side through `db()` (`src/lib/supabase/admin.ts`). RLS is on with no public policies.
+- Server actions call `requireRole()` (`src/modules/accounts/auth.ts`) first; manager-only pages wrap content in `<RoleGate role="manager">`. Managers only: costs, prices, prescriptions, settings.
+- Send SMS through `smsGateway()` (`src/lib/sms`); AI through `explain()`/`extract()` (`src/lib/ai.ts`), always with a non-AI fallback. AI never computes numbers.
+- Units: weight in integer kg, money in integer centavos (`_minor`), MC as `numeric(4,1)`. Time zone Asia/Manila; columns are `date` or `timestamptz`.
+- Every table has `id` (UUID), `created_at`, `updated_at` (use the `set_updated_at()` trigger).
+- With Cache Components, wrap components that read cookies, params or uncached data in `<Suspense>`.
 
 ### Style
 
@@ -71,3 +138,13 @@ This project is for the ILOILO PROVINCE STARTUP HACKATHON, read guidelines in GU
 ## Skills & Docs Reference
 
 [insert later]
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
