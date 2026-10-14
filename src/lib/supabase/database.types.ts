@@ -165,6 +165,40 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"forecast_arrivals": {
+                  Row: {
+                    "created_at": string,"date": string,"id": string,"kg_high": number,"kg_low": number,"kg_mid": number,"municipality_id": string,"source": Database["public"]['Enums']["forecast_source"],"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"date": string,"id"?: string,"kg_high": number,"kg_low": number,"kg_mid": number,"municipality_id": string,"source": Database["public"]['Enums']["forecast_source"],"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"date"?: string,"id"?: string,"kg_high"?: number,"kg_low"?: number,"kg_mid"?: number,"municipality_id"?: string,"source"?: Database["public"]['Enums']["forecast_source"],"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "forecast_arrivals_municipality_id_fkey"
+      columns: ["municipality_id"]
+isOneToOne: false
+      referencedRelation: "municipalities"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"forecast_metrics": {
+                  Row: {
+                    "created_at": string,"id": string,"metrics": NonNullable<Json>,"trained_on": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"metrics": NonNullable<Json>,"trained_on": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"metrics"?: NonNullable<Json>,"trained_on"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"machines": {
                   Row: {
                     "active": boolean,"capacity_kg": number | null,"code": string,"created_at": string,"cycle_hours": number | null,"facility_id": string,"id": string,"kg_per_hour": number | null,"rated_kw": number,"type": Database["public"]['Enums']["machine_type"],"updated_at": string
@@ -380,7 +414,7 @@ isOneToOne: false
             [_ in never]: never
           }
           Enums: {
-            "batch_ownership": "custom"|"irpc","batch_stage": "received"|"drying"|"stored"|"milling"|"milled"|"dispatched","booking_channel": "sms"|"staff","booking_status": "confirmed"|"reschedule_proposed"|"arrived"|"cancelled"|"no_show","client_kind": "farmer"|"coop"|"trader"|"buyer","machine_type": "dryer"|"mill","queue_status": "waiting"|"serving"|"done"|"left","sell_offer_status": "offered"|"accepted"|"declined"|"arrived"|"withdrawn","service": "drying"|"milling","sms_direction": "inbound"|"outbound","sms_prompt_kind": "ai_confirm"|"reschedule","sms_prompt_status": "open"|"accepted"|"declined"|"expired","sms_status": "received"|"processed"|"queued"|"sent"|"failed","staff_role": "encoder"|"manager"
+            "batch_ownership": "custom"|"irpc","batch_stage": "received"|"drying"|"stored"|"milling"|"milled"|"dispatched","booking_channel": "sms"|"staff","booking_status": "confirmed"|"reschedule_proposed"|"arrived"|"cancelled"|"no_show","client_kind": "farmer"|"coop"|"trader"|"buyer","forecast_source": "opa-2025"|"demo-synthetic","machine_type": "dryer"|"mill","queue_status": "waiting"|"serving"|"done"|"left","sell_offer_status": "offered"|"accepted"|"declined"|"arrived"|"withdrawn","service": "drying"|"milling","sms_direction": "inbound"|"outbound","sms_prompt_kind": "ai_confirm"|"reschedule","sms_prompt_status": "open"|"accepted"|"declined"|"expired","sms_status": "received"|"processed"|"queued"|"sent"|"failed","staff_role": "encoder"|"manager"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -500,7 +534,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "batch_ownership": ["custom", "irpc"],"batch_stage": ["received", "drying", "stored", "milling", "milled", "dispatched"],"booking_channel": ["sms", "staff"],"booking_status": ["confirmed", "reschedule_proposed", "arrived", "cancelled", "no_show"],"client_kind": ["farmer", "coop", "trader", "buyer"],"machine_type": ["dryer", "mill"],"queue_status": ["waiting", "serving", "done", "left"],"sell_offer_status": ["offered", "accepted", "declined", "arrived", "withdrawn"],"service": ["drying", "milling"],"sms_direction": ["inbound", "outbound"],"sms_prompt_kind": ["ai_confirm", "reschedule"],"sms_prompt_status": ["open", "accepted", "declined", "expired"],"sms_status": ["received", "processed", "queued", "sent", "failed"],"staff_role": ["encoder", "manager"]
+            "batch_ownership": ["custom", "irpc"],"batch_stage": ["received", "drying", "stored", "milling", "milled", "dispatched"],"booking_channel": ["sms", "staff"],"booking_status": ["confirmed", "reschedule_proposed", "arrived", "cancelled", "no_show"],"client_kind": ["farmer", "coop", "trader", "buyer"],"forecast_source": ["opa-2025", "demo-synthetic"],"machine_type": ["dryer", "mill"],"queue_status": ["waiting", "serving", "done", "left"],"sell_offer_status": ["offered", "accepted", "declined", "arrived", "withdrawn"],"service": ["drying", "milling"],"sms_direction": ["inbound", "outbound"],"sms_prompt_kind": ["ai_confirm", "reschedule"],"sms_prompt_status": ["open", "accepted", "declined", "expired"],"sms_status": ["received", "processed", "queued", "sent", "failed"],"staff_role": ["encoder", "manager"]
           }
         }
 } as const
