@@ -1,0 +1,13 @@
+# Copy to config.yml (gitignored) and set private_token and the DB password.
+gateway:
+  mode: private
+  private_token: change-me # must match the phone's Cloud Server token
+http:
+  listen: 0.0.0.0:3000
+database:
+  host: db
+  port: 3306
+  user: root
+  password: root # must match MARIADB_ROOT_PASSWORD
+  database: sms
+  timezone: UTC
