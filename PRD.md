@@ -84,20 +84,20 @@ sequenceDiagram
 
 ## Modules
 
-Each module is a vertical slice one person owns end to end. **P0** must work in the demo. **P1** comes after all P0.
+Work is split into issues on the tracker. SMS is a channel, not a dependency: every module works from staff forms first. **P0** must work in the demo. **P1** comes after all P0.
 
-| Module               | Purpose                              | Needs          |
-| -------------------- | ------------------------------------ | -------------- |
-| M1. Setup            | IRPC settings, machines, seed data   | None           |
-| M2. Accounts         | Clients and staff                    | None           |
-| M3. SMS              | Sending, receiving and parsing texts | M2             |
-| M4. Booking          | Future drying and milling slots      | M1, M2, M3     |
-| M5. Buying           | Quotes, sell offers, purchases       | M2, M3, M7     |
-| M6. Gate and Batches | Queue, batch record, dispatch        | M2, M3, M4, M5 |
-| M7. Pricing and Cost | Prices, batch cost                   | M1, M3, M5, M6 |
-| M8. Forecast         | Expected arrivals                    | M1             |
-| M9. Capacity         | Load against capacity                | M1, M4–M8      |
-| M10. Prescriptions   | Suggested actions                    | M3, M4, M7, M9 |
+| Module               | Purpose                              | Needs      |
+| -------------------- | ------------------------------------ | ---------- |
+| M1. Setup            | IRPC settings, machines, seed data   | None       |
+| M2. Accounts         | Clients and staff                    | None       |
+| M3. SMS              | Sending, receiving and parsing texts | M2         |
+| M4. Booking          | Future drying and milling slots      | M1, M2     |
+| M5. Buying           | Quotes, sell offers, purchases       | M2, M7     |
+| M6. Gate and Batches | Queue, batch record, dispatch        | M2, M4, M5 |
+| M7. Pricing and Cost | Prices, batch cost                   | M1, M5, M6 |
+| M8. Forecast         | Expected arrivals                    | M1         |
+| M9. Capacity         | Load against capacity                | M1, M4–M8  |
+| M10. Prescriptions   | Suggested actions                    | M4, M7, M9 |
 
 How palay moves through IRPC:
 
@@ -157,7 +157,7 @@ The input end for custom service: clients reserve slots for their own palay.
 
 **P0**
 
-- **Book a slot:** drying or milling, with estimated kilos, preferred date and flex days.
+- **Book a slot:** from a staff form or by SMS. Drying or milling, with estimated kilos, preferred date and flex days.
 - **Book for others:** `FOR <phone>` books for someone else, and the client is texted.
 - **Instant confirm:** every booking confirms right away. If the day overloads, M10 proposes a new date to flexible bookings.
 - **Ownership:** only the client or whoever booked for them can answer or cancel.
@@ -174,8 +174,8 @@ The input end for IRPC-owned palay. Private mills win on fast, clear quotes, and
 
 **P0**
 
-- **Quote:** a farmer texts estimated MC (and kilos) and gets an estimated price per kilo and total.
-- **Sell offer:** a farmer texts kilos, variety and harvest date. Offers feed capacity as expected arrivals.
+- **Quote:** from a staff form or by SMS. Estimated MC (and kilos) gives an estimated price per kilo and total.
+- **Sell offer:** from a staff form or by SMS. Kilos, variety and harvest date. Offers feed capacity as expected arrivals.
 - **Buying list:** the manager accepts or declines offers.
 - **Price at receiving:** computed like the paper Receiving Report from weight, MC, damage, immature grains, foreign matter and sacks. Shown to the encoder and texted to the farmer.
 - **Purchase record:** kilos, price, deductions and voucher number. The app doesn't pay.
@@ -260,6 +260,7 @@ Computed from M9. The manager accepts or dismisses each.
 
 ## Rules
 
+- **SMS is a channel:** every client action (booking, sell offer, quote) also works from a staff form, and SMS commands call the same actions.
 - **AI explains, rules decide:** AI explains suggestions and reads free-text SMS. Capacity, prescription and cost numbers come from fixed rules, and people confirm every action.
 - **No official receipts:** the app only stores receipt and voucher numbers.
 - **Cheap to run:** mobile web, SMS for basic phones, no new plant hardware.
