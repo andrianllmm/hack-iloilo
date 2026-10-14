@@ -97,6 +97,34 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"sms_messages": {
+                  Row: {
+                    "body": string,"created_at": string,"direction": Database["public"]['Enums']["sms_direction"],"gateway_id": string | null,"id": string,"parsed": Json | null,"phone": string,"status": Database["public"]['Enums']["sms_status"],"updated_at": string,"via_ai": boolean
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"created_at"?: string,"direction": Database["public"]['Enums']["sms_direction"],"gateway_id"?: string | null,"id"?: string,"parsed"?: Json | null,"phone": string,"status": Database["public"]['Enums']["sms_status"],"updated_at"?: string,"via_ai"?: boolean
+                  }
+                  Update: {
+                    "body"?: string,"created_at"?: string,"direction"?: Database["public"]['Enums']["sms_direction"],"gateway_id"?: string | null,"id"?: string,"parsed"?: Json | null,"phone"?: string,"status"?: Database["public"]['Enums']["sms_status"],"updated_at"?: string,"via_ai"?: boolean
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"sms_prompts": {
+                  Row: {
+                    "created_at": string,"expires_at": string,"id": string,"kind": Database["public"]['Enums']["sms_prompt_kind"],"payload": NonNullable<Json>,"phone": string,"ref": string,"status": Database["public"]['Enums']["sms_prompt_status"],"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"expires_at"?: string,"id"?: string,"kind": Database["public"]['Enums']["sms_prompt_kind"],"payload"?: NonNullable<Json>,"phone": string,"ref": string,"status"?: Database["public"]['Enums']["sms_prompt_status"],"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"expires_at"?: string,"id"?: string,"kind"?: Database["public"]['Enums']["sms_prompt_kind"],"payload"?: NonNullable<Json>,"phone"?: string,"ref"?: string,"status"?: Database["public"]['Enums']["sms_prompt_status"],"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"staff": {
                   Row: {
                     "auth_user_id": string,"created_at": string,"id": string,"name": string,"role": Database["public"]['Enums']["staff_role"],"updated_at": string
@@ -134,7 +162,7 @@ isOneToOne: false
             [_ in never]: never
           }
           Enums: {
-            "client_kind": "farmer"|"coop"|"trader"|"buyer","machine_type": "dryer"|"mill","staff_role": "encoder"|"manager"
+            "client_kind": "farmer"|"coop"|"trader"|"buyer","machine_type": "dryer"|"mill","sms_direction": "inbound"|"outbound","sms_prompt_kind": "ai_confirm"|"reschedule","sms_prompt_status": "open"|"accepted"|"declined"|"expired","sms_status": "received"|"processed"|"queued"|"sent"|"failed","staff_role": "encoder"|"manager"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -254,7 +282,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "client_kind": ["farmer", "coop", "trader", "buyer"],"machine_type": ["dryer", "mill"],"staff_role": ["encoder", "manager"]
+            "client_kind": ["farmer", "coop", "trader", "buyer"],"machine_type": ["dryer", "mill"],"sms_direction": ["inbound", "outbound"],"sms_prompt_kind": ["ai_confirm", "reschedule"],"sms_prompt_status": ["open", "accepted", "declined", "expired"],"sms_status": ["received", "processed", "queued", "sent", "failed"],"staff_role": ["encoder", "manager"]
           }
         }
 } as const
