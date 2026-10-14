@@ -96,8 +96,8 @@ Each module is a vertical slice one person owns end to end. **P0** must work in 
 | M6. Gate and Batches | Queue, batch record, dispatch        | M2, M3, M4, M5 |
 | M7. Pricing and Cost | Prices, batch cost                   | M1, M3, M5, M6 |
 | M8. Forecast         | Expected arrivals                    | M1             |
-| M9. Capacity         | Load against capacity                | M1, M4, M5, M8 |
-| M10. Prescriptions   | Suggested actions                    | M3, M4, M9     |
+| M9. Capacity         | Load against capacity                | M1, M4–M8      |
+| M10. Prescriptions   | Suggested actions                    | M3, M4, M7, M9 |
 
 How palay moves through IRPC:
 
@@ -126,7 +126,7 @@ flowchart LR
 - **Settings:** one IRPC record the manager can edit, since some figures are unconfirmed.
   - **Capacity:** dryers and load size, drying cycle hours, mill t/hour, operating hours, storage (1,100 t).
   - **Costs:** machine kW, base load kW, ₱/kWh, labor ₱/hour.
-  - **Planning:** idle threshold.
+  - **Planning:** idle threshold, dried kg per wet kg (for storage projections).
 - **Varieties:** the rice varieties IRPC handles.
 - **Seed:** IRPC's municipalities, sample farmers, co-ops and buyers, and a peak scenario with an overloaded day and an idle stretch.
 
@@ -159,7 +159,8 @@ The input end for custom service: clients reserve slots for their own palay.
 
 - **Book a slot:** drying or milling, with estimated kilos, preferred date and flex days.
 - **Book for others:** `FOR <phone>` books for someone else, and the client is texted.
-- **Auto-confirm:** a booking confirms if the day has room. Otherwise staff confirm or propose a date.
+- **Instant confirm:** every booking confirms right away. If the day overloads, M10 proposes a new date to flexible bookings.
+- **Ownership:** only the client or whoever booked for them can answer or cancel.
 - **Texts:** confirmed (with a reference), and new date proposed (reply to accept).
 - **Booking list:** upcoming bookings per service and day.
 
@@ -204,6 +205,7 @@ The input end for IRPC-owned palay. Private mills win on fast, clear quotes, and
 - **Prices:** the manager sets palay buying base at 25% MC with deduction rates, drying ₱1.60/kg, milling ₱3.30/kg, and rice price.
 - **Price texts:** `PRICE` returns today's prices.
 - **Batch cost:** electricity (machine hours × kW × ₱/kWh) + labor, against revenue (fees, or sales − purchase). Shown per batch and per kilo.
+- **Base load:** reported per period, not per batch. The capacity headline and full-load plan both include it.
 
 ### M8. Forecast
 

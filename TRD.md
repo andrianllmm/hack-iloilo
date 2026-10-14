@@ -57,6 +57,9 @@ infra/sms-gateway/  Docker Compose for SMSGate and MariaDB
 
 Modules import each other directly. No event bus, queue or cron.
 
+- `logic.ts` is pure and imports no other module.
+- Cross-module calls live only in `actions.ts` and `queries.ts`, so cycles (M5↔M6↔M7) stay at call time, never in `logic.ts`.
+
 ## Rules for all code
 
 - **Units:** weight in integer kg, money in integer centavos (`_minor`), MC as `numeric(4,1)`.
@@ -123,15 +126,16 @@ Every table has `id` (UUID), `created_at` and `updated_at`.
 
 ### M1. Setup
 
-| Table            | Columns                                                                                                                                                          |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `facilities`     | `name`, `storage_capacity_kg`, `operating_hours_per_day`, `base_load_kw`, `tariff_minor_per_kwh`, `labor_minor_per_hour`, `idle_threshold_pct`, `notify_ahead_n` |
-| `machines`       | `type` (`dryer`, `mill`), `code`, `capacity_kg` (dryers, per load), `cycle_hours`, `kg_per_hour` (mill), `rated_kw`, `active`                                    |
-| `varieties`      | `code`, `name`                                                                                                                                                   |
-| `municipalities` | `psgc_code`, `name`, `lat`, `lng`                                                                                                                                |
+| Table            | Columns                                                                                                                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `facilities`     | `name`, `storage_capacity_kg`, `operating_hours_per_day`, `base_load_kw`, `tariff_minor_per_kwh`, `labor_minor_per_hour`, `dry_yield_pct`, `idle_threshold_pct`, `notify_ahead_n` |
+| `machines`       | `type` (`dryer`, `mill`), `code`, `capacity_kg` (dryers, per load), `cycle_hours`, `kg_per_hour` (mill), `rated_kw`, `active`                                                     |
+| `varieties`      | `code`, `name`                                                                                                                                                                    |
+| `municipalities` | `psgc_code`, `name`, `lat`, `lng`                                                                                                                                                 |
 
 - Dryer kg/day = Σ active dryers' `capacity_kg` × ⌊`operating_hours_per_day` ÷ `cycle_hours`⌋.
 - Mill kg/day = Σ active mills' `kg_per_hour` × `operating_hours_per_day`.
+- `dry_yield_pct` = dried kg per wet kg (default 89, from 23% to 14% MC), used only for forward projections.
 
 **Seed (`pnpm seed`):** IRPC with 5 × 10 t + 1 × 6 t dryers and one mill, rice varieties, Iloilo municipalities, staff, about 30 farmers in 3 Pototan co-ops, buyers from IRPC's top-clients list, today's prices, a live queue, and a peak scenario with an overloaded day and an idle stretch.
 
@@ -183,18 +187,16 @@ sequenceDiagram
 
 **Exports:** `bookingsBetween(from, to)`, `findByRef(ref)`, `proposeReschedule(id, date)`, `markArrived(id)`.
 
-- Auto-confirms if that day's confirmed bookings plus this one fit M1 capacity.
-- Otherwise stays `requested` for staff to confirm or reschedule.
+- Every booking confirms on arrival, even past capacity. Overloads are caught by M9 and cleared by M10, which only moves flexible bookings.
 - A booking made `FOR <phone>` texts the client.
+- `YES`, `NO` and `CANCEL` only work from the client's phone or `booked_by_phone`. Others get the help reply.
 
 ```mermaid
 stateDiagram-v2
-  [*] --> requested
-  requested --> confirmed: fits, or staff confirm
+  [*] --> confirmed
   confirmed --> reschedule_proposed: M10 accepted
   reschedule_proposed --> confirmed: YES (new date) or NO (keeps date)
   confirmed --> arrived: check-in
-  requested --> cancelled
   confirmed --> cancelled
   confirmed --> no_show
 ```
@@ -259,13 +261,15 @@ Any command accepts `FOR <phone>`.
 
 `prices` is one row per `effective_date`: `buy_base_minor_per_kg`, `buy_reference_mc` (25), `buy_rules` (jsonb: `{ damaged: 0.25, immature: 0.10, foreign: 1.0, sack_kg: 0.1, mc_rule }`), `drying_fee_minor_per_kg`, `milling_fee_minor_per_kg`, `rice_minor_per_kg`.
 
-**Exports:** `priceOn(date)`, `batchCost(batchId)`.
+**Exports:** `priceOn(date)`, `batchCost(batchId)`, `electricityPerKg(kWh, kg, daysRun)`.
 
-**Batch cost:** electricity = stage hours × machine `rated_kw` × tariff; labor = stage hours × rate. Revenue is drying and milling fees (custom) or dispatches − M5 `purchaseCost` (IRPC-owned).
+**Batch cost:** direct cost only. Electricity = stage hours × machine `rated_kw` × tariff; labor = stage hours × rate. Revenue is drying and milling fees (custom) or dispatches − M5 `purchaseCost` (IRPC-owned).
+
+**Base load** is not split per batch. `electricityPerKg` = (machine kWh + `base_load_kw` × `operating_hours_per_day` × days run) × tariff ÷ kg. M9's headline and M10's full-load plan both use it, so they share one cost basis.
 
 **SMS:** `PRICE`.
 
-**Tests:** the sample milling run cost.
+**Tests:** the sample milling run cost, and `electricityPerKg` with base load.
 
 ### M8. Forecast
 
@@ -297,10 +301,13 @@ First run: lag weights ≈ 0.15, 0.41, 0.31, 0.09, 0.03; ≈ 100 days planting t
 No tables. **Export:** `capacityByDay(from, to)` returns per day and pool (`dryer`, `storage`, `mill`): load by source (`confirmed`, `offer`, `forecast`) with low and high, capacity, `overloaded` and `idle`.
 
 - Dryer load = drying bookings + accepted offers + forecast.
-- Storage(d) = storage(d−1) + dried in − milled out, against `storage_capacity_kg`.
-- Mill load = milling bookings.
+- Storage starts at M6 `storageStockOn(today)`. Storage(d) = storage(d−1) + dried in − milled out, against `storage_capacity_kg`.
+  - Dried in = IRPC-bought dryer load (offers, forecast) × `dry_yield_pct`, up to dryer capacity. Custom-dried palay leaves with its owner unless it has a milling booking.
+  - Milled out = mill load, up to mill capacity.
+- Mill load = milling bookings + IRPC-owned palay in storage, oldest first.
 - Overloaded: confirmed + offer exceeds capacity. Forecast alone never triggers it.
 - Idle: the high estimate is below `idle_threshold_pct`.
+- Headline electricity ₱/kg uses M7 `electricityPerKg` over the window.
 - Recomputed on each load.
 
 **Views:** headline tiles, stacked chart with a capacity line, day grid, and a shared day panel. P1: season heatmap and municipality map (Leaflet + OpenStreetMap).
@@ -317,7 +324,7 @@ No tables. **Export:** `capacityByDay(from, to)` returns per day and pool (`drye
 
 - **Move bookings:** for each overloaded dryer day, move flexible bookings, largest first, to the nearest day within `flex_days` with room, until the overflow clears. Report any remainder. Accepting calls M4 `proposeReschedule`.
 - **Fill idle days:** for each idle stretch, list farmers and co-ops with no open booking, by past volume and municipality, and draft a text with rates and buying price. Accepting sends it.
-- **Mill in full loads (P1):** compare milling stock on ⌈stock ÷ daily capacity⌉ full days against spreading it over the stretch. Electricity = kW × hours + `base_load_kw` × hours × days run. Return dates, ₱/kg for each plan and the saving.
+- **Mill in full loads (P1):** compare milling stock on ⌈stock ÷ daily capacity⌉ full days against spreading it over the stretch, each priced with M7 `electricityPerKg`. Return dates, ₱/kg for each plan and the saving.
 - **Store, mill later (P1):** move mill overflow into storage, then fill the nearest idle mill days.
 
 **Tests:** a 30 t overflow with three flexible bookings, idle-day recipients, and the template fallback.
