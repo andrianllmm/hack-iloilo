@@ -89,7 +89,7 @@ See `.env.example`. Validated in `src/lib/env.ts`.
 - `logic.ts` is pure (no I/O) and imports no other module. Unit-test it.
 - Cross-module calls live only in `actions.ts` and `queries.ts`.
 - All database access is server-side through `db()` (`src/lib/supabase/admin.ts`). RLS is on with no public policies.
-- Server actions call `requireRole()` (`src/modules/accounts/auth.ts`) first. Managers only: costs, prices, prescriptions, settings.
+- Server actions call `requireRole()` (`src/modules/accounts/auth.ts`) first; manager-only pages wrap content in `<RoleGate role="manager">`. Managers only: costs, prices, prescriptions, settings.
 - Send SMS through `smsGateway()` (`src/lib/sms`); AI through `explain()`/`extract()` (`src/lib/ai.ts`), always with a non-AI fallback. AI never computes numbers.
 - Units: weight in integer kg, money in integer centavos (`_minor`), MC as `numeric(4,1)`. Time zone Asia/Manila; columns are `date` or `timestamptz`.
 - Every table has `id` (UUID), `created_at`, `updated_at` (use the `set_updated_at()` trigger).
