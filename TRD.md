@@ -83,7 +83,7 @@ interface SmsGateway {
 
 - `SimulatorGateway` stores messages and shows a phone screen per number. Staff-only, disabled when `SMS_GATEWAY=smsgate`.
 - `SmsGateGateway`:
-  - Sends with `POST {SMSGATE_URL}/api/3rdparty/v1/messages`, HTTP Basic auth.
+  - Sends with `POST {SMS_GATEWAY_URL}/api/3rdparty/v1/messages`, HTTP Basic auth.
   - Receives at `POST /api/sms/inbound` from an `sms:received` webhook, registered with `POST /3rdparty/v1/webhooks`.
   - Verifies `X-Signature` (HMAC-SHA256 of raw body + `X-Timestamp`), rejecting timestamps over 5 minutes off.
   - Dedupes on `payload.messageId`, and replies 2xx within 30 s.
@@ -336,14 +336,14 @@ No tables. **Export:** `capacityByDay(from, to)` returns per day and pool (`drye
 
 ## Environment variables
 
-| Name                                                        | Used by                    |
-| ----------------------------------------------------------- | -------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | App                        |
-| `SUPABASE_SERVICE_ROLE_KEY`                                 | Server, SMS webhook, seed  |
-| `SMS_GATEWAY`                                               | `simulator` or `smsgate`   |
-| `SMSGATE_URL`, `SMSGATE_USERNAME`, `SMSGATE_PASSWORD`       | Sending and webhook setup  |
-| `SMSGATE_SIGNING_KEY`                                       | Verifying inbound webhooks |
-| `GOOGLE_GENERATIVE_AI_API_KEY`                              | Gemini                     |
+| Name                                                              | Used by                    |
+| ----------------------------------------------------------------- | -------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`       | App                        |
+| `SUPABASE_SERVICE_ROLE_KEY`                                       | Server, SMS webhook, seed  |
+| `SMS_GATEWAY`                                                     | `simulator` or `smsgate`   |
+| `SMS_GATEWAY_URL`, `SMS_GATEWAY_USERNAME`, `SMS_GATEWAY_PASSWORD` | Sending and webhook setup  |
+| `SMS_GATEWAY_WEBHOOK_SIGNING_KEY`                                 | Verifying inbound webhooks |
+| `GOOGLE_GENERATIVE_AI_API_KEY`                                    | Gemini                     |
 
 ## Costs and limits
 

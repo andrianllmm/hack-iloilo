@@ -25,13 +25,13 @@ In the SMSGate app, **Settings → Cloud Server**:
 
 ## App
 
-Set in the app's env: `SMS_GATEWAY=smsgate`, `SMSGATE_URL=https://<host>`, `SMSGATE_USERNAME`/`SMSGATE_PASSWORD` (shown in the phone app after it registers) and `SMSGATE_SIGNING_KEY` (Settings → Webhooks → Signing Key).
+Set in the app's env: `SMS_GATEWAY=smsgate`, `SMS_GATEWAY_URL=https://<host>`, `SMS_GATEWAY_USERNAME`/`SMS_GATEWAY_PASSWORD` (shown in the phone app after it registers) and `SMS_GATEWAY_WEBHOOK_SIGNING_KEY` (Settings → Webhooks → Signing Key).
 
 Register the inbound webhook once:
 
 ```sh
-curl -u "$SMSGATE_USERNAME:$SMSGATE_PASSWORD" \
+curl -u "$SMS_GATEWAY_USERNAME:$SMS_GATEWAY_PASSWORD" \
   -H "Content-Type: application/json" \
   -d '{"url":"https://<app-host>/api/sms/inbound","event":"sms:received"}' \
-  "$SMSGATE_URL/3rdparty/v1/webhooks"
+  "$SMS_GATEWAY_URL/3rdparty/v1/webhooks"
 ```

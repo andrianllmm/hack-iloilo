@@ -73,14 +73,18 @@ After changing the schema: add a migration, `pnpm db:reset`, `pnpm db:types`, an
 
 See `.env.example`. Validated in `src/lib/env.ts`.
 
-| Name                                                        | Used by                                    |
-| ----------------------------------------------------------- | ------------------------------------------ |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | App, auth                                  |
-| `SUPABASE_SERVICE_ROLE_KEY`                                 | Server data access, SMS webhook, seed      |
-| `SMS_GATEWAY`                                               | `simulator` (default) or `smsgate`         |
-| `SMSGATE_URL`, `SMSGATE_USERNAME`, `SMSGATE_PASSWORD`       | Sending SMS, webhook setup                 |
-| `SMSGATE_SIGNING_KEY`                                       | Verifying inbound webhooks                 |
-| `GOOGLE_GENERATIVE_AI_API_KEY`                              | Gemini (optional; falls back to templates) |
+| Name                                                              | Used by                                                               |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`       | App, auth                                                             |
+| `SUPABASE_SERVICE_ROLE_KEY`                                       | Server data access, SMS webhook, seed                                 |
+| `SMS_GATEWAY`                                                     | `simulator` (default) or `smsgate`                                    |
+| `SMS_GATEWAY_URL`, `SMS_GATEWAY_USERNAME`, `SMS_GATEWAY_PASSWORD` | Sending SMS, webhook setup                                            |
+| `SMS_GATEWAY_WEBHOOK_SIGNING_KEY`                                 | Verifying inbound webhooks                                            |
+| `SMS_GATEWAY_DEVICE_ID`, `SMS_GATEWAY_SIM_NUMBER`                 | Optional; validated for future device/SIM selection, not yet consumed |
+| `SMS_GATEWAY_WEBHOOK_PORT`                                        | Validated; defaults to 3000, not yet consumed                         |
+| `GOOGLE_GENERATIVE_AI_API_KEY`                                    | Gemini (optional; falls back to templates)                            |
+
+`env()` maps the renamed SMS credentials to `SMSGATE_USERNAME`, `SMSGATE_PASSWORD`, and `SMSGATE_SIGNING_KEY` for internal consumers. Configure the `SMS_GATEWAY_*` input names shown above.
 
 ## Code Conventions
 
