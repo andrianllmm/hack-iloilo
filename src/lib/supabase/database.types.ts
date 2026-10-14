@@ -199,6 +199,32 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"purchases": {
+                  Row: {
+                    "batch_id": string,"client_id": string,"created_at": string,"deductions": NonNullable<Json>,"id": string,"net_kg": number,"override_reason": string | null,"paid_kg": number,"price_date": string,"price_minor_per_kg": number,"total_minor": number,"updated_at": string,"voucher_ref": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "batch_id": string,"client_id": string,"created_at"?: string,"deductions"?: NonNullable<Json>,"id"?: string,"net_kg": number,"override_reason"?: string | null,"paid_kg": number,"price_date": string,"price_minor_per_kg": number,"total_minor": number,"updated_at"?: string,"voucher_ref"?: string | null
+                  }
+                  Update: {
+                    "batch_id"?: string,"client_id"?: string,"created_at"?: string,"deductions"?: NonNullable<Json>,"id"?: string,"net_kg"?: number,"override_reason"?: string | null,"paid_kg"?: number,"price_date"?: string,"price_minor_per_kg"?: number,"total_minor"?: number,"updated_at"?: string,"voucher_ref"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "purchases_batch_id_fkey"
+      columns: ["batch_id"]
+isOneToOne: true
+      referencedRelation: "batches"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "purchases_client_id_fkey"
+      columns: ["client_id"]
+isOneToOne: false
+      referencedRelation: "clients"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"queue_entries": {
                   Row: {
                     "booking_id": string | null,"checked_in_at": string,"client_id": string,"created_at": string,"facility_id": string,"finished_at": string | null,"id": string,"offer_id": string | null,"service": Database["public"]['Enums']["service"],"started_at": string | null,"status": Database["public"]['Enums']["queue_status"],"updated_at": string
