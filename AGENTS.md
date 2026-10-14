@@ -18,7 +18,7 @@ src/
   modules/<name>/   one per PRD module (M1–M10): logic.ts, queries.ts, actions.ts, sms.ts, components/
   lib/              env, Supabase clients, SMS gateway, AI helper
   proxy.ts          session refresh and login redirect
-supabase/           config, migrations, seed (local dev via Docker)
+supabase/           config, migrations, seeds/ (local dev via Docker)
 data/opa/raw/       source data from IRPC/OPA (read-only)
 data/forecast/      Python (uv): train the arrival forecast offline
 infra/sms-gateway/  Docker Compose for the SMSGate server
@@ -62,7 +62,7 @@ Sign in at http://localhost:3000 with `manager@irpc.test` or `encoder@irpc.test`
 | `pnpm test`                | Vitest (`test:watch` for watch mode)            |
 | `pnpm db:start` / `:stop`  | Start/stop local Supabase                       |
 | `pnpm db:status`           | Local URLs and keys                             |
-| `pnpm db:reset`            | Re-apply migrations and `supabase/seed.sql`     |
+| `pnpm db:reset`            | Re-apply migrations and `supabase/seeds/*.sql`  |
 | `pnpm db:migration <name>` | New migration file                              |
 | `pnpm db:types`            | Regenerate `src/lib/supabase/database.types.ts` |
 | `uv run pytest`            | Forecast tests (in `data/forecast/`)            |
