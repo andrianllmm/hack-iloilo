@@ -199,6 +199,26 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"prices": {
+                  Row: {
+                    "buy_base_minor_per_kg": number,"buy_reference_mc": number,"buy_rules": NonNullable<Json>,"created_at": string,"drying_fee_minor_per_kg": number,"effective_date": string,"facility_id": string,"id": string,"milling_fee_minor_per_kg": number,"rice_minor_per_kg": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "buy_base_minor_per_kg": number,"buy_reference_mc"?: number,"buy_rules"?: NonNullable<Json>,"created_at"?: string,"drying_fee_minor_per_kg": number,"effective_date": string,"facility_id": string,"id"?: string,"milling_fee_minor_per_kg": number,"rice_minor_per_kg": number,"updated_at"?: string
+                  }
+                  Update: {
+                    "buy_base_minor_per_kg"?: number,"buy_reference_mc"?: number,"buy_rules"?: NonNullable<Json>,"created_at"?: string,"drying_fee_minor_per_kg"?: number,"effective_date"?: string,"facility_id"?: string,"id"?: string,"milling_fee_minor_per_kg"?: number,"rice_minor_per_kg"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "prices_facility_id_fkey"
+      columns: ["facility_id"]
+isOneToOne: false
+      referencedRelation: "facilities"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"purchases": {
                   Row: {
                     "batch_id": string,"client_id": string,"created_at": string,"deductions": NonNullable<Json>,"id": string,"net_kg": number,"override_reason": string | null,"paid_kg": number,"price_date": string,"price_minor_per_kg": number,"total_minor": number,"updated_at": string,"voucher_ref": string | null
