@@ -23,7 +23,33 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "clients": {
+            "bookings": {
+                  Row: {
+                    "booked_by_phone": string,"channel": Database["public"]['Enums']["booking_channel"],"client_id": string,"created_at": string,"est_kg": number,"facility_id": string,"flex_days": number,"id": string,"preferred_date": string,"ref": string,"scheduled_date": string,"service": Database["public"]['Enums']["service"],"status": Database["public"]['Enums']["booking_status"],"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "booked_by_phone": string,"channel": Database["public"]['Enums']["booking_channel"],"client_id": string,"created_at"?: string,"est_kg": number,"facility_id": string,"flex_days"?: number,"id"?: string,"preferred_date": string,"ref": string,"scheduled_date": string,"service": Database["public"]['Enums']["service"],"status"?: Database["public"]['Enums']["booking_status"],"updated_at"?: string
+                  }
+                  Update: {
+                    "booked_by_phone"?: string,"channel"?: Database["public"]['Enums']["booking_channel"],"client_id"?: string,"created_at"?: string,"est_kg"?: number,"facility_id"?: string,"flex_days"?: number,"id"?: string,"preferred_date"?: string,"ref"?: string,"scheduled_date"?: string,"service"?: Database["public"]['Enums']["service"],"status"?: Database["public"]['Enums']["booking_status"],"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "bookings_client_id_fkey"
+      columns: ["client_id"]
+isOneToOne: false
+      referencedRelation: "clients"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "bookings_facility_id_fkey"
+      columns: ["facility_id"]
+isOneToOne: false
+      referencedRelation: "facilities"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"clients": {
                   Row: {
                     "coop_id": string | null,"created_at": string,"id": string,"kind": Database["public"]['Enums']["client_kind"],"municipality_id": string | null,"name": string,"phone": string,"updated_at": string
                   }
@@ -162,7 +188,7 @@ isOneToOne: false
             [_ in never]: never
           }
           Enums: {
-            "client_kind": "farmer"|"coop"|"trader"|"buyer","machine_type": "dryer"|"mill","sms_direction": "inbound"|"outbound","sms_prompt_kind": "ai_confirm"|"reschedule","sms_prompt_status": "open"|"accepted"|"declined"|"expired","sms_status": "received"|"processed"|"queued"|"sent"|"failed","staff_role": "encoder"|"manager"
+            "booking_channel": "sms"|"staff","booking_status": "confirmed"|"reschedule_proposed"|"arrived"|"cancelled"|"no_show","client_kind": "farmer"|"coop"|"trader"|"buyer","machine_type": "dryer"|"mill","service": "drying"|"milling","sms_direction": "inbound"|"outbound","sms_prompt_kind": "ai_confirm"|"reschedule","sms_prompt_status": "open"|"accepted"|"declined"|"expired","sms_status": "received"|"processed"|"queued"|"sent"|"failed","staff_role": "encoder"|"manager"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -282,7 +308,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "client_kind": ["farmer", "coop", "trader", "buyer"],"machine_type": ["dryer", "mill"],"sms_direction": ["inbound", "outbound"],"sms_prompt_kind": ["ai_confirm", "reschedule"],"sms_prompt_status": ["open", "accepted", "declined", "expired"],"sms_status": ["received", "processed", "queued", "sent", "failed"],"staff_role": ["encoder", "manager"]
+            "booking_channel": ["sms", "staff"],"booking_status": ["confirmed", "reschedule_proposed", "arrived", "cancelled", "no_show"],"client_kind": ["farmer", "coop", "trader", "buyer"],"machine_type": ["dryer", "mill"],"service": ["drying", "milling"],"sms_direction": ["inbound", "outbound"],"sms_prompt_kind": ["ai_confirm", "reschedule"],"sms_prompt_status": ["open", "accepted", "declined", "expired"],"sms_status": ["received", "processed", "queued", "sent", "failed"],"staff_role": ["encoder", "manager"]
           }
         }
 } as const
