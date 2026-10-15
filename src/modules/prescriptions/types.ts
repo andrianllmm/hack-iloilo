@@ -1,0 +1,42 @@
+// Public contract of M10 (owned by #36). Comment on each ticket that uses it before changing its shape.
+
+export type PrescriptionKind =
+  "move_bookings" | "fill_idle" | "mill_full_loads" | "store_mill_later";
+
+export type Decision = "accepted" | "dismissed";
+
+type Base = {
+  kind: PrescriptionKind;
+  /** Stable hash of the inputs; same inputs → same key. */
+  key: string;
+  /** e.g. "Oct 20 is 30 t over". */
+  title: string;
+  /** Every number the card shows; the only input to `explain()`. */
+  facts: Record<string, string | number>;
+  decision: Decision | null;
+};
+
+/** One booking moved off an overloaded day. */
+export type Move = {
+  bookingId: string;
+  ref: string;
+  client: string;
+  /** `YYYY-MM-DD`: the overloaded day it leaves. */
+  from: string;
+  /** `YYYY-MM-DD`: the nearest day in its flex window with room. */
+  to: string;
+  kg: number;
+};
+
+export type MoveBookingsPrescription = Base & {
+  kind: "move_bookings";
+  /** The overloaded dryer day. */
+  date: string;
+  moves: Move[];
+  /** Overflow left after the moves, kg. */
+  remainderKg: number;
+  /** Bookings already asked to move onto this day, counted in the overflow, kg. */
+  incomingKg: number;
+};
+
+export type Prescription = MoveBookingsPrescription;

@@ -1,0 +1,142 @@
+import { describe, expect, it } from "vitest";
+import {
+  daySpan,
+  hashKey,
+  moveBookings,
+  type DryerDay,
+  type OpenBooking,
+} from "./logic";
+
+const CAP = 40_000;
+
+/** Dryer days from Oct 18 with the given firm loads, kg. */
+const dryer = (...loads: number[]): DryerDay[] =>
+  loads.map((firmKg, i) => ({
+    date: `2026-10-${18 + i}`,
+    capacityKg: CAP,
+    firmKg,
+  }));
+
+const booking = (
+  ref: string,
+  kg: number,
+  date: string,
+  flexDays: number,
+  extra: Partial<OpenBooking> = {},
+): OpenBooking => ({
+  id: ref.toLowerCase(),
+  ref,
+  client: `Client ${ref}`,
+  kg,
+  scheduledDate: date,
+  preferredDate: date,
+  flexDays,
+  status: "confirmed",
+  proposedDate: null,
+  ...extra,
+});
+
+describe("moveBookings", () => {
+  it("clears a 30 t overflow with three flexible bookings, largest first", () => {
+    // Oct 20 is 30 t over; Oct 21 has 12 t room, Oct 22 has 25 t, Oct 19 10 t.
+    const days = dryer(40_000, 30_000, 70_000, 28_000, 15_000);
+    const bookings = [
+      booking("AAAAAA", 8_000, "2026-10-20", 2),
+      booking("BBBBBB", 12_000, "2026-10-20", 3),
+      booking("CCCCCC", 10_000, "2026-10-20", 1),
+      booking("FIXED1", 20_000, "2026-10-20", 0),
+    ];
+    const [rx, ...rest] = moveBookings({
+      days,
+      bookings,
+      today: "2026-10-18",
+    });
+    expect(rest).toEqual([]);
+    expect(rx.title).toBe("Oct 20 is 30 t over");
+    expect(rx.moves.map((m) => [m.ref, m.to])).toEqual([
+      ["BBBBBB", "2026-10-21"], // 12 t, nearest later day fits exactly
+      ["CCCCCC", "2026-10-19"], // 10 t, Oct 21 now full, Oct 19 fits
+      ["AAAAAA", "2026-10-22"], // 8 t, ±2 reaches Oct 22
+    ]);
+    expect(rx.remainderKg).toBe(0);
+    expect(rx.facts).toEqual({
+      day: "Oct 20",
+      overflow: "30 t",
+      bookings_moved: 3,
+      moved: "30 t",
+      new_days: "Oct 19–22",
+      remainder: "0 t",
+    });
+  });
+
+  it("reports the remainder when flexible bookings can't clear it", () => {
+    const days = dryer(39_000, 70_000, 39_000);
+    const bookings = [
+      booking("SMALL1", 1_000, "2026-10-19", 1),
+      booking("BIGONE", 29_000, "2026-10-19", 1),
+    ];
+    const [rx] = moveBookings({ days, bookings, today: "2026-10-18" });
+    expect(rx.moves.map((m) => m.ref)).toEqual(["SMALL1"]);
+    expect(rx.remainderKg).toBe(29_000);
+  });
+
+  it("never moves into the past or off fixed bookings", () => {
+    const days = dryer(0, 50_000, 40_000);
+    const bookings = [booking("EARLY1", 10_000, "2026-10-19", 1)];
+    expect(moveBookings({ days, bookings, today: "2026-10-19" })).toEqual([]);
+  });
+
+  it("counts bookings already asked to move on their proposed day", () => {
+    const days = dryer(50_000, 30_000);
+    const bookings = [
+      booking("ASKED1", 10_000, "2026-10-18", 1, {
+        status: "reschedule_proposed",
+        proposedDate: "2026-10-19",
+      }),
+      booking("OTHER1", 5_000, "2026-10-18", 1),
+    ];
+    // The proposal already clears Oct 18 and fills Oct 19.
+    expect(moveBookings({ days, bookings, today: "2026-10-18" })).toEqual([]);
+  });
+
+  it("states bookings already asked to move onto an overloaded day", () => {
+    const days = dryer(40_000, 40_000);
+    const bookings = [
+      booking("ASKED1", 5_000, "2026-10-18", 1, {
+        status: "reschedule_proposed",
+        proposedDate: "2026-10-19",
+      }),
+      booking("FLEX01", 5_000, "2026-10-19", 2),
+    ];
+    const [rx] = moveBookings({ days, bookings, today: "2026-10-18" });
+    expect(rx.title).toBe("Oct 19 is 5 t over");
+    expect(rx.incomingKg).toBe(5_000);
+    expect(rx.facts.already_asked_to_move_here).toBe("5 t");
+  });
+
+  it("gives the same key for the same inputs only", () => {
+    const run = (kg: number) =>
+      moveBookings({
+        days: dryer(30_000, 50_000),
+        bookings: [booking("AAAAAA", kg, "2026-10-19", 1)],
+        today: "2026-10-18",
+      })[0].key;
+    expect(run(10_000)).toBe(run(10_000));
+    expect(run(10_000)).not.toBe(run(9_000));
+  });
+});
+
+describe("daySpan", () => {
+  it("joins dates in one month or across months", () => {
+    expect(daySpan(["2026-10-22"])).toBe("Oct 22");
+    expect(daySpan(["2026-10-23", "2026-10-22"])).toBe("Oct 22–23");
+    expect(daySpan(["2026-10-30", "2026-11-02"])).toBe("Oct 30–Nov 2");
+  });
+});
+
+describe("hashKey", () => {
+  it("is stable and order-sensitive", () => {
+    expect(hashKey(["a", 1])).toBe(hashKey(["a", 1]));
+    expect(hashKey(["a", 1])).not.toBe(hashKey([1, "a"]));
+  });
+});

@@ -93,6 +93,25 @@ export async function markArrived(bookingId: string): Promise<Booking | null> {
   return data;
 }
 
+/**
+ * Asks to move a `confirmed` booking to `date` (M10). It keeps its scheduled
+ * date until the client answers. Null if it is no longer `confirmed`.
+ */
+export async function proposeReschedule(
+  bookingId: string,
+  date: string,
+): Promise<Booking | null> {
+  const { data, error } = await db()
+    .from("bookings")
+    .update({ status: "reschedule_proposed", proposed_date: date })
+    .eq("id", bookingId)
+    .eq("status", "confirmed")
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 /** Undoes `markArrived` when the check-in that caused it fails. */
 export async function unmarkArrived(
   bookingId: string,
