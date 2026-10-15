@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatVarietiesSms,
   parseOfferForm,
   parseQuoteArgs,
   parseSellArgs,
@@ -123,5 +124,38 @@ describe("parseSellArgs", () => {
   it("lets the schema reject a malformed dd/mm", () => {
     const parsed = { estKg: 3000, varietyCode: "RC222", dayMonth: "25-10" };
     expect(sellSmsSchema.safeParse(parsed).success).toBe(false);
+  });
+});
+
+describe("formatVarietiesSms", () => {
+  const codes = ["RC160", "RC216", "RC222"];
+
+  it("leads with the count and lists every code in the given order", () => {
+    const reply = formatVarietiesSms(codes, 320);
+    expect(reply).toBe(
+      "IRPC rice varieties (3): RC160, RC216, RC222. To sell: SELL <kg> <variety> <dd/mm>",
+    );
+  });
+
+  it("stays within the character limit", () => {
+    expect(formatVarietiesSms(codes, 320).length).toBeLessThanOrEqual(320);
+  });
+
+  it("keeps the full count even when the list is truncated", () => {
+    const max =
+      "IRPC rice varieties (3): RC160, RC216 …. To sell: SELL <kg> <variety> <dd/mm>"
+        .length;
+    const reply = formatVarietiesSms(codes, max);
+    expect(reply.length).toBeLessThanOrEqual(max);
+    expect(reply).toContain("(3)");
+    expect(reply).toContain("…");
+    expect(reply).toContain("RC160");
+    expect(reply).not.toContain("RC222");
+  });
+
+  it("handles an empty list", () => {
+    expect(formatVarietiesSms([], 320)).toBe(
+      "IRPC rice varieties: none yet. To sell: SELL <kg> <variety> <dd/mm>",
+    );
   });
 });

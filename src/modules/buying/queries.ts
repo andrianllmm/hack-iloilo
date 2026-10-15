@@ -15,9 +15,14 @@ import {
   quote,
 } from "@/modules/pricing/logic";
 import { priceOn } from "@/modules/pricing/queries";
-import { helpText, parseDayMonth } from "@/modules/sms/logic";
+import { helpText, parseDayMonth, SMS_MAX_CHARS } from "@/modules/sms/logic";
 import { commandUsages, type CommandContext } from "@/modules/sms/registry";
-import { currentFacility, findVarietyByCode } from "@/modules/setup/queries";
+import {
+  currentFacility,
+  findVarietyByCode,
+  listVarieties,
+} from "@/modules/setup/queries";
+import { formatVarietiesSms } from "./logic";
 import type { CreateOfferInput, QuoteSmsInput, SellSmsInput } from "./logic";
 
 export type Offer = Database["public"]["Tables"]["sell_offers"]["Row"];
@@ -274,5 +279,14 @@ export async function sellBySms(
   return (
     `IRPC: Offer recorded. Ref ${offer.ref}: ${formatKg(offer.est_kg)} ${variety.code} ` +
     `for harvest ${formatDate(harvestDate)}. We will text you when the manager decides.`
+  );
+}
+
+/** `VARIETIES`: the rice variety codes IRPC recognizes, for use in `SELL`. */
+export async function varietiesBySms(): Promise<string> {
+  const varieties = await listVarieties();
+  return formatVarietiesSms(
+    varieties.map((v) => v.code),
+    SMS_MAX_CHARS,
   );
 }
