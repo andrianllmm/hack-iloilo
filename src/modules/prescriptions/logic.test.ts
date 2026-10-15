@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { electricityPerKg } from "@/modules/pricing/logic";
 import { isGsm7, SMS_MAX_CHARS } from "@/modules/sms/logic";
 import {
-  cardDates,
   dayList,
   daySpan,
   fillIdle,
@@ -12,7 +11,9 @@ import {
   millFullLoads,
   type MillDay,
   moveBookings,
+  storeMillLater,
   templateNote,
+  type PoolDay,
   type DryerDay,
   type OpenBooking,
 } from "./logic";
@@ -173,14 +174,14 @@ describe("templateNote", () => {
       booking("BBBBBB", 10_000, "2026-10-19", 1),
     ]);
     expect(templateNote(p)).toBe(
-      "Oct 19 is 30 t over. Moving 2 flexible bookings to Oct 18–20 clears it without turning anyone away.",
+      "Moving 2 flexible bookings to Oct 18–20 clears it without turning anyone away.",
     );
   });
 
   it("states what is left over", () => {
     const p = rx([booking("AAAAAA", 20_000, "2026-10-19", 1)]);
     expect(templateNote(p)).toBe(
-      "Oct 19 is 30 t over. Moving 1 flexible booking to Oct 20 leaves 10 t over.",
+      "Moving 1 flexible booking to Oct 20 leaves 10 t over.",
     );
   });
 });
@@ -330,6 +331,9 @@ describe("millFullLoads", () => {
       full_per_kg: "₱0.38",
       saving_per_kg: "₱0.17",
     });
+    expect(templateNote(rx)).toBe(
+      "Base load runs 4 fewer days, saving ₱0.17/kg in electricity.",
+    );
   });
 
   it("fills around milling bookings", () => {
@@ -350,29 +354,58 @@ describe("millFullLoads", () => {
   });
 });
 
-describe("cardDates", () => {
-  it("covers every day of an idle stretch", () => {
-    const [rx] = fillIdle({
-      stretches: [{ from: "2026-10-30", to: "2026-11-01" }],
-      candidates: [
-        {
-          clientId: "a",
-          name: "A",
-          phone: "+639170000001",
-          municipality: null,
-          pastKg: 0,
-          kind: "farmer",
-          hasOpenBooking: false,
-        },
-      ],
-      rates: {
-        dryingMinorPerKg: 160,
-        millingMinorPerKg: 330,
-        buyBaseMinorPerKg: 2100,
-        buyReferenceMc: 25,
-      },
-      today: "2026-10-15",
+describe("storeMillLater", () => {
+  const MILL = 49_600;
+  /** Mill days from Oct 20 by firm load; idle under 30% of capacity. */
+  const mill = (...loads: number[]): PoolDay[] =>
+    loads.map((firmKg, i) => ({
+      date: `2026-10-${20 + i}`,
+      capacityKg: MILL,
+      firmKg,
+      idle: firmKg < 0.3 * MILL,
+    }));
+  const storage = (...room: number[]): PoolDay[] =>
+    room.map((r, i) => ({
+      date: `2026-10-${20 + i}`,
+      capacityKg: 1_100_000,
+      firmKg: 1_100_000 - r,
+      idle: false,
+    }));
+
+  it("stores the overflow and mills it on the nearest idle mill days", () => {
+    // Oct 20 is 60 t over; Oct 21 is busy, Oct 22 and 23 are idle.
+    const [rx, ...rest] = storeMillLater({
+      mill: mill(109_600, 40_000, 10_000, 0),
+      storage: storage(500_000, 500_000, 500_000, 500_000),
     });
-    expect(cardDates(rx)).toEqual(["2026-10-30", "2026-10-31", "2026-11-01"]);
+    expect(rest).toEqual([]);
+    expect(rx.title).toBe("Mill is 60 t over on Oct 20");
+    expect(rx.millDays).toEqual([
+      { date: "2026-10-22", kg: 39_600 },
+      { date: "2026-10-23", kg: 20_400 },
+    ]);
+    expect(rx.remainderKg).toBe(0);
+    expect(templateNote(rx)).toBe(
+      "Store 60 t of dried palay and mill it on Oct 22–23, when the mill is quiet.",
+    );
+  });
+
+  it("stores only what fits every day it waits", () => {
+    // Storage has 5 t room on Oct 21, so only 5 t can wait until Oct 22.
+    const [rx] = storeMillLater({
+      mill: mill(59_600, 40_000, 0),
+      storage: storage(500_000, 5_000, 500_000),
+    });
+    expect(rx.millDays).toEqual([{ date: "2026-10-22", kg: 5_000 }]);
+    expect(rx.remainderKg).toBe(5_000);
+  });
+
+  it("gives no card without a later idle mill day", () => {
+    expect(
+      storeMillLater({
+        mill: mill(40_000, 59_600, 40_000),
+        storage: storage(500_000, 500_000, 500_000),
+      }),
+    ).toEqual([]);
   });
 });

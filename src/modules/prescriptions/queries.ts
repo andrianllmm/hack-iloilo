@@ -16,6 +16,8 @@ import {
   fillIdle,
   millFullLoads,
   moveBookings,
+  storeMillLater,
+  type PoolDay,
   type Candidate,
   type OpenBooking,
 } from "./logic";
@@ -24,16 +26,13 @@ export type { Prescription } from "./types";
 
 /**
  * Suggestions over the capacity window, recomputed on each call, with any
- * saved decision. Only decisions are stored. Pass the window's `capacityByDay`
- * when the caller already has it.
+ * saved decision. Only decisions are stored.
  */
-export async function prescriptions(
-  capacity?: DayPool[],
-): Promise<Prescription[]> {
+export async function prescriptions(): Promise<Prescription[]> {
   const today = todayManila();
   const to = addDays(today, WINDOW_DAYS - 1);
   const [days, rows] = await Promise.all([
-    capacity ?? capacityByDay(today, to),
+    capacityByDay(today, to),
     bookingList(today, to),
   ]);
   const bookings: OpenBooking[] = rows.flatMap((b) =>
@@ -79,7 +78,7 @@ export async function prescriptions(
     idleSuggestions(days, today),
     millSuggestions(days, milling),
   ]);
-  suggested.push(...idle, ...mill);
+  suggested.push(...idle, ...mill, ...storeMillLater(poolInputs(days)));
   const decisions = await decisionsByKey(suggested.map((s) => s.key));
   return suggested.map((s) => ({
     ...s,
@@ -159,6 +158,18 @@ async function millSuggestions(
         tariffMinorPerKwh: facility.tariff_minor_per_kwh,
       }),
   });
+}
+
+/** Mill and storage days with their firm load, for store-now-mill-later. */
+function poolInputs(days: DayPool[]): { mill: PoolDay[]; storage: PoolDay[] } {
+  const firm = (pool: "mill" | "storage") =>
+    poolDays(days, pool).map((d) => ({
+      date: d.date,
+      capacityKg: d.capacityKg,
+      firmKg: d.load.confirmed.mid + d.load.offer.mid,
+      idle: d.idle,
+    }));
+  return { mill: firm("mill"), storage: firm("storage") };
 }
 
 async function decisionsByKey(keys: string[]): Promise<Map<string, Decision>> {

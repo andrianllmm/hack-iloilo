@@ -43,6 +43,9 @@ from (
   ('M6UC8H', 'drying',  'c1000000-0000-0000-0000-000000000026', '+639171000001', 'sms',    8000, 5, 1, 5, 'confirmed'),
   ('C9LT5G', 'milling', 'c2000000-0000-0000-0000-000000000002', null,            'sms',   15000, 2, 1, 2, 'confirmed'),
   ('J2PB7D', 'milling', 'c0000000-0000-0000-0000-000000000001', null,            'staff', 20000, 4, 3, 4, 'confirmed'),
+  -- Mill peak: day 8 is 10.4 t over the 49.6 t mill day (M10 store now, mill later).
+  ('P7VD9J', 'milling', 'c0000000-0000-0000-0000-000000000002', null,            'staff', 35000, 8, 0, 8, 'confirmed'),
+  ('S8WE2K', 'milling', 'c2000000-0000-0000-0000-000000000001', null,            'sms',   25000, 8, 0, 8, 'confirmed'),
   ('Y5MR3W', 'milling', 'c2000000-0000-0000-0000-000000000003', null,            'sms',    8000, 6, 0, 6, 'confirmed')
 ) as v (ref, service, client_id, booked_by_phone, channel, est_kg, day, flex_days, scheduled_day, status)
 join public.clients c on c.id = v.client_id::uuid;

@@ -72,8 +72,21 @@ export type MillFullLoadsPrescription = Base & {
   fullMinorPerKg: number;
 };
 
+export type StoreMillLaterPrescription = Base & {
+  kind: "store_mill_later";
+  /** The overloaded mill day. */
+  date: string;
+  /** Overflow stored, then milled on quiet mill days, kg per day. */
+  millDays: { date: string; kg: number }[];
+  /** Overflow with no storage room or quiet mill day left, kg. */
+  remainderKg: number;
+};
+
 export type Prescription =
-  MoveBookingsPrescription | FillIdlePrescription | MillFullLoadsPrescription;
+  | MoveBookingsPrescription
+  | FillIdlePrescription
+  | MillFullLoadsPrescription
+  | StoreMillLaterPrescription;
 
 /** A prescription as the rules compute it, before any decision is read. */
 export type Suggestion = Prescription extends infer P
