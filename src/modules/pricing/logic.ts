@@ -225,6 +225,90 @@ export type ElectricityInput = {
   tariffMinorPerKwh: number;
 };
 
+/** Ownership of the batch, which decides how its revenue is figured. */
+export type BatchOwnership = "custom" | "irpc";
+
+/** Raw numbers a batch's direct cost and margin are computed from (TRD M7). */
+export type BatchCostInput = {
+  /** Who owns the palay: `custom` bills fees, `irpc` nets dispatches. */
+  ownership: BatchOwnership;
+  /** Hours the batch spent drying (0 if it never dried). */
+  dryHours: number;
+  /** Hours the batch spent milling (0 if it never milled). */
+  millHours: number;
+  /** Rated power of the dryer used, in kW (0 if none). */
+  dryerRatedKw: number;
+  /** Rated power of the mill used, in kW (0 if none). */
+  millRatedKw: number;
+  /** Electricity tariff, in centavos per kWh. */
+  tariffMinorPerKwh: number;
+  /** Labor rate, in centavos per hour. */
+  laborMinorPerHour: number;
+  /** Received weight, in kg, the per-kg margin is spread over. */
+  netKg: number;
+  /** Weight fed into the mill, in kg (custom milling fee basis). */
+  millInKg: number;
+  /** Drying fee, in centavos per kg (custom revenue). */
+  dryingFeeMinorPerKg: number;
+  /** Milling fee, in centavos per kg (custom revenue). */
+  millingFeeMinorPerKg: number;
+  /** Σ dispatch kg × price, in centavos (IRPC revenue). */
+  dispatchRevenueMinor: number;
+  /** Centavos IRPC paid for the palay (IRPC revenue). */
+  purchaseCostMinor: number;
+};
+
+/** A batch's direct cost against its revenue, all in centavos. */
+export type BatchCost = {
+  electricityMinor: number;
+  laborMinor: number;
+  revenueMinor: number;
+  marginMinor: number;
+  /** Margin spread over received kg, in centavos per kg. */
+  perKgMinor: number;
+};
+
+/**
+ * Direct cost and margin for one batch (TRD M7). Electricity is stage hours ×
+ * machine `rated_kw` × tariff over drying and milling; labor is stage hours ×
+ * rate. Revenue is the drying and milling fees for a custom batch, or
+ * dispatches less the palay purchase cost for an IRPC-owned one. Margin is
+ * revenue less direct cost, and per-kg margin spreads it over received kg.
+ * Base load is not split per batch — it lives only in `electricityPerKg`.
+ */
+export function batchCost({
+  ownership,
+  dryHours,
+  millHours,
+  dryerRatedKw,
+  millRatedKw,
+  tariffMinorPerKwh,
+  laborMinorPerHour,
+  netKg,
+  millInKg,
+  dryingFeeMinorPerKg,
+  millingFeeMinorPerKg,
+  dispatchRevenueMinor,
+  purchaseCostMinor,
+}: BatchCostInput): BatchCost {
+  const machineKwh = dryHours * dryerRatedKw + millHours * millRatedKw;
+  const electricityMinor = Math.round(machineKwh * tariffMinorPerKwh);
+  const laborMinor = Math.round((dryHours + millHours) * laborMinorPerHour);
+  const revenueMinor =
+    ownership === "custom"
+      ? dryingFeeMinorPerKg * netKg + millingFeeMinorPerKg * millInKg
+      : dispatchRevenueMinor - purchaseCostMinor;
+  const marginMinor = revenueMinor - electricityMinor - laborMinor;
+  const perKgMinor = netKg > 0 ? Math.round(marginMinor / netKg) : 0;
+  return {
+    electricityMinor,
+    laborMinor,
+    revenueMinor,
+    marginMinor,
+    perKgMinor,
+  };
+}
+
 /**
  * Electricity cost per kg, in centavos. Base load is added over the whole run,
  * not split per batch (TRD M7). M9's headline and M10's full-load plan share this.

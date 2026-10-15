@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  batchCost,
+  type BatchCostInput,
   electricityPerKg,
   parsePriceForm,
   type PriceRule,
@@ -180,6 +182,62 @@ describe("electricityPerKg", () => {
       tariffMinorPerKwh: 1200,
     });
     expect(perKg).toBe(171);
+  });
+});
+
+describe("batchCost", () => {
+  // Seed-aligned rates: tariff ₱12.00/kWh (1200), labor ₱625.00/hr (62500),
+  // dryer 15 kW, mill 75 kW.
+  const base: BatchCostInput = {
+    ownership: "custom",
+    dryHours: 8,
+    millHours: 3,
+    dryerRatedKw: 15,
+    millRatedKw: 75,
+    tariffMinorPerKwh: 1200,
+    laborMinorPerHour: 62500,
+    netKg: 10000,
+    millInKg: 8900,
+    dryingFeeMinorPerKg: 150,
+    millingFeeMinorPerKg: 120,
+    dispatchRevenueMinor: 0,
+    purchaseCostMinor: 0,
+  };
+
+  // machine kWh = 8×15 + 3×75 = 345; × 1200 = ₱4,140.00
+  // labor = 11 h × 62500 = ₱6,875.00
+  it("sums electricity and labor from stage hours and rated power", () => {
+    const c = batchCost(base);
+    expect(c.electricityMinor).toBe(414_000);
+    expect(c.laborMinor).toBe(687_500);
+  });
+
+  // custom revenue = 150×10000 + 120×8900 = 1,500,000 + 1,068,000 = 2,568,000
+  // margin = 2,568,000 − 414,000 − 687,500 = 1,466,500; ÷ 10000 kg = 147
+  it("prices a custom milling run off the drying and milling fees", () => {
+    const c = batchCost(base);
+    expect(c.revenueMinor).toBe(2_568_000);
+    expect(c.marginMinor).toBe(1_466_500);
+    expect(c.perKgMinor).toBe(147);
+  });
+
+  // IRPC revenue = dispatches 2,000,000 − purchase 1,200,000 = 800,000
+  // margin = 800,000 − 414,000 − 687,500 = −301,500; ÷ 10000 kg = −30
+  it("nets IRPC revenue against the palay purchase cost", () => {
+    const c = batchCost({
+      ...base,
+      ownership: "irpc",
+      dispatchRevenueMinor: 2_000_000,
+      purchaseCostMinor: 1_200_000,
+    });
+    expect(c.revenueMinor).toBe(800_000);
+    expect(c.marginMinor).toBe(-301_500);
+    expect(c.perKgMinor).toBe(-30);
+  });
+
+  it("returns a zero per-kg margin when no weight was received", () => {
+    const c = batchCost({ ...base, netKg: 0 });
+    expect(c.perKgMinor).toBe(0);
   });
 });
 
