@@ -14,7 +14,7 @@ uv run pytest
 2. Fit lag weights (k = 5–9 half-months) with non-negative least squares, pooled across municipalities (`model.py`). Lags wrap around the year (Jan–Apr harvest comes from last year's late plantings, assumed like this year's).
 3. Evaluate leave-one-municipality-out. The held-out municipality gets the others' pooled yield so its own harvest never leaks in.
 4. Apply IRPC's share with p10–p90 ranges; spread each half-month over its days (`train.py`).
-5. Export `out/arrivals.csv` and `out/metrics.json`, then load with `pnpm import:forecast`.
+5. Export `out/arrivals.csv` and `out/metrics.json`, then load with `pnpm import:forecast`, and run `pnpm seed:forecast` to refresh the local seed.
 
 Exports cover only half-months whose lags all fall inside the planting year: `opa-2025` (May 16, 2025 – Mar 15, 2026) and `demo-synthetic` from a generated 2026 report (May 16, 2026 – Mar 15, 2027). Demo data is never used for training.
 
