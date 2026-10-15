@@ -23,6 +23,7 @@ import { joinManila, splitManila } from "@/lib/dates";
 import {
   finishDryingBatch,
   finishMillingBatch,
+  recordReceivingBatch,
   skipDryingBatch,
   startDryingBatch,
   startMillingBatch,
@@ -33,6 +34,8 @@ import {
   type FinishDryingInput,
   finishMillingSchema,
   type FinishMillingInput,
+  receivingSchema,
+  type ReceivingInput,
   startDryingSchema,
   type StartDryingInput,
   startMillingSchema,
@@ -41,6 +44,7 @@ import {
 import type { Batch } from "../types";
 
 type Machine = { id: string; code: string };
+type Variety = { id: string; code: string; name: string };
 
 /** Current Manila wall-clock as the picker's ISO format. */
 function nowManila(): string {
@@ -53,14 +57,21 @@ export function BatchStages({
   batch,
   dryers,
   mills,
+  varieties,
 }: {
   batch: Pick<Batch, "id" | "stage">;
   dryers: Machine[];
   mills: Machine[];
+  varieties: Variety[];
 }) {
   switch (batch.stage) {
     case "received":
-      return <ReceivedForms batchId={batch.id} dryers={dryers} />;
+      return (
+        <div className="flex flex-col gap-8">
+          <ReceivingForm batchId={batch.id} varieties={varieties} />
+          <ReceivedForms batchId={batch.id} dryers={dryers} />
+        </div>
+      );
     case "drying":
       return <FinishDryingForm batchId={batch.id} />;
     case "stored":
@@ -136,6 +147,132 @@ function StageCard({
         {extra}
       </div>
     </form>
+  );
+}
+
+function ReceivingForm({
+  batchId,
+  varieties,
+}: {
+  batchId: string;
+  varieties: Variety[];
+}) {
+  const formId = useId();
+  const form = useForm<ReceivingInput>({
+    resolver: zodResolver(receivingSchema),
+    defaultValues: {
+      bags: undefined,
+      net_kg: undefined,
+      variety_id: "",
+      mc: undefined,
+      damaged_pct: 0,
+      immature_pct: 0,
+      foreign_pct: 0,
+    },
+  });
+  const { pending, message, submit } = useStageSubmit(
+    form,
+    (input) => recordReceivingBatch(batchId, input),
+    "Receiving saved.",
+  );
+  const errors = form.formState.errors;
+  const asNumber = { valueAsNumber: true } as const;
+
+  const pctField = (
+    name: "damaged_pct" | "immature_pct" | "foreign_pct",
+    label: string,
+  ) => (
+    <Field data-invalid={!!errors[name]}>
+      <FieldLabel htmlFor={`${formId}-${name}`}>{label}</FieldLabel>
+      <Input
+        id={`${formId}-${name}`}
+        type="number"
+        inputMode="decimal"
+        step="0.01"
+        min={0}
+        max={100}
+        aria-invalid={!!errors[name]}
+        disabled={pending}
+        {...form.register(name, asNumber)}
+      />
+      <FieldError errors={[errors[name]]} />
+    </Field>
+  );
+
+  return (
+    <StageCard
+      title="Receiving report"
+      description="Weigh and grade the delivery. IRPC palay is priced on save."
+      pending={pending}
+      message={message}
+      submit={submit}
+      submitLabel={pending ? "Saving…" : "Save receiving"}
+    >
+      <Field data-invalid={!!errors.bags}>
+        <FieldLabel htmlFor={`${formId}-bags`}>Sacks</FieldLabel>
+        <Input
+          id={`${formId}-bags`}
+          type="number"
+          inputMode="numeric"
+          step={1}
+          min={0}
+          aria-invalid={!!errors.bags}
+          disabled={pending}
+          {...form.register("bags", asNumber)}
+        />
+        <FieldError errors={[errors.bags]} />
+      </Field>
+      <Field data-invalid={!!errors.net_kg}>
+        <FieldLabel htmlFor={`${formId}-net`}>Net weight (kg)</FieldLabel>
+        <Input
+          id={`${formId}-net`}
+          type="number"
+          inputMode="numeric"
+          step={1}
+          min={1}
+          aria-invalid={!!errors.net_kg}
+          disabled={pending}
+          {...form.register("net_kg", asNumber)}
+        />
+        <FieldError errors={[errors.net_kg]} />
+      </Field>
+      <Field data-invalid={!!errors.variety_id}>
+        <FieldLabel htmlFor={`${formId}-variety`}>Variety</FieldLabel>
+        <NativeSelect
+          id={`${formId}-variety`}
+          className="w-full"
+          aria-invalid={!!errors.variety_id}
+          disabled={pending}
+          {...form.register("variety_id")}
+        >
+          <NativeSelectOption value="">Not recorded</NativeSelectOption>
+          {varieties.map((v) => (
+            <NativeSelectOption key={v.id} value={v.id}>
+              {v.code} — {v.name}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+        <FieldError errors={[errors.variety_id]} />
+      </Field>
+      <Field data-invalid={!!errors.mc}>
+        <FieldLabel htmlFor={`${formId}-mc`}>Moisture content (%)</FieldLabel>
+        <Input
+          id={`${formId}-mc`}
+          type="number"
+          inputMode="decimal"
+          step="0.1"
+          min={0}
+          max={100}
+          aria-invalid={!!errors.mc}
+          disabled={pending}
+          {...form.register("mc", asNumber)}
+        />
+        <FieldError errors={[errors.mc]} />
+      </Field>
+      {pctField("damaged_pct", "Damaged (%)")}
+      {pctField("immature_pct", "Immature (%)")}
+      {pctField("foreign_pct", "Foreign matter (%)")}
+    </StageCard>
   );
 }
 

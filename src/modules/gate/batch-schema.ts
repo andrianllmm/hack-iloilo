@@ -15,6 +15,32 @@ const mc = z
   .min(0, "Moisture can't be negative.")
   .max(100, "Moisture can't exceed 100%.");
 
+/** A deduction share from the Receiving Report, a percent of the delivery. */
+const pct = z
+  .number("Enter a percentage.")
+  .min(0, "Can't be negative.")
+  .max(100, "Can't exceed 100%.");
+
+/**
+ * The Receiving Report filled on a `received` batch: sacks, net weight,
+ * variety, moisture and the grading deductions. Saving it prices IRPC palay.
+ */
+export const receivingSchema = z.object({
+  bags: z
+    .number("Enter the number of sacks.")
+    .int("Enter whole sacks.")
+    .nonnegative("Sacks can't be negative."),
+  net_kg: kg,
+  // A blank select means "no variety yet"; the action maps it to null. The FK
+  // checks any id given.
+  variety_id: z.string().trim(),
+  mc,
+  damaged_pct: pct,
+  immature_pct: pct,
+  foreign_pct: pct,
+});
+export type ReceivingInput = z.infer<typeof receivingSchema>;
+
 /** Start drying: which dryer and when it went in. */
 export const startDryingSchema = z.object({
   dryer_id: z.guid("Choose a dryer."),
