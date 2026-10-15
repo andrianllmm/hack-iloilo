@@ -53,7 +53,9 @@ const unitOf = (word: string): "kg" | "sacks" | undefined =>
 
 /**
  * Reads a plain follow-up reply to `bookingAsk` without AI: "1000" (kg, as
- * asked), "20 sako", "20/10", "dry". Null when nothing is recognised.
+ * asked), "20 sako", "20/10", "dry". A number is an amount only with a unit
+ * or as the whole reply, so "sa Oct 20" isn't 20 kg. Null when nothing is
+ * recognised.
  */
 export function readBookingReply(text: string): {
   amount?: number;
@@ -68,16 +70,20 @@ export function readBookingReply(text: string): {
   if (dayMonth) read.dayMonth = dayMonth;
 
   const unit = tokens.map(unitOf).find(Boolean);
-  const amount = tokens
-    .filter((t) => t !== dayMonth)
-    .map((t) => /^(\d[\d,]*(?:\.\d+)?)([a-z]*)$/.exec(t))
-    .find(Boolean);
+  let amount: { value: number; unit: "kg" | "sacks" } | undefined;
+  tokens.forEach((token, i) => {
+    const match = /^(\d[\d,]*(?:\.\d+)?)([a-z]*)$/.exec(token);
+    if (amount || !match || token === dayMonth) return;
+    const value = Number(match[1].replace(/,/g, ""));
+    // "20 sako" or "20 ka sako"
+    const next = tokens[i + 1] === "ka" ? tokens[i + 2] : tokens[i + 1];
+    const given = match[2] ? unitOf(match[2]) : unitOf(next ?? "");
+    if (value > 0 && (given || tokens.length === 1))
+      amount = { value, unit: given ?? "kg" };
+  });
   if (amount) {
-    const value = Number(amount[1].replace(/,/g, ""));
-    if (value > 0) {
-      read.amount = value;
-      read.unit = unitOf(amount[2]) ?? unit ?? "kg";
-    }
+    read.amount = amount.value;
+    read.unit = amount.unit;
   } else if (unit) read.unit = unit;
 
   if (/\b(dry|drying|bulad|pauga)\b/.test(text.toLowerCase()))

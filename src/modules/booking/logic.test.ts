@@ -325,10 +325,19 @@ describe("readBookingReply", () => {
 
   it("reads a day/month without taking it as the amount", () => {
     expect(readBookingReply("20/10")).toEqual({ dayMonth: "20/10" });
-    expect(readBookingReply("500 sa 20/10")).toEqual({
+    expect(readBookingReply("500 kg sa 20/10")).toEqual({
       amount: 500,
       unit: "kg",
       dayMonth: "20/10",
+    });
+  });
+
+  it("takes a number as the amount only with a unit or on its own", () => {
+    expect(readBookingReply("sa Oct 20")).toBeNull();
+    expect(readBookingReply("Lunes 20")).toBeNull();
+    expect(readBookingReply("1000 kg sa Lunes")).toEqual({
+      amount: 1000,
+      unit: "kg",
     });
   });
 
