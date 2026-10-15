@@ -49,7 +49,7 @@ export function AppSidebar({ staff }: { staff: Staff }) {
                 <Logo className="size-8" />
               </div>
               <div className="grid text-left leading-tight">
-                <span className="font-medium">SACKto</span>
+                <span className="font-medium">SACKTO</span>
                 <span className="text-xs text-muted-foreground">
                   IRPC Capacity Planning
                 </span>
