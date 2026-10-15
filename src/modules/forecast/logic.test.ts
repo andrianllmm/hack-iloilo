@@ -3,7 +3,6 @@ import {
   assertForecastMetrics,
   byMunicipality,
   halfMonth,
-  lagWeights,
   parseArrivalsCsv,
   peak,
   sumByDay,
@@ -56,6 +55,7 @@ describe("assertForecastMetrics", () => {
     lags_half_months: [5, 6],
     lag_weights: [0.4, 0.6],
     lead_days: 76,
+    mean_lag_days: 95.6,
     r2: { province_held_out: 0.86, municipality_half_month_held_out: 0.44 },
     band: { p10: -0.4, p90: 0.4 },
   };
@@ -66,17 +66,6 @@ describe("assertForecastMetrics", () => {
 
   it("rejects missing accuracy", () => {
     expect(() => assertForecastMetrics({ ...metrics, r2: {} })).toThrow();
-  });
-});
-
-describe("lagWeights", () => {
-  it("pairs lags with weights and days", () => {
-    expect(
-      lagWeights({ lags_half_months: [5, 6], lag_weights: [0.4, 0.6] }),
-    ).toEqual([
-      { halfMonths: 5, days: 76, weight: 0.4 },
-      { halfMonths: 6, days: 91, weight: 0.6 },
-    ]);
   });
 });
 

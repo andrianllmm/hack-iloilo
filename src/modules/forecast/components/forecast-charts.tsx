@@ -14,6 +14,7 @@ import {
   Card,
   CardAction,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -77,6 +78,7 @@ export function ArrivalsCard({
         <CardTitle>
           Expected arrivals per {view === "weekly" ? "week" : "day"} (t)
         </CardTitle>
+        <CardDescription>Lines show the likely range.</CardDescription>
         <CardAction>
           <ToggleGroup
             variant="outline"
@@ -132,42 +134,5 @@ export function ArrivalsCard({
         </ChartContainer>
       </CardContent>
     </Card>
-  );
-}
-
-const lagConfig = {
-  weight: { label: "Weight", color: "var(--chart-3)" },
-} satisfies ChartConfig;
-
-/** Share of each planting cohort harvested after ~N days. */
-export function LagWeightsChart({
-  lags,
-}: {
-  lags: { label: string; weight: number }[];
-}) {
-  return (
-    <ChartContainer config={lagConfig} className="aspect-auto h-40 w-full">
-      <BarChart data={lags} layout="vertical" margin={{ left: 0, right: 32 }}>
-        <XAxis type="number" hide domain={[0, "dataMax"]} />
-        <YAxis
-          type="category"
-          dataKey="label"
-          tickLine={false}
-          axisLine={false}
-          width={56}
-        />
-        <Bar
-          dataKey="weight"
-          fill="var(--color-weight)"
-          radius={4}
-          isAnimationActive={false}
-          label={{
-            position: "right",
-            className: "fill-foreground text-xs tabular-nums",
-            formatter: (w: unknown) => Number(w).toFixed(2),
-          }}
-        />
-      </BarChart>
-    </ChartContainer>
   );
 }

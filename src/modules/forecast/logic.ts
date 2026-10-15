@@ -84,23 +84,12 @@ export function assertForecastMetrics(
     Array.isArray(m.lag_weights) &&
     m.lags_half_months.length === m.lag_weights.length &&
     typeof m.lead_days === "number" &&
+    typeof m.mean_lag_days === "number" &&
     typeof m.r2?.province_held_out === "number" &&
     typeof m.r2?.municipality_half_month_held_out === "number" &&
     typeof m.band?.p10 === "number" &&
     typeof m.band?.p90 === "number";
   if (!ok) throw new Error("metrics.json is missing forecast fields");
-}
-
-/** Lag weights paired with their lag in half-months and approx. days. */
-export function lagWeights(
-  m: Pick<ForecastMetrics, "lags_half_months" | "lag_weights">,
-): { halfMonths: number; days: number; weight: number }[] {
-  return m.lags_half_months.map((k, i) => ({
-    halfMonths: k,
-    // A half-month averages 365.25 / 24 days.
-    days: Math.round((k * 365.25) / 24),
-    weight: m.lag_weights[i],
-  }));
 }
 
 /** Expected kg arriving, mid estimate with its p10–p90 range. */

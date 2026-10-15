@@ -15,8 +15,7 @@ export default function ForecastPage() {
           Arrival forecast
         </h1>
         <p className="text-sm text-muted-foreground">
-          Expected palay arrivals = municipal harvest × IRPC&apos;s share of
-          each municipality.
+          Palay expected to arrive at IRPC in the coming weeks.
         </p>
       </div>
       <Suspense fallback={<ForecastViewSkeleton />}>

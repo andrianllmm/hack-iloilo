@@ -28,7 +28,6 @@ import { addDays, todayManila } from "@/lib/dates";
 import { formatTonnes } from "@/lib/format";
 import {
   byMunicipality,
-  lagWeights,
   peak,
   sumByDay,
   sumByWeek,
@@ -36,11 +35,7 @@ import {
   type KgRange,
 } from "../logic";
 import { arrivalRows, latestForecastMetrics } from "../queries";
-import {
-  ArrivalsCard,
-  LagWeightsChart,
-  type ArrivalBar,
-} from "./forecast-charts";
+import { ArrivalsCard, type ArrivalBar } from "./forecast-charts";
 
 const CHART_WEEKS = 12;
 const TABLE_WEEKS = 8;
@@ -76,7 +71,7 @@ function bar(
     title,
     t: r.kgMid / 1000,
     range: [(r.kgMid - r.kgLow) / 1000, (r.kgHigh - r.kgMid) / 1000],
-    rangeLabel: rangeT(r),
+    rangeLabel: `likely ${rangeT(r)}`,
     peak: top,
   };
 }
@@ -105,7 +100,7 @@ function Stat({
   );
 }
 
-/** The forecast page body: headline, chart, municipalities and model details. */
+/** The forecast page body: headline, chart and municipalities. */
 export async function ForecastView() {
   await connection();
   const from = todayManila();
@@ -125,8 +120,7 @@ export async function ForecastView() {
           </EmptyMedia>
           <EmptyTitle>No forecast for the next {CHART_WEEKS} weeks</EmptyTitle>
           <EmptyDescription>
-            Train it in <code>data/forecast</code>, then run{" "}
-            <code>pnpm import:forecast</code>.
+            Expected arrivals show here once the forecast is loaded.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -143,32 +137,35 @@ export async function ForecastView() {
   const rest = municipalities.slice(TABLE_ROWS);
   const restTotal = total(rest);
 
+  const topPlace = municipalities[0];
+  const months = Math.round(metrics.mean_lag_days / 30);
+  const spread = Math.round(metrics.band.p90 * 100);
+
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Stat
-          label={`Expected arrivals, next ${CHART_WEEKS} weeks`}
+          label={`Expected palay, next ${CHART_WEEKS} weeks`}
           value={formatTonnes(all.kgMid)}
-          detail={`Range ${rangeT(all)}`}
+          detail={`Likely ${rangeT(all)}`}
         />
         <Stat
-          label="Peak week"
+          label="Busiest week"
           value={topWeek ? span(topWeek.from, topWeek.to) : "—"}
           detail={
             topWeek
-              ? `About ${formatTonnes(topWeek.kgMid)} (${rangeT(topWeek)})`
+              ? `About ${formatTonnes(topWeek.kgMid)}`
               : "No arrivals expected"
           }
         />
         <Stat
-          label="Held-out accuracy"
-          value={`R² ${metrics.r2.province_held_out.toFixed(2)}`}
-          detail={`Province total. Per municipality × half-month: ${metrics.r2.municipality_half_month_held_out.toFixed(2)}.`}
-        />
-        <Stat
-          label="Training data"
-          value="OPA 2025"
-          detail={metrics.irpc_share.source}
+          label="Top municipality"
+          value={topPlace?.municipality ?? "—"}
+          detail={
+            topPlace
+              ? `About ${formatTonnes(topPlace.kgMid)} in the next ${TABLE_WEEKS} weeks`
+              : "No arrivals expected"
+          }
         />
       </div>
 
@@ -181,101 +178,64 @@ export async function ForecastView() {
         )}
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>By municipality · next {TABLE_WEEKS} weeks</CardTitle>
-            <CardDescription>
-              Expected to IRPC, already × IRPC&apos;s share.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Municipality</TableHead>
-                  <TableHead className="text-right">Expected</TableHead>
-                  <TableHead className="text-right">Range</TableHead>
-                  <TableHead>Peak half-month</TableHead>
+      <Card>
+        <CardHeader>
+          <CardTitle>By municipality · next {TABLE_WEEKS} weeks</CardTitle>
+          <CardDescription>
+            Palay expected at IRPC from each municipality.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Municipality</TableHead>
+                <TableHead className="text-right">Expected</TableHead>
+                <TableHead className="text-right">Likely range</TableHead>
+                <TableHead>Busiest period</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {shown.map((m) => (
+                <TableRow key={m.municipality}>
+                  <TableCell className="font-medium">
+                    {m.municipality}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatTonnes(m.kgMid)}
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground tabular-nums">
+                    {rangeT(m)}
+                  </TableCell>
+                  <TableCell>
+                    {m.peak ? span(m.peak.from, m.peak.to) : "—"}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {shown.map((m) => (
-                  <TableRow key={m.municipality}>
-                    <TableCell className="font-medium">
-                      {m.municipality}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatTonnes(m.kgMid)}
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground tabular-nums">
-                      {rangeT(m)}
-                    </TableCell>
-                    <TableCell>
-                      {m.peak ? span(m.peak.from, m.peak.to) : "—"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-              {rest.length > 0 && (
-                <TableFooter>
-                  <TableRow>
-                    <TableCell>{rest.length} more municipalities</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatTonnes(restTotal.kgMid)}
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground tabular-nums">
-                      {rangeT(restTotal)}
-                    </TableCell>
-                    <TableCell />
-                  </TableRow>
-                </TableFooter>
-              )}
-            </Table>
-          </CardContent>
-        </Card>
+              ))}
+            </TableBody>
+            {rest.length > 0 && (
+              <TableFooter>
+                <TableRow>
+                  <TableCell>{rest.length} more municipalities</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatTonnes(restTotal.kgMid)}
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground tabular-nums">
+                    {rangeT(restTotal)}
+                  </TableCell>
+                  <TableCell />
+                </TableRow>
+              </TableFooter>
+            )}
+          </Table>
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Model</CardTitle>
-            <CardDescription>{metrics.evaluation}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <div>
-              <div className="text-xs text-muted-foreground">
-                Planting to harvest (lag weights)
-              </div>
-              <LagWeightsChart
-                lags={lagWeights(metrics).map((l) => ({
-                  label: `~${l.days} d`,
-                  weight: l.weight,
-                }))}
-              />
-            </div>
-            <dl className="grid grid-cols-2 gap-3">
-              <div>
-                <dt className="text-xs text-muted-foreground">Lead time</dt>
-                <dd className="font-medium tabular-nums">
-                  {metrics.lead_days} days
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">
-                  Range (p10–p90)
-                </dt>
-                <dd className="font-medium tabular-nums">
-                  {Math.round(metrics.band.p10 * 100)}% / +
-                  {Math.round(metrics.band.p90 * 100)}%
-                </dd>
-              </div>
-            </dl>
-            <p className="text-xs text-muted-foreground">
-              Trained {metrics.trained_on} on {metrics.data}. The range excludes{" "}
-              {metrics.band.excludes}.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <p className="text-xs text-muted-foreground">
+        Estimated from the province&apos;s planting reports: palay planted now
+        reaches IRPC about {months} months later. Weekly totals usually land
+        within ±{spread}% of the estimate.
+      </p>
     </>
   );
 }
@@ -283,8 +243,8 @@ export async function ForecastView() {
 export function ForecastViewSkeleton() {
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }, (_, i) => (
+      <div className="grid gap-4 md:grid-cols-3">
+        {Array.from({ length: 3 }, (_, i) => (
           <Skeleton key={i} className="h-28" />
         ))}
       </div>
