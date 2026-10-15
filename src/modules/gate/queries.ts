@@ -2,7 +2,7 @@
 // Server-side reads. May call other modules' queries.
 
 import "server-only";
-import { todayManila } from "@/lib/dates";
+import { addDays, joinManila, splitManila, todayManila } from "@/lib/dates";
 import { db } from "@/lib/supabase/admin";
 import {
   findOrRegisterByPhone,
@@ -553,6 +553,39 @@ export async function storageStockOn(date: string): Promise<number> {
     .eq("stage", "stored");
   if (error) throw error;
   return data.reduce((sum, b) => sum + (b.dried_kg ?? b.net_kg ?? 0), 0);
+}
+
+const PAGE = 1000;
+
+/**
+ * Net kg that went into the dryer per Manila day, `from` to `to` inclusive,
+ * by drying start. Only days with records (capacity's season heatmap, #50).
+ */
+export async function driedKgByDay(
+  from: string,
+  to: string,
+): Promise<{ date: string; kg: number }[]> {
+  const facility = await currentFacility();
+  const kg = new Map<string, number>();
+  // PostgREST caps each response, so read in pages.
+  for (let start = 0; ; start += PAGE) {
+    const { data, error } = await db()
+      .from("batches")
+      .select("dry_start, net_kg")
+      .eq("facility_id", facility.id)
+      .gte("dry_start", joinManila(from, "00:00"))
+      .lt("dry_start", joinManila(addDays(to, 1), "00:00"))
+      .order("id")
+      .range(start, start + PAGE - 1);
+    if (error) throw error;
+    for (const b of data) {
+      if (!b.dry_start) continue;
+      const { date } = splitManila(b.dry_start);
+      kg.set(date, (kg.get(date) ?? 0) + (b.net_kg ?? 0));
+    }
+    if (data.length < PAGE) break;
+  }
+  return [...kg].map(([date, kg]) => ({ date, kg }));
 }
 
 /** Net kg received at the gate per client, all time (M10 ranks by it). */
