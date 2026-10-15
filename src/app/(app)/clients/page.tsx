@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
-import { PagePlaceholder } from "@/components/page-placeholder";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ClientsLoader } from "@/modules/accounts/components/clients-loader";
 
-export const metadata: Metadata = { title: "Clients" };
-
+export const metadata: Metadata = { title: "Clients & staff" };
 export default function ClientsPage() {
   return (
-    <PagePlaceholder
-      title="Clients"
-      module="M2"
-      description="Farmers, co-ops, traders and buyers."
-    />
+    <Suspense fallback={<Skeleton className="h-96" />}>
+      <ClientsLoader />
+    </Suspense>
   );
 }
