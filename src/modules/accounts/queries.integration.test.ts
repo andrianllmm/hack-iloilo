@@ -58,6 +58,7 @@ describe.skipIf(process.env.RUN_ACCOUNTS_DB_TESTS !== "1")(
           kind: member.kind,
           municipality_id: null,
           coop_id: coop.id,
+          buyer_type: null,
         });
         expect(updated.name).toBe("Updated integration member");
         expect(updated.id).toBe(member.id);

@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { formatKg, formatMoney } from "@/lib/format";
 import { requireRole } from "@/modules/accounts/auth";
+import { buyerTypeLabels } from "@/modules/accounts/logic";
 import {
   dispatchableKg,
   dispatchedKg,
@@ -94,6 +95,11 @@ export async function BatchDispatch({ id }: { id: string }) {
                   </div>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
                     <span>{at.format(new Date(d.dispatched_at))}</span>
+                    {d.buyer.buyer_type ? (
+                      <Badge variant="outline">
+                        {buyerTypeLabels[d.buyer.buyer_type]}
+                      </Badge>
+                    ) : null}
                     {d.or_ref ? (
                       <Badge variant="secondary">OR {d.or_ref}</Badge>
                     ) : null}

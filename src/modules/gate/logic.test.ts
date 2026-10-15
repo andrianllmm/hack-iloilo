@@ -7,9 +7,11 @@ import {
   dispatchableKg,
   dispatchedKg,
   dispatchMode,
+  dispatchPeriod,
   formatDay,
   formatWait,
   isFullyDispatched,
+  kgByBuyerType,
   maskPhone,
   nextBatchNo,
   nextStage,
@@ -305,6 +307,49 @@ describe("dispatched and remaining kg", () => {
     expect(remainingKg(5400, 1800)).toBe(3600);
     expect(remainingKg(5400, 5400)).toBe(0);
     expect(remainingKg(5400, 6000)).toBe(0);
+  });
+});
+
+describe("kgByBuyerType", () => {
+  it("sums kg per buyer type, keeping untyped buyers apart", () => {
+    const kg = kgByBuyerType([
+      { kg: 3000, buyerType: "wholesaler" },
+      { kg: 2400, buyerType: "wholesaler" },
+      { kg: 1800, buyerType: "subsidy_program" },
+      { kg: 500, buyerType: null },
+    ]);
+    expect(kg.get("wholesaler")).toBe(5400);
+    expect(kg.get("subsidy_program")).toBe(1800);
+    expect(kg.get(null)).toBe(500);
+    expect(kg.has("retailer")).toBe(false);
+  });
+
+  it("is empty with no dispatches", () => {
+    expect(kgByBuyerType([]).size).toBe(0);
+  });
+});
+
+describe("dispatchPeriod", () => {
+  const today = "2026-10-15";
+
+  it("keeps a valid from-to range", () => {
+    expect(dispatchPeriod("2026-09-01", "2026-09-30", today)).toEqual({
+      from: "2026-09-01",
+      to: "2026-09-30",
+    });
+    expect(dispatchPeriod(today, today, today)).toEqual({
+      from: today,
+      to: today,
+    });
+  });
+
+  it("falls back to this month so far when missing, invalid or reversed", () => {
+    const month = { from: "2026-10-01", to: today };
+    expect(dispatchPeriod(undefined, undefined, today)).toEqual(month);
+    expect(dispatchPeriod("2026-02-31", "2026-03-05", today)).toEqual(month);
+    expect(dispatchPeriod("yesterday", today, today)).toEqual(month);
+    expect(dispatchPeriod(["2026-09-01"], today, today)).toEqual(month);
+    expect(dispatchPeriod("2026-09-30", "2026-09-01", today)).toEqual(month);
   });
 });
 

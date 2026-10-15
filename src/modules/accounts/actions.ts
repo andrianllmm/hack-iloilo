@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "./auth";
-import { clientSchema, type ClientInput } from "./client-schema";
+import { clientFormSchema, type ClientInput } from "./client-schema";
 import {
   ClientInputError,
   deleteClientRecord,
@@ -54,7 +54,7 @@ export async function saveClient(
   id?: string,
 ): Promise<SaveClientResult> {
   await requireRole();
-  const parsed = clientSchema.safeParse(input);
+  const parsed = clientFormSchema.safeParse(input);
   if (!parsed.success) {
     return {
       status: "error",

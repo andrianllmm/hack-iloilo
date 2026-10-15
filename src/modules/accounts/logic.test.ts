@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clientSchema } from "./client-schema";
+import { clientFormSchema, clientSchema } from "./client-schema";
 import { groupClients, normalizePhone } from "./logic";
 import type { Client } from "./types";
 const client = (
@@ -12,6 +12,7 @@ const client = (
   name,
   kind,
   coop_id,
+  buyer_type: null,
   phone: "+639171234567",
   municipality_id: null,
   created_at: "",
@@ -99,12 +100,18 @@ it("accepts the seed's readable UUIDs for references", () => {
       kind: "farmer",
       municipality_id: "11111111-1111-4111-8111-111111111111",
       coop_id: "c0000000-0000-0000-0000-000000000001",
+      buyer_type: null,
     }).success,
   ).toBe(true);
 });
 
 it("searches municipalities without including members from other towns", () => {
-  const base = { phone: "+639171234567", created_at: "", updated_at: "" };
+  const base = {
+    phone: "+639171234567",
+    buyer_type: null,
+    created_at: "",
+    updated_at: "",
+  };
   const clients: Client[] = [
     {
       ...base,
@@ -134,4 +141,37 @@ it("searches municipalities without including members from other towns", () => {
       { id: "zarraga", name: "Zarraga" },
     ]).count,
   ).toBe(1);
+});
+
+describe("buyer type", () => {
+  const client = {
+    name: "Buyer",
+    phone: "09171234567",
+    kind: "buyer" as const,
+    municipality_id: null,
+    coop_id: null,
+    buyer_type: null,
+  };
+
+  it("belongs to buyers only", () => {
+    expect(
+      clientSchema.safeParse({ ...client, buyer_type: "wholesaler" }).success,
+    ).toBe(true);
+    expect(
+      clientSchema.safeParse({
+        ...client,
+        kind: "farmer",
+        buyer_type: "wholesaler",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("is optional at registration but required in the staff form", () => {
+    expect(clientSchema.safeParse(client).success).toBe(true);
+    expect(clientFormSchema.safeParse(client).success).toBe(false);
+    expect(
+      clientFormSchema.safeParse({ ...client, buyer_type: "subsidy_program" })
+        .success,
+    ).toBe(true);
+  });
 });

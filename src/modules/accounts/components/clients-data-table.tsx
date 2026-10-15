@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { kindLabels, type ClientGroup } from "../logic";
+import { buyerTypeLabels, kindLabels, type ClientGroup } from "../logic";
 import { features, type DirectoryRow } from "./clients-table-model";
 import type { Client, Municipality } from "../types";
 
@@ -84,8 +84,15 @@ export function ClientsDataTable({
         }),
         columnHelper.accessor("kind", {
           header: "Kind",
-          cell: ({ getValue }) => (
-            <Badge variant="secondary">{kindLabels[getValue()]}</Badge>
+          cell: ({ row, getValue }) => (
+            <span className="flex flex-wrap gap-1">
+              <Badge variant="secondary">{kindLabels[getValue()]}</Badge>
+              {row.original.buyer_type ? (
+                <Badge variant="outline">
+                  {buyerTypeLabels[row.original.buyer_type]}
+                </Badge>
+              ) : null}
+            </span>
           ),
         }),
         columnHelper.display({

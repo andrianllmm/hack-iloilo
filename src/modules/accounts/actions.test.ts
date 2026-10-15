@@ -23,6 +23,7 @@ const input = {
   kind: "farmer",
   municipality_id: null,
   coop_id: null,
+  buyer_type: null,
 };
 beforeEach(() => vi.resetAllMocks());
 it("authenticates before validating or writing", async () => {
@@ -35,6 +36,14 @@ it("returns validation errors without database access", async () => {
   expect(result).toMatchObject({
     status: "error",
     fieldErrors: { phone: expect.any(String) },
+  });
+  expect(mocks.register).not.toHaveBeenCalled();
+});
+it("requires a buyer's type before saving", async () => {
+  const result = await saveClient({ ...input, kind: "buyer" });
+  expect(result).toMatchObject({
+    status: "error",
+    fieldErrors: { buyer_type: "Choose the buyer type." },
   });
   expect(mocks.register).not.toHaveBeenCalled();
 });

@@ -7,6 +7,7 @@ import type {
   Batch,
   BatchOwnership,
   BookingStatus,
+  BuyerType,
   Dispatch,
   OfferStatus,
   QueueEntry,
@@ -161,6 +162,37 @@ export function dispatchedKg(
 /** Kilograms still available to dispatch, never negative. */
 export function remainingKg(dispatchable: number, dispatched: number): number {
   return Math.max(0, dispatchable - dispatched);
+}
+
+/** Kg dispatched per buyer type; `null` collects buyers with no type set yet. */
+export function kgByBuyerType(
+  dispatches: readonly { kg: number; buyerType: BuyerType | null }[],
+): Map<BuyerType | null, number> {
+  const kg = new Map<BuyerType | null, number>();
+  for (const d of dispatches)
+    kg.set(d.buyerType, (kg.get(d.buyerType) ?? 0) + d.kg);
+  return kg;
+}
+
+/** A real `YYYY-MM-DD` calendar date. */
+function isDate(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value))
+    return false;
+  const time = Date.parse(`${value}T00:00:00Z`);
+  return !Number.isNaN(time) && new Date(time).toISOString().startsWith(value);
+}
+
+/**
+ * The dispatch summary's period from `?from=&to=`, both inclusive. This month
+ * so far when either is missing or invalid, or `from` is after `to`.
+ */
+export function dispatchPeriod(
+  from: unknown,
+  to: unknown,
+  today: string,
+): { from: string; to: string } {
+  if (isDate(from) && isDate(to) && from <= to) return { from, to };
+  return { from: `${today.slice(0, 8)}01`, to: today };
 }
 
 /** A batch is fully dispatched once all of its dispatchable kg have left. */
