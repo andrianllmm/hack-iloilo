@@ -19,6 +19,7 @@ import {
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
+import { InfoIcon } from "@/components/hint-icons";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -54,6 +55,13 @@ const day = new Intl.DateTimeFormat("en-PH", {
   dateStyle: "medium",
   timeZone: "Asia/Manila",
 });
+
+/** Hints for headers that need explaining, by column id. */
+const columnInfo: Record<string, string> = {
+  ownership:
+    "Custom: the client pays a fee to dry or mill their own palay. Selling to IRPC: IRPC buys the palay.",
+  kg: "The latest weight recorded: rice after milling, else dried, else received.",
+};
 
 const columns = columnHelper.columns([
   columnHelper.accessor("batch_no", {
@@ -170,18 +178,23 @@ export function BatchesDataTable({ batches }: { batches: BatchListRow[] }) {
                             : undefined
                       }
                     >
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="-mx-2 text-xs font-bold tracking-wide uppercase"
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        <table.FlexRender header={header} />
-                        <SortIcon
-                          data-icon="inline-end"
-                          className={sorted ? "" : "text-muted-foreground"}
-                        />
-                      </Button>
+                      <span className="inline-flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="-mx-2 text-xs font-bold tracking-wide uppercase"
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          <table.FlexRender header={header} />
+                          <SortIcon
+                            data-icon="inline-end"
+                            className={sorted ? "" : "text-muted-foreground"}
+                          />
+                        </Button>
+                        {columnInfo[header.column.id] ? (
+                          <InfoIcon text={columnInfo[header.column.id]} />
+                        ) : null}
+                      </span>
                     </TableHead>
                   );
                 })}

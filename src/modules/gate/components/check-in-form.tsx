@@ -5,6 +5,7 @@ import { useEffect, useId, useState, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { InfoIcon } from "@/components/hint-icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -394,7 +395,10 @@ export function CheckInForm({
               name="ownership"
               render={({ field, fieldState }) => (
                 <Field data-invalid={!!fieldState.error}>
-                  <FieldLabel>Ownership</FieldLabel>
+                  <FieldLabel>
+                    Ownership
+                    <InfoIcon text="Custom: the client pays a fee to dry or mill their own palay. Selling to IRPC: IRPC buys the palay." />
+                  </FieldLabel>
                   <ToggleGroup
                     variant="outline"
                     spacing={0}

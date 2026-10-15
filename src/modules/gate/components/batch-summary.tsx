@@ -6,6 +6,7 @@ import {
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { StatusBadge } from "@/components/status-badge";
+import { InfoIcon } from "@/components/hint-icons";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -199,6 +200,7 @@ export async function BatchSummaryCard({ id }: { id: string }) {
             {recovery != null ? (
               <CardDescription>
                 Recovery <Badge variant="secondary">{recovery}%</Badge>
+                <InfoIcon text="Milled rice out of the palay that went into the mill, by weight." />
               </CardDescription>
             ) : null}
           </CardHeader>

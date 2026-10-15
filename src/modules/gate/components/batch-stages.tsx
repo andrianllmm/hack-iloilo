@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { DateTimePicker } from "@/components/date-time-picker";
 import { OptionSelect } from "@/components/option-select";
+import { InfoIcon } from "@/components/hint-icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -184,9 +185,13 @@ function ReceivingForm({
   const pctField = (
     name: "damaged_pct" | "immature_pct" | "foreign_pct",
     label: string,
+    info: string,
   ) => (
     <Field data-invalid={!!errors[name]}>
-      <FieldLabel htmlFor={`${formId}-${name}`}>{label}</FieldLabel>
+      <FieldLabel htmlFor={`${formId}-${name}`}>
+        {label}
+        <InfoIcon text={info} />
+      </FieldLabel>
       <Input
         id={`${formId}-${name}`}
         type="number"
@@ -212,7 +217,10 @@ function ReceivingForm({
       submitLabel={pending ? "Saving…" : "Save receiving"}
     >
       <Field data-invalid={!!errors.bags}>
-        <FieldLabel htmlFor={`${formId}-bags`}>Sacks</FieldLabel>
+        <FieldLabel htmlFor={`${formId}-bags`}>
+          Sacks
+          <InfoIcon text="Number of sacks. Each sack's own weight comes off the paid weight." />
+        </FieldLabel>
         <Input
           id={`${formId}-bags`}
           type="number"
@@ -226,7 +234,10 @@ function ReceivingForm({
         <FieldError errors={[errors.bags]} />
       </Field>
       <Field data-invalid={!!errors.net_kg}>
-        <FieldLabel htmlFor={`${formId}-net`}>Net weight (kg)</FieldLabel>
+        <FieldLabel htmlFor={`${formId}-net`}>
+          Net weight (kg)
+          <InfoIcon text="Palay weight on the scale, without the truck." />
+        </FieldLabel>
         <Input
           id={`${formId}-net`}
           type="number"
@@ -264,7 +275,10 @@ function ReceivingForm({
         <FieldError errors={[errors.variety_id]} />
       </Field>
       <Field data-invalid={!!errors.mc}>
-        <FieldLabel htmlFor={`${formId}-mc`}>Moisture content (%)</FieldLabel>
+        <FieldLabel htmlFor={`${formId}-mc`}>
+          Moisture content (%)
+          <InfoIcon text="Water in the palay, from the moisture meter. Wetter palay gets a lower price per kg." />
+        </FieldLabel>
         <Input
           id={`${formId}-mc`}
           type="number"
@@ -278,9 +292,21 @@ function ReceivingForm({
         />
         <FieldError errors={[errors.mc]} />
       </Field>
-      {pctField("damaged_pct", "Damaged (%)")}
-      {pctField("immature_pct", "Immature (%)")}
-      {pctField("foreign_pct", "Foreign matter (%)")}
+      {pctField(
+        "damaged_pct",
+        "Damaged (%)",
+        "Share of the delivery that is broken, discolored or damaged grain. Part of it comes off the paid weight.",
+      )}
+      {pctField(
+        "immature_pct",
+        "Immature (%)",
+        "Share of the delivery that is unfilled or green grain. Part of it comes off the paid weight.",
+      )}
+      {pctField(
+        "foreign_pct",
+        "Foreign matter (%)",
+        "Share of the delivery that is stones, straw, dirt or weed seeds. It comes off the paid weight.",
+      )}
     </StageCard>
   );
 }
@@ -453,7 +479,10 @@ function FinishDryingForm({
         )}
       />
       <Field data-invalid={!!errors.mc_out}>
-        <FieldLabel htmlFor={`${formId}-mc`}>Moisture out (%)</FieldLabel>
+        <FieldLabel htmlFor={`${formId}-mc`}>
+          Moisture out (%)
+          <InfoIcon text="Moisture after drying, from the moisture meter. Palay is dry enough to store at about 14%." />
+        </FieldLabel>
         <Input
           id={`${formId}-mc`}
           type="number"
@@ -606,7 +635,10 @@ function FinishMillingForm({ batchId }: { batchId: string }) {
         )}
       />
       <Field data-invalid={!!errors.mill_in_kg}>
-        <FieldLabel htmlFor={`${formId}-in`}>Into the mill (kg)</FieldLabel>
+        <FieldLabel htmlFor={`${formId}-in`}>
+          Into the mill (kg)
+          <InfoIcon text="Dried palay fed into the mill. Recovery is rice out divided by this." />
+        </FieldLabel>
         <Input
           id={`${formId}-in`}
           type="number"
