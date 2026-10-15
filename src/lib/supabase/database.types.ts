@@ -153,14 +153,14 @@ isOneToOne: false
                   ]
                 },"facilities": {
                   Row: {
-                    "base_load_kw": number,"created_at": string,"dry_yield_pct": number,"id": string,"idle_threshold_pct": number,"labor_minor_per_hour": number,"name": string,"notify_ahead_n": number,"operating_hours_per_day": number,"storage_capacity_kg": number,"tariff_minor_per_kwh": number,"updated_at": string
+                    "base_load_kw": number,"buy_budget_minor": number,"buy_budget_start": string | null,"created_at": string,"dry_yield_pct": number,"id": string,"idle_threshold_pct": number,"labor_minor_per_hour": number,"name": string,"notify_ahead_n": number,"operating_hours_per_day": number,"storage_capacity_kg": number,"tariff_minor_per_kwh": number,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "base_load_kw"?: number,"created_at"?: string,"dry_yield_pct"?: number,"id"?: string,"idle_threshold_pct"?: number,"labor_minor_per_hour"?: number,"name": string,"notify_ahead_n"?: number,"operating_hours_per_day": number,"storage_capacity_kg": number,"tariff_minor_per_kwh"?: number,"updated_at"?: string
+                    "base_load_kw"?: number,"buy_budget_minor"?: number,"buy_budget_start"?: string | null,"created_at"?: string,"dry_yield_pct"?: number,"id"?: string,"idle_threshold_pct"?: number,"labor_minor_per_hour"?: number,"name": string,"notify_ahead_n"?: number,"operating_hours_per_day": number,"storage_capacity_kg": number,"tariff_minor_per_kwh"?: number,"updated_at"?: string
                   }
                   Update: {
-                    "base_load_kw"?: number,"created_at"?: string,"dry_yield_pct"?: number,"id"?: string,"idle_threshold_pct"?: number,"labor_minor_per_hour"?: number,"name"?: string,"notify_ahead_n"?: number,"operating_hours_per_day"?: number,"storage_capacity_kg"?: number,"tariff_minor_per_kwh"?: number,"updated_at"?: string
+                    "base_load_kw"?: number,"buy_budget_minor"?: number,"buy_budget_start"?: string | null,"created_at"?: string,"dry_yield_pct"?: number,"id"?: string,"idle_threshold_pct"?: number,"labor_minor_per_hour"?: number,"name"?: string,"notify_ahead_n"?: number,"operating_hours_per_day"?: number,"storage_capacity_kg"?: number,"tariff_minor_per_kwh"?: number,"updated_at"?: string
                   }
                   Relationships: [
                     

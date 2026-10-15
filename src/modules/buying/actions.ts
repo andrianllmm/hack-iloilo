@@ -13,7 +13,13 @@ import {
   ClientInputError,
   findOrRegisterByPhone,
 } from "@/modules/accounts/queries";
-import { applyOverride, parseOfferForm, parseOverrideForm } from "./logic";
+import { currentFacility } from "@/modules/setup/queries";
+import {
+  applyOverride,
+  parseBudgetForm,
+  parseOfferForm,
+  parseOverrideForm,
+} from "./logic";
 import { webOfferSchema, type WebOfferInput } from "./offer-schema";
 import {
   createOffer,
@@ -187,5 +193,33 @@ export async function overridePrice(
     .eq("batch_id", batchId);
   if (error) return { ok: false, error: "Couldn't save the override." };
   revalidatePath(`/batches/${batchId}`);
+  return { ok: true };
+}
+
+export type BudgetResult = { ok: true } | { ok: false; error: string };
+
+/** Set the buying budget (pesos) and its period start date. Manager only. */
+export async function saveBudget(
+  budgetInput: string,
+  startInput: string,
+): Promise<BudgetResult> {
+  await requireRole("manager");
+
+  const parsed = parseBudgetForm({
+    budgetMinor: budgetInput,
+    start: startInput,
+  });
+  if (!parsed.ok) return { ok: false, error: parsed.error };
+
+  const facility = await currentFacility();
+  const { error } = await db()
+    .from("facilities")
+    .update({
+      buy_budget_minor: parsed.value.budgetMinor,
+      buy_budget_start: parsed.value.start,
+    })
+    .eq("id", facility.id);
+  if (error) return { ok: false, error: "Couldn't save the budget." };
+  revalidatePath("/buying");
   return { ok: true };
 }
