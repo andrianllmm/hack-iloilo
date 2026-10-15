@@ -39,4 +39,32 @@ export type MoveBookingsPrescription = Base & {
   incomingKg: number;
 };
 
-export type Prescription = MoveBookingsPrescription;
+/** A farmer or co-op texted before an idle stretch. */
+export type Recipient = {
+  clientId: string;
+  name: string;
+  phone: string;
+  municipality: string | null;
+  /** Palay received from them at the gate, kg. */
+  pastKg: number;
+};
+
+export type FillIdlePrescription = Base & {
+  kind: "fill_idle";
+  /** First and last idle dryer day still ahead. */
+  from: string;
+  to: string;
+  /** By past volume, then municipality. */
+  recipients: Recipient[];
+  /** The text each recipient gets: GSM-7, at most 320 characters. */
+  message: string;
+};
+
+export type Prescription = MoveBookingsPrescription | FillIdlePrescription;
+
+/** A prescription as the rules compute it, before any decision is read. */
+export type Suggestion = Prescription extends infer P
+  ? P extends unknown
+    ? Omit<P, "decision">
+    : never
+  : never;
