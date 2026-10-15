@@ -21,9 +21,11 @@ import {
 } from "@/modules/buying/queries";
 import { currentFacility } from "@/modules/setup/queries";
 import {
+  type BatchAction,
   batchOwnership,
   batchPrefix,
   nextBatchNo,
+  nextStage,
   normalizeRef,
   REF_LENGTH,
   refCheckInError,
@@ -32,6 +34,7 @@ import {
 } from "./logic";
 import type {
   Batch,
+  BatchListRow,
   BatchOwnership,
   BatchSummary,
   QueueEntry,
@@ -41,7 +44,7 @@ import type {
   Service,
 } from "./types";
 export { municipalities } from "@/modules/accounts/queries";
-export type { Batch, QueueEntry, QueueRow } from "./types";
+export type { Batch, BatchListRow, QueueEntry, QueueRow } from "./types";
 
 const BATCH_NO_ATTEMPTS = 5;
 
@@ -52,6 +55,7 @@ export class GateError extends Error {
       | "not_found"
       | "not_waiting"
       | "not_serving"
+      | "stale_stage"
       | "ref_not_found"
       | "ref_not_eligible",
     message: string,
@@ -349,6 +353,107 @@ export async function batchSummary(id: string): Promise<BatchSummary | null> {
     )
     .eq("id", id)
     .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Moves a batch forward one stage, writing the stage's fields. Guarded on the
+ * expected current stage so a stale page can't skip or repeat a step.
+ */
+async function advance(
+  batchId: string,
+  from: Batch["stage"],
+  action: BatchAction,
+  fields: Partial<Batch>,
+): Promise<Batch> {
+  const { data, error } = await db()
+    .from("batches")
+    .update({ ...fields, stage: nextStage({ stage: from }, action) })
+    .eq("id", batchId)
+    .eq("stage", from)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  if (!data)
+    throw new GateError(
+      "stale_stage",
+      "This batch has moved on. Refresh the page.",
+    );
+  return data;
+}
+
+export function startDrying(
+  batchId: string,
+  fields: { dryer_id: string; dry_start: string },
+): Promise<Batch> {
+  return advance(batchId, "received", "start_drying", fields);
+}
+
+export function finishDrying(
+  batchId: string,
+  fields: { dry_end: string; mc_out: number; dried_kg: number },
+): Promise<Batch> {
+  return advance(batchId, "drying", "finish_drying", fields);
+}
+
+export function skipDrying(batchId: string): Promise<Batch> {
+  return advance(batchId, "received", "skip_drying", {});
+}
+
+export function startMilling(
+  batchId: string,
+  fields: { mill_id: string; mill_start: string },
+): Promise<Batch> {
+  return advance(batchId, "stored", "start_milling", fields);
+}
+
+export function finishMilling(
+  batchId: string,
+  fields: {
+    mill_end: string;
+    mill_in_kg: number;
+    rice_kg: number;
+    byproducts: { bran_kg: number | null; husk_kg: number | null };
+  },
+): Promise<Batch> {
+  return advance(batchId, "milling", "finish_milling", fields);
+}
+
+/**
+ * Kg of IRPC-owned palay sitting in storage now: dried weight, or net weight
+ * when drying was skipped. A current snapshot; `date` is for the caller's
+ * context (capacity, #34) and is only meaningful for today.
+ */
+// `date` is part of the published contract (capacity, #34); the snapshot is
+// always "now", so the argument is accepted but not read.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function storageStockOn(date: string): Promise<number> {
+  const facility = await currentFacility();
+  const { data, error } = await db()
+    .from("batches")
+    .select("dried_kg, net_kg")
+    .eq("facility_id", facility.id)
+    .eq("ownership", "irpc")
+    .eq("stage", "stored");
+  if (error) throw error;
+  return data.reduce((sum, b) => sum + (b.dried_kg ?? b.net_kg ?? 0), 0);
+}
+
+/** Batches for the list page, newest first, optionally one stage only. */
+export async function listBatches(
+  stage?: Batch["stage"],
+): Promise<BatchListRow[]> {
+  const facility = await currentFacility();
+  let query = db()
+    .from("batches")
+    .select(
+      "id, batch_no, ownership, stage, net_kg, dried_kg, rice_kg, created_at, client:clients(name), entry:queue_entries(service)",
+    )
+    .eq("facility_id", facility.id)
+    .order("batch_no", { ascending: false });
+  if (stage) query = query.eq("stage", stage);
+  const { data, error } = await query;
   if (error) throw error;
   return data;
 }

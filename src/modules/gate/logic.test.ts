@@ -8,9 +8,11 @@ import {
   formatWait,
   maskPhone,
   nextBatchNo,
+  nextStage,
   normalizeRef,
   queueLines,
   recordDateNote,
+  recoveryPct,
   refCheckInError,
   refLine,
   waitMinutes,
@@ -83,6 +85,48 @@ describe("queueLines", () => {
     expect(lines.drying.serving.map((r) => r.id)).toEqual(["serving"]);
     expect(lines.drying.waiting.map((r) => r.id)).toEqual(["early", "late"]);
     expect(lines.milling.waiting.map((r) => r.id)).toEqual(["mill"]);
+  });
+});
+
+describe("nextStage", () => {
+  it("moves received forward through drying to stored", () => {
+    expect(nextStage({ stage: "received" }, "start_drying")).toBe("drying");
+    expect(nextStage({ stage: "drying" }, "finish_drying")).toBe("stored");
+  });
+
+  it("skips drying straight from received to stored", () => {
+    expect(nextStage({ stage: "received" }, "skip_drying")).toBe("stored");
+  });
+
+  it("moves stored forward through milling to milled", () => {
+    expect(nextStage({ stage: "stored" }, "start_milling")).toBe("milling");
+    expect(nextStage({ stage: "milling" }, "finish_milling")).toBe("milled");
+  });
+
+  it("rejects an action that does not apply to the current stage", () => {
+    expect(() => nextStage({ stage: "received" }, "start_milling")).toThrow();
+    expect(() => nextStage({ stage: "stored" }, "start_drying")).toThrow();
+    expect(() => nextStage({ stage: "drying" }, "skip_drying")).toThrow();
+  });
+
+  it("never moves backward or re-enters a finished stage", () => {
+    expect(() => nextStage({ stage: "milled" }, "start_drying")).toThrow();
+    expect(() => nextStage({ stage: "milled" }, "start_milling")).toThrow();
+    expect(() => nextStage({ stage: "stored" }, "finish_drying")).toThrow();
+  });
+});
+
+describe("recoveryPct", () => {
+  it("is rice over mill-in as a percent, rounded to one decimal", () => {
+    expect(recoveryPct(650, 1000)).toBe(65);
+    expect(recoveryPct(673, 1000)).toBe(67.3);
+    expect(recoveryPct(2, 3)).toBe(66.7);
+  });
+
+  it("is null when there is no mill-in weight yet", () => {
+    expect(recoveryPct(null, null)).toBeNull();
+    expect(recoveryPct(650, null)).toBeNull();
+    expect(recoveryPct(650, 0)).toBeNull();
   });
 });
 

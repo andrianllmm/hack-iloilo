@@ -9,11 +9,27 @@ import { type DailyCapacity, dailyCapacity } from "./logic";
 
 export type Facility = Database["public"]["Tables"]["facilities"]["Row"];
 export type Variety = Database["public"]["Tables"]["varieties"]["Row"];
+export type Machine = Database["public"]["Tables"]["machines"]["Row"];
+export type MachineType = Database["public"]["Enums"]["machine_type"];
 
 /** All rice varieties, ordered by code, for pickers. */
 export async function listVarieties(): Promise<Variety[]> {
   const { data, error } = await db().from("varieties").select().order("code");
   if (error) throw new Error(`Varieties: ${error.message}`);
+  return data;
+}
+
+/** Active machines of one type (dryers or the mill), ordered by code. */
+export async function listMachines(type: MachineType): Promise<Machine[]> {
+  const facility = await currentFacility();
+  const { data, error } = await db()
+    .from("machines")
+    .select()
+    .eq("facility_id", facility.id)
+    .eq("type", type)
+    .eq("active", true)
+    .order("code");
+  if (error) throw new Error(`Machines: ${error.message}`);
   return data;
 }
 
@@ -28,8 +44,6 @@ export const currentFacility = cache(async (): Promise<Facility> => {
   if (error) throw new Error(`No facility: ${error.message}`);
   return data;
 });
-
-export type Machine = Database["public"]["Tables"]["machines"]["Row"];
 
 export type CapacitySettings = {
   facility: Facility;

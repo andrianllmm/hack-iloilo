@@ -33,3 +33,18 @@ export type BatchSummary = Batch & {
   client: Pick<Tables["clients"]["Row"], "name" | "phone" | "kind">;
   entry: Pick<QueueEntry, "service" | "started_at" | "est_kg"> | null;
 };
+/** A batch row for the list page. */
+export type BatchListRow = Pick<
+  Batch,
+  | "id"
+  | "batch_no"
+  | "ownership"
+  | "stage"
+  | "net_kg"
+  | "dried_kg"
+  | "rice_kg"
+  | "created_at"
+> & {
+  client: Pick<Tables["clients"]["Row"], "name">;
+  entry: Pick<QueueEntry, "service"> | null;
+};
