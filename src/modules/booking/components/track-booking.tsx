@@ -14,6 +14,7 @@ import { useId, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DatePicker } from "@/components/date-picker";
+import { InfoIcon } from "@/components/hint-icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -459,7 +460,10 @@ function MoveForm({
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor={`${id}-flex`}>Flex days</FieldLabel>
+          <FieldLabel htmlFor={`${id}-flex`}>
+            Flex days
+            <InfoIcon text="If your day fills up, we may move you within these days instead of turning you away." />
+          </FieldLabel>
           <Input
             id={`${id}-flex`}
             type="number"

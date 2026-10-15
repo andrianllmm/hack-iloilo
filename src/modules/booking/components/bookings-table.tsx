@@ -15,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { InfoIcon } from "@/components/hint-icons";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -73,9 +74,19 @@ export function BookingsTable({
           <TableHeader className="bg-muted [&_th]:text-xs [&_th]:font-bold [&_th]:tracking-wide [&_th]:uppercase">
             <TableRow>
               <TableHead>Code</TableHead>
-              <TableHead>Client</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center gap-1">
+                  Client
+                  <InfoIcon text="Below the name: who booked. Self is the client by SMS, Staff is a walk-in, and FOR is someone booking for them." />
+                </span>
+              </TableHead>
               <TableHead className="text-right">Est. kg</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead>
+                <span className="inline-flex items-center gap-1">
+                  Date
+                  <InfoIcon text="± days: how far the booking can move if the day fills up." />
+                </span>
+              </TableHead>
               <TableHead>Status</TableHead>
               <TableHead>
                 <span className="sr-only">Actions</span>

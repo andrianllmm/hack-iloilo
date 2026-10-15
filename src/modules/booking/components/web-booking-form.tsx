@@ -7,6 +7,7 @@ import { CalendarSearch, ImageDown } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DatePicker } from "@/components/date-picker";
+import { InfoIcon } from "@/components/hint-icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -260,7 +261,10 @@ export function WebBookingForm({ today }: { today: string }) {
           )}
         />
         <Field data-invalid={!!errors.flexDays}>
-          <FieldLabel htmlFor={`${formId}-flex`}>Flex days</FieldLabel>
+          <FieldLabel htmlFor={`${formId}-flex`}>
+            Flex days
+            <InfoIcon text="If your day fills up, we may move you within these days instead of turning you away." />
+          </FieldLabel>
           <Input
             id={`${formId}-flex`}
             type="number"
