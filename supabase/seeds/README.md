@@ -6,6 +6,7 @@
 | ----------------- | ----------------------------------------------------------- |
 | `01_setup.sql`    | IRPC facility, machines, varieties, municipalities          |
 | `02_accounts.sql` | Staff logins, co-ops, farmers, traders, buyers              |
+| `04_booking.sql`  | Upcoming drying and milling bookings                        |
 | `NN_<module>.sql` | Each later ticket adds its own file; don't edit shared ones |
 | `90_peak.sql`     | Peak demo scenario (#44)                                    |
 
