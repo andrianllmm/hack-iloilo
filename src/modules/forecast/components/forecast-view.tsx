@@ -1,6 +1,5 @@
 import { connection } from "next/server";
-import { FlaskConical, TrendingUp } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { TrendingUp } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -143,22 +142,9 @@ export async function ForecastView() {
   const shown = municipalities.slice(0, TABLE_ROWS);
   const rest = municipalities.slice(TABLE_ROWS);
   const restTotal = total(rest);
-  const demo = rows.some((r) => r.source === "demo-synthetic");
 
   return (
     <>
-      {demo && (
-        <Alert>
-          <FlaskConical />
-          <AlertTitle>Demo data</AlertTitle>
-          <AlertDescription>
-            Arrivals in this window come from a synthetic 2026 planting report
-            generated from OPA 2025. The model was trained on real OPA 2025 data
-            only.
-          </AlertDescription>
-        </Alert>
-      )}
-
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat
           label={`Expected arrivals, next ${CHART_WEEKS} weeks`}
