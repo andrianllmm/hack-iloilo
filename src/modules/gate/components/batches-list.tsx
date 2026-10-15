@@ -1,4 +1,8 @@
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { Fragment } from "react";
+import { ServiceIcon, isServiceIconKind } from "@/components/service-icon";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "cn";
 import { todayManila } from "@/lib/dates";
 import { requireRole } from "@/modules/accounts/auth";
@@ -63,19 +67,36 @@ export async function BatchesList({
         keep={{ stage, buyer_type: buyerType }}
       />
 
-      <nav className="flex flex-wrap gap-2" aria-label="Filter by stage">
+      {/* Stages in process order, arrows showing the flow. */}
+      <nav
+        className="flex flex-wrap items-center gap-2"
+        aria-label="Filter by stage"
+      >
         <FilterLink
           label="All"
           active={!stage}
           href={batchesHref({ ...filters, stage: undefined })}
         />
-        {stages.map((s) => (
-          <FilterLink
-            key={s}
-            label={stageLabels[s]}
-            active={stage === s}
-            href={batchesHref({ ...filters, stage: s })}
-          />
+        <Separator orientation="vertical" className="mx-1 h-5" />
+        {stages.map((s, i) => (
+          <Fragment key={s}>
+            {i > 0 ? (
+              <ArrowRight
+                aria-hidden
+                className="size-4 text-muted-foreground"
+              />
+            ) : null}
+            <FilterLink
+              label={stageLabels[s]}
+              icon={
+                isServiceIconKind(s) ? (
+                  <ServiceIcon kind={s} className="size-4" />
+                ) : null
+              }
+              active={stage === s}
+              href={batchesHref({ ...filters, stage: s })}
+            />
+          </Fragment>
         ))}
       </nav>
 
@@ -108,10 +129,12 @@ export async function BatchesList({
 
 function FilterLink({
   label,
+  icon,
   href,
   active,
 }: {
   label: string;
+  icon?: React.ReactNode;
   href: string;
   active: boolean;
 }) {
@@ -119,12 +142,13 @@ function FilterLink({
     <Link
       href={href}
       className={cn(
-        "rounded-full border px-3 py-1 text-sm transition-colors",
+        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors",
         active
           ? "border-transparent bg-primary text-primary-foreground"
           : "border-input hover:bg-accent hover:text-accent-foreground",
       )}
     >
+      {icon}
       {label}
     </Link>
   );
