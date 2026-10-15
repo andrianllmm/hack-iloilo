@@ -154,7 +154,7 @@ export function BookingsView({
           <FieldLabel htmlFor="bookings-search">Search</FieldLabel>
           <Input
             id="bookings-search"
-            placeholder="Ref, phone or name"
+            placeholder="Code, phone or name"
             value={filters.search}
             onChange={(event) =>
               setFilters((previous) => ({

@@ -69,7 +69,7 @@ const blank: CheckInInput = {
 
 const lookupFailed: LookupRefResult = {
   status: "error",
-  message: "Unable to look up the ref. Please try again.",
+  message: "Unable to look up the code. Please try again.",
 };
 
 const isRefMode = (mode: CheckInMode) => mode === "booking" || mode === "offer";
@@ -234,7 +234,7 @@ export function CheckInForm({
               data-invalid={!!errors.ref || lookupResult?.status === "error"}
             >
               <FieldLabel htmlFor={`${formId}-ref`}>
-                {refKindLabels[mode as "booking" | "offer"]} reference
+                {refKindLabels[mode as "booking" | "offer"]} code
               </FieldLabel>
               <Input
                 id={`${formId}-ref`}

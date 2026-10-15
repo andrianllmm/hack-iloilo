@@ -28,7 +28,7 @@ export default function LoginPage() {
         </CardContent>
       </Card>
       <p className="text-sm text-muted-foreground">
-        Booking, selling palay or tracking a ref?{" "}
+        Booking, selling palay or checking a booking?{" "}
         <Link
           href="/"
           className="font-medium text-primary underline-offset-4 hover:underline"

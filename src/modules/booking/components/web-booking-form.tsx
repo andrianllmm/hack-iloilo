@@ -92,9 +92,9 @@ export function WebBookingForm({ today }: { today: string }) {
           </p>
         </div>
         <p className="text-sm text-muted-foreground">
-          We texted this ref to your phone. Show it at the gate. To cancel, text{" "}
-          <span className="font-mono">CANCEL {booked.ref}</span>, or manage it
-          online.
+          We texted this code to your phone. Show it at the gate. To cancel,
+          text <span className="font-mono">CANCEL {booked.ref}</span>, or manage
+          it online.
         </p>
         <Button
           type="button"
@@ -176,7 +176,7 @@ export function WebBookingForm({ today }: { today: string }) {
             aria-invalid={!!errors.phone}
             disabled={pending}
           />
-          <FieldDescription>We text your booking ref here.</FieldDescription>
+          <FieldDescription>We text your booking code here.</FieldDescription>
           <FieldError errors={[errors.phone]} />
         </Field>
         <Controller

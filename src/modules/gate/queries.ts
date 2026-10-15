@@ -162,7 +162,7 @@ function notFound(kind: RefKind | null, ref: string): GateError {
   const what = kind
     ? `${refKindLabels[kind].toLowerCase()}`
     : "booking or offer";
-  return new GateError("ref_not_found", `No ${what} has ref ${ref}.`);
+  return new GateError("ref_not_found", `No ${what} has code ${ref}.`);
 }
 
 async function checkInBooking(input: string): Promise<QueueEntry> {

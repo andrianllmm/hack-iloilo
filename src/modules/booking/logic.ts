@@ -251,7 +251,7 @@ export function formatRange(from: string, to: string): string {
 /** SMS replies in Hiligaynon, filled with `fillTemplate`. GSM-7. */
 export const bookingSms = {
   confirmed:
-    "IRPC: Confirmed na ang booking mo. Ref {ref}: {service}, {kg} kg sa {date}. Para i-cancel: CANCEL {ref}.",
+    "IRPC: Confirmed na ang booking mo. Code {ref}: {service}, {kg} kg sa {date}. Para i-cancel: CANCEL {ref}.",
   rescheduleQuestion:
     "IRPC: Puno na ang {date}. Puwede namon i-saylo ang {service} booking mo {ref} ({kg} kg) sa {newDate}? Reply YES {ref} ukon NO {ref}.",
   rescheduleMoved: "IRPC: Na-saylo na ang booking {ref} sa {date}. Salamat!",
@@ -259,7 +259,7 @@ export const bookingSms = {
   moved:
     "IRPC: Na-saylo na ang booking {ref} sa {date}: {service}, {kg} kg. Para i-cancel: CANCEL {ref}.",
   cancelled: "IRPC: Na-cancel na ang booking {ref}.",
-  notFound: "IRPC: Wala sang booking nga may ref {ref}.",
+  notFound: "IRPC: Wala sang booking nga may code {ref}.",
   notCancellable:
     "IRPC: Indi na ma-cancel ang booking {ref}. Ang confirmed nga booking lang ang ma-cancel.",
   notMovable:

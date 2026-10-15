@@ -81,7 +81,7 @@ export function TrackBooking({
       try {
         const result = await action();
         if (result.status === "error") {
-          setMessage(result.message ?? "Check the ref and mobile number.");
+          setMessage(result.message ?? "Check the code and mobile number.");
           return;
         }
         setBooking(result.booking);
@@ -139,7 +139,7 @@ export function TrackBooking({
     <form onSubmit={submit}>
       <FieldGroup>
         <Field data-invalid={!!errors.ref}>
-          <FieldLabel htmlFor={`${formId}-ref`}>Booking ref</FieldLabel>
+          <FieldLabel htmlFor={`${formId}-ref`}>Booking code</FieldLabel>
           <Input
             id={`${formId}-ref`}
             autoComplete="off"
@@ -152,7 +152,7 @@ export function TrackBooking({
             disabled={pending}
           />
           <FieldDescription>
-            The 6-character ref we texted you.
+            The 6-character code we texted you.
           </FieldDescription>
           <FieldError errors={[errors.ref]} />
         </Field>
@@ -377,7 +377,7 @@ function StatusNote({ booking }: { booking: TrackedBooking }) {
     case "confirmed":
       return (
         <p className="text-sm text-muted-foreground">
-          Come on {formatDate(booking.scheduled_date)} and show this ref at the
+          Come on {formatDate(booking.scheduled_date)} and show this code at the
           gate.
         </p>
       );

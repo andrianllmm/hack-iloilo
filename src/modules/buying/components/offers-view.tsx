@@ -68,7 +68,7 @@ export async function OffersView({
           <Table>
             <TableHeader className="bg-muted [&_th]:text-xs [&_th]:font-bold [&_th]:tracking-wide [&_th]:uppercase">
               <TableRow>
-                <TableHead>Ref</TableHead>
+                <TableHead>Code</TableHead>
                 <TableHead>Client</TableHead>
                 <TableHead className="text-right">Est. kg</TableHead>
                 <TableHead>Harvest</TableHead>

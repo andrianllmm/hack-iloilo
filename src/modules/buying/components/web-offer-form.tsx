@@ -91,7 +91,7 @@ export function WebOfferForm({
           </p>
         </div>
         <p className="text-sm text-muted-foreground">
-          We texted this ref to your phone. We&apos;ll text you again once the
+          We texted this code to your phone. We&apos;ll text you again once the
           manager decides.
         </p>
         <Button
@@ -135,7 +135,7 @@ export function WebOfferForm({
             aria-invalid={!!errors.phone}
             disabled={pending}
           />
-          <FieldDescription>We text your offer ref here.</FieldDescription>
+          <FieldDescription>We text your offer code here.</FieldDescription>
           <FieldError errors={[errors.phone]} />
         </Field>
         <Field data-invalid={!!errors.municipalityId}>
