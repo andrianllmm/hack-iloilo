@@ -155,10 +155,11 @@ Every table has `id` (UUID), `created_at` and `updated_at`.
 - `sms_messages`: `direction`, `phone`, `body`, `gateway_id` (unique), `parsed` (jsonb), `via_ai`, `status`.
 - `sms_prompts`: `phone`, `ref`, `kind` (`ai_confirm`, `reschedule`), `payload` (jsonb), `expires_at`, `status`.
 
-**Exports:** `registerCommand({ keywords, schema, parse, handle })`, `send(phone, template, vars)`, `openPrompt({ phone, kind, payload, ref? })`, `onPromptAnswer(kind, fn)`, `handleInbound({ phone, body, gatewayId? })`, `parseDayMonth(token, today)`.
+**Exports:** `registerCommand({ keywords, schema, parse, handle, ai? })`, `send(phone, template, vars)`, `openPrompt({ phone, kind, payload, ref? })`, `onPromptAnswer(kind, fn)`, `handleInbound({ phone, body, gatewayId? })`, `parseDayMonth(token, today)`.
 
 - Modules register commands from their `sms.ts`; `src/modules/sms/queries.ts` imports each one.
 - The first word is the keyword. A trailing `FOR <phone>` is stripped into `ctx.forPhone`.
+- Commands with `ai: { description, summary? }` can be read from free text, logged `via_ai`. With a `summary`, the reply asks "you want to {summary}? Is that right?" (an `ai_confirm` prompt); without one (read-only), the command runs right away. AI is optional: with no key, an error or an 8 s timeout, the help reply lists each command's `usage` format.
 - A prompt handler throws `PromptRefusal(reply)` to refuse an answer (e.g. from the wrong phone); the prompt stays open.
 
 **Inbound flow:**
@@ -183,7 +184,7 @@ sequenceDiagram
   S->>G: send(reply)
 ```
 
-`YES <ref>` / `NO <ref>` answers an open prompt. Prompts expire after 24 hours.
+A short yes or no ("oo sige", "indi", "ok po") answers the sender's latest open prompt; `YES <ref>` / `NO <ref>` picks one. Prompts expire after 24 hours.
 
 **Tests:** keyword parsing, `FOR`, dd/mm dates; the relay's signature check and dedupe.
 

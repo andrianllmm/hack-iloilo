@@ -130,7 +130,7 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
         "BOOK DRY 1 20/10 FOR invalid",
       ]) {
         await inbound(body);
-        expect((await lastReply()).body).toContain("Unknown command");
+        expect((await lastReply()).body).toContain("didn't get that");
       }
       expect(await count()).toBe(before);
     });
@@ -153,7 +153,7 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
     it("authorizes the actual sender, not FOR, and allows the beneficiary to cancel", async () => {
       const booking = await book(`BOOK DRY 100 20/10 FOR ${beneficiary}`);
       await inbound(`CANCEL ${booking.ref} FOR ${beneficiary}`, stranger);
-      expect((await lastReply(stranger)).body).toContain("Unknown command");
+      expect((await lastReply(stranger)).body).toContain("didn't get that");
       expect((await findByRef(booking.ref))!.status).toBe("confirmed");
       await inbound(`cancel ${booking.ref.toLowerCase()}`, beneficiary);
       expect((await findByRef(booking.ref))!.status).toBe("cancelled");

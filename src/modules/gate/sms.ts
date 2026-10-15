@@ -11,4 +11,7 @@ registerCommand({
   // Trailing words are ignored ("STATUS pls").
   parse: () => ({}),
   handle: queueStatusBySms,
+  ai: {
+    description: "Ask for the sender's place in the drying or milling line.",
+  },
 });

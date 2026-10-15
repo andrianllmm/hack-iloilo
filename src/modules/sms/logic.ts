@@ -27,14 +27,31 @@ export function parseInbound(body: string): ParsedInbound {
   return { keyword: first.toUpperCase(), args: rest, forPhone };
 }
 
-/** `YES <ref>` / `NO <ref>`; null for anything else. */
+// English, Hiligaynon and Tagalog.
+const YES_WORDS = new Set(
+  "YES Y YEP YUP OK OKAY OKS SURE GO OO HUO HO OPO SIGE TAMA CORRECT".split(
+    " ",
+  ),
+);
+const NO_WORDS = new Set("NO N NOPE INDI HINDI DILI AYAW WALA MALI".split(" "));
+
+/** Words that can follow an answer, e.g. "oo sige salamat". */
+const MAX_ANSWER_WORDS = 4;
+
+/**
+ * A short yes/no reply ("oo sige", "no thanks", "YES K7P2QX"); null otherwise.
+ * `ref` is any 6-character token, which may just be a word like "please".
+ */
 export function parseAnswer({
   keyword,
   args,
-}: ParsedInbound): { yes: boolean; ref: string } | null {
-  if (keyword !== "YES" && keyword !== "NO") return null;
-  if (args.length !== 1) return null;
-  return { yes: keyword === "YES", ref: args[0].toUpperCase() };
+}: ParsedInbound): { yes: boolean; ref?: string } | null {
+  const word = keyword.replace(/[^A-Z]/g, "");
+  const yes = YES_WORDS.has(word);
+  if (!yes && !NO_WORDS.has(word)) return null;
+  if (args.length > MAX_ANSWER_WORDS - 1) return null;
+  const ref = args.find((a) => /^[A-Z0-9]{6}$/i.test(a))?.toUpperCase();
+  return { yes, ...(ref && { ref }) };
 }
 
 /**
@@ -73,13 +90,21 @@ export function fillTemplate(
   );
 }
 
-/** Reply to unknown texts: the registered commands. */
-export function helpText(keywords: string[]): string {
-  const list = [...new Set(keywords.map((k) => k.toUpperCase()))].sort();
-  const text = list.length
-    ? `IRPC: Unknown command. Text one of: ${list.join(", ")}. Reply YES <ref> or NO <ref> to answer a question.`
-    : "IRPC: Unknown command. Reply YES <ref> or NO <ref> to answer a question.";
+/**
+ * Reply to texts we can't read. Always lists the keyword formats, which work
+ * without AI; `natural` (AI is up) also invites plain-language texts.
+ */
+export function helpText(usages: string[], natural = false): string {
+  const list = [...new Set(usages)].join("; ");
+  const text = natural
+    ? `IRPC: Sorry, we didn't get that. Just tell us what you need, e.g. "dry 20 sacks on Monday". Or text: ${list}`
+    : `IRPC: Sorry, we didn't get that. Please text: ${list}`;
   return text.slice(0, SMS_MAX_CHARS);
+}
+
+/** Asks the sender to confirm what AI read, e.g. "cancel booking K7P2QX". */
+export function aiConfirmText(summary: string): string {
+  return `IRPC: Just to check, you want to ${summary}? Is that right?`;
 }
 
 // GSM 03.38 basic set plus extension table (which costs 2 chars each).

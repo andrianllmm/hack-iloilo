@@ -11,7 +11,7 @@ import {
 import { todayManila } from "@/lib/dates";
 import { fillTemplate, helpText, parseDayMonth } from "@/modules/sms/logic";
 import { send } from "@/modules/sms/queries";
-import { commandKeywords, type CommandContext } from "@/modules/sms/registry";
+import { commandUsages, type CommandContext } from "@/modules/sms/registry";
 import type { BookingSmsInput } from "./booking-schema";
 import { BOOKING_CONFIRMATION } from "./sms";
 import { currentFacility } from "@/modules/setup/queries";
@@ -242,7 +242,7 @@ export async function bookBySms(
   ctx: CommandContext,
 ): Promise<string> {
   const preferredDate = parseDayMonth(input.dayMonth, todayManila());
-  if (!preferredDate) return helpText(commandKeywords());
+  if (!preferredDate) return helpText(commandUsages());
   const client =
     ctx.forPhone && ctx.forPhone !== ctx.phone
       ? await findOrRegisterByPhone(ctx.forPhone)
@@ -272,7 +272,7 @@ export async function cancelBySms(
     case "cancelled":
       return `IRPC: Booking ${result.booking.ref} cancelled.`;
     case "forbidden":
-      return helpText(commandKeywords());
+      return helpText(commandUsages());
     case "not_found":
       return `IRPC: No booking with ref ${ref}.`;
     case "not_cancellable":

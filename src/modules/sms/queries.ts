@@ -2,6 +2,8 @@
 // Server-side reads. May call other modules' queries.
 
 import "server-only";
+import { z } from "zod";
+import { aiEnabled, extract } from "@/lib/ai";
 import { newRef } from "@/lib/ref";
 import { smsGateway } from "@/lib/sms";
 import { db } from "@/lib/supabase/admin";
@@ -12,6 +14,7 @@ import {
   findOrRegisterByPhone,
 } from "@/modules/accounts/queries";
 import {
+  aiConfirmText,
   fillTemplate,
   helpText,
   isGsm7,
@@ -21,10 +24,13 @@ import {
   type ParsedInbound,
 } from "./logic";
 import {
-  commandKeywords,
+  aiCommands,
+  commandUsages,
   findCommand,
+  onPromptAnswer,
   promptHandler,
   PromptRefusal,
+  type Command,
   type CommandContext,
   type SmsPromptKind,
 } from "./registry";
@@ -70,7 +76,8 @@ export async function send(
 }
 
 /**
- * Opens a yes/no prompt, answered by `YES <ref>` / `NO <ref>` within 24 h.
+ * Opens a yes/no prompt, answered within 24 h by a plain yes or no (the
+ * sender's latest prompt) or `YES <ref>` / `NO <ref>`.
  * Returns the ref. Passing a ref (e.g. a booking's) replaces its open prompt.
  */
 export async function openPrompt({
@@ -155,8 +162,13 @@ export async function processInbound(id: string): Promise<void> {
   let reply: string;
   try {
     const client = await findOrRegisterByPhone(phone);
-    reply = await route(parsed, { phone, client });
-    await update(id, { phone, parsed: toJson(parsed) });
+    const routed = await route(parsed, message.body, { phone, client });
+    reply = routed.reply;
+    await update(id, {
+      phone,
+      parsed: toJson(parsed),
+      via_ai: routed.viaAi ?? false,
+    });
   } catch (error) {
     console.error("[sms] inbound failed", error);
     await update(id, { phone, parsed: toJson(parsed), status: "failed" });
@@ -167,14 +179,26 @@ export async function processInbound(id: string): Promise<void> {
 
 async function route(
   parsed: ParsedInbound,
+  body: string,
   ctx: CommandContext,
-): Promise<string> {
+): Promise<{ reply: string; viaAi?: boolean }> {
   const answer = parseAnswer(parsed);
-  if (answer) return answerPrompt(answer, ctx);
+  if (answer) return { reply: await answerPrompt(answer, ctx) };
 
   const command = findCommand(parsed.keyword);
-  if (!command) return help();
+  if (!command) {
+    if (!parsed.keyword || parsed.keyword === "HELP")
+      return { reply: help(aiEnabled()) };
+    return interpret(body, ctx);
+  }
+  return { reply: await runKeyword(command, parsed, ctx) };
+}
 
+async function runKeyword(
+  command: Command<unknown>,
+  parsed: ParsedInbound,
+  ctx: CommandContext,
+): Promise<string> {
   let forPhone: string | undefined;
   if (parsed.forPhone) {
     const normalized = normalizePhone(parsed.forPhone);
@@ -193,23 +217,78 @@ async function route(
   return command.handle(result.data, { ...ctx, forPhone });
 }
 
+/**
+ * Reads free text as a command with AI. Commands with a summary ask first and
+ * run on a yes; AI failure gets the help reply.
+ */
+async function interpret(
+  body: string,
+  ctx: CommandContext,
+): Promise<{ reply: string; viaAi?: boolean }> {
+  const commands = aiCommands();
+  if (!aiEnabled() || !commands.length) return { reply: help() };
+
+  const options = commands.map(({ keyword, command }) =>
+    z
+      .object({ command: z.literal(keyword), args: command.schema })
+      .describe(command.ai!.description),
+  );
+  const none = z
+    .object({ command: z.literal("NONE") })
+    .describe("The text matches none of the other commands.");
+  const intent = await extract(
+    z.object({ intent: z.union([none, ...options]) }),
+    body,
+  );
+  // AI down or timed out: fall back to the keyword formats.
+  if (!intent) return { reply: help() };
+  if (intent.intent.command === "NONE") return { reply: help(true) };
+
+  const { command: keyword, args } = intent.intent as {
+    command: string;
+    args: unknown;
+  };
+  const command = findCommand(keyword);
+  const valid = command?.schema.safeParse(args);
+  if (!command?.ai || !valid?.success) return { reply: help(true) };
+
+  const { summary } = command.ai;
+  if (!summary)
+    return { reply: await command.handle(valid.data, ctx), viaAi: true };
+  await openPrompt({
+    phone: ctx.phone,
+    kind: "ai_confirm",
+    payload: { keyword, args: valid.data as Json },
+  });
+  return { reply: aiConfirmText(summary(valid.data)), viaAi: true };
+}
+
+onPromptAnswer("ai_confirm", async (prompt, yes, ctx) => {
+  if (prompt.phone !== ctx.phone) throw new PromptRefusal(help());
+  if (!yes) return "IRPC: Okay, we didn't save anything.";
+
+  const { keyword, args } = prompt.payload as { keyword: string; args: Json };
+  const command = findCommand(keyword);
+  const valid = command?.schema.safeParse(args);
+  if (!command || !valid?.success) return help();
+  return command.handle(valid.data, ctx);
+});
+
 async function answerPrompt(
-  { yes, ref }: { yes: boolean; ref: string },
+  { yes, ref }: { yes: boolean; ref?: string },
   ctx: CommandContext,
 ): Promise<string> {
-  const { data: prompt, error } = await db()
-    .from("sms_prompts")
-    .select()
-    .eq("ref", ref)
-    .eq("status", "open")
-    .maybeSingle();
-  if (error) throw error;
+  // A ref may just be a word ("yes please"), so fall back to the latest.
+  const prompt =
+    (ref && (await openPromptByRef(ref))) ||
+    (await latestOpenPrompt(ctx.phone));
   const handler = prompt && promptHandler(prompt.kind);
-  if (!prompt || !handler) return `IRPC: No open question with ref ${ref}.`;
+  if (!prompt || !handler)
+    return "IRPC: We have no question waiting for your answer.";
 
   if (new Date(prompt.expires_at) <= new Date()) {
     await setPromptStatus(prompt.id, "open", "expired");
-    return `IRPC: Ref ${ref} has expired. Please text us again.`;
+    return "IRPC: Sorry, that question has expired. Please text us again.";
   }
 
   const claimed = await setPromptStatus(
@@ -217,7 +296,7 @@ async function answerPrompt(
     "open",
     yes ? "accepted" : "declined",
   );
-  if (!claimed) return `IRPC: Ref ${ref} was already answered.`;
+  if (!claimed) return "IRPC: You already answered that one.";
   try {
     return await handler(claimed, yes, ctx);
   } catch (error) {
@@ -228,8 +307,35 @@ async function answerPrompt(
   }
 }
 
-function help(): string {
-  return helpText(commandKeywords());
+async function openPromptByRef(ref: string) {
+  const { data, error } = await db()
+    .from("sms_prompts")
+    .select()
+    .eq("ref", ref)
+    .eq("status", "open")
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/** The phone's newest unexpired open prompt. */
+async function latestOpenPrompt(phone: string) {
+  const { data, error } = await db()
+    .from("sms_prompts")
+    .select()
+    .eq("phone", phone)
+    .eq("status", "open")
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/** `natural` only when AI is up to read plain language. */
+function help(natural = false): string {
+  return helpText(commandUsages(), natural);
 }
 
 type PromptStatus = Database["public"]["Enums"]["sms_prompt_status"];
