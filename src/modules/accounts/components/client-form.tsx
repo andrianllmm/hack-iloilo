@@ -20,6 +20,14 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SheetFooter } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -33,7 +41,8 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import { deleteClient, saveClient } from "../actions";
-import { clientSchema, type ClientInput } from "../client-schema";
+import { clientFormSchema, type ClientInput } from "../client-schema";
+import { buyerTypeLabels, buyerTypes } from "../logic";
 import type { Client, Municipality } from "../types";
 
 type Props = {
@@ -46,6 +55,10 @@ type Props = {
   presentation?: "sheet" | "inline";
 };
 type Option = { id: string; name: string };
+const buyerTypeItems = buyerTypes.map((value) => ({
+  value,
+  label: buyerTypeLabels[value],
+}));
 function Lookup({
   id,
   label,
@@ -111,7 +124,7 @@ export function ClientForm({
   const [message, setMessage] = useState<string>();
   const [existing, setExisting] = useState<Client>();
   const form = useForm<ClientInput>({
-    resolver: zodResolver(clientSchema),
+    resolver: zodResolver(clientFormSchema),
     defaultValues: client
       ? {
           name: client.name,
@@ -119,6 +132,7 @@ export function ClientForm({
           kind: client.kind,
           municipality_id: client.municipality_id,
           coop_id: client.coop_id,
+          buyer_type: client.buyer_type,
         }
       : {
           name: "",
@@ -126,6 +140,7 @@ export function ClientForm({
           kind: "farmer",
           municipality_id: null,
           coop_id: null,
+          buyer_type: null,
         },
   });
   const kind = useWatch({ control: form.control, name: "kind" });
@@ -311,12 +326,55 @@ export function ClientForm({
                   field.onChange(value);
                   if (value === "coop")
                     form.setValue("coop_id", null, { shouldValidate: true });
+                  if (value !== "buyer")
+                    form.setValue("buyer_type", null, { shouldValidate: true });
                 }}
               />
               <FieldError errors={[fieldState.error]} />
             </Field>
           )}
         />
+        {kind === "buyer" ? (
+          <Controller
+            control={form.control}
+            name="buyer_type"
+            render={({ field, fieldState }) => (
+              <Field data-invalid={!!fieldState.error}>
+                <FieldLabel htmlFor={`${formId}-buyer-type`}>
+                  Buyer type
+                </FieldLabel>
+                <Select
+                  items={buyerTypeItems}
+                  value={field.value}
+                  disabled={pending}
+                  onValueChange={(next) => {
+                    if (next) field.onChange(next);
+                  }}
+                >
+                  <SelectTrigger
+                    id={`${formId}-buyer-type`}
+                    ref={field.ref}
+                    onBlur={field.onBlur}
+                    aria-invalid={!!fieldState.error}
+                    className="w-full"
+                  >
+                    <SelectValue placeholder="Choose a type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {buyerTypeItems.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <FieldError errors={[fieldState.error]} />
+              </Field>
+            )}
+          />
+        ) : null}
         {message ? (
           <Alert variant="destructive">
             <AlertTitle>Unable to complete request</AlertTitle>

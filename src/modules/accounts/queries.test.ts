@@ -17,6 +17,7 @@ const existing: Client = {
   kind: "farmer",
   municipality_id: null,
   coop_id: null,
+  buyer_type: null,
   created_at: "",
   updated_at: "",
 };
@@ -26,6 +27,7 @@ const input = {
   kind: "farmer" as const,
   municipality_id: null,
   coop_id: null,
+  buyer_type: null,
 };
 function response(data: unknown, error: unknown = null) {
   const result = { data, error };

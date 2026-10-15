@@ -104,6 +104,7 @@ export async function registerClientRecord(
     kind: "farmer",
     municipality_id: null,
     coop_id: null,
+    buyer_type: null,
     ...defaults,
     phone: normalized,
   });

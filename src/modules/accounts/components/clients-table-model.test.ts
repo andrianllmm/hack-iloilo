@@ -11,6 +11,7 @@ const data: DirectoryRow[] = Array.from({ length: 23 }, (_, index) => ({
   kind: "farmer",
   municipality_id: null,
   coop_id: null,
+  buyer_type: null,
   created_at: "",
   updated_at: "",
   coop: null,

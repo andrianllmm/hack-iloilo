@@ -133,14 +133,14 @@ isOneToOne: false
                   ]
                 },"clients": {
                   Row: {
-                    "coop_id": string | null,"created_at": string,"id": string,"kind": Database["public"]['Enums']["client_kind"],"municipality_id": string | null,"name": string,"phone": string,"updated_at": string
+                    "buyer_type": Database["public"]['Enums']["buyer_type"] | null,"coop_id": string | null,"created_at": string,"id": string,"kind": Database["public"]['Enums']["client_kind"],"municipality_id": string | null,"name": string,"phone": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "coop_id"?: string | null,"created_at"?: string,"id"?: string,"kind": Database["public"]['Enums']["client_kind"],"municipality_id"?: string | null,"name": string,"phone": string,"updated_at"?: string
+                    "buyer_type"?: Database["public"]['Enums']["buyer_type"] | null,"coop_id"?: string | null,"created_at"?: string,"id"?: string,"kind": Database["public"]['Enums']["client_kind"],"municipality_id"?: string | null,"name": string,"phone": string,"updated_at"?: string
                   }
                   Update: {
-                    "coop_id"?: string | null,"created_at"?: string,"id"?: string,"kind"?: Database["public"]['Enums']["client_kind"],"municipality_id"?: string | null,"name"?: string,"phone"?: string,"updated_at"?: string
+                    "buyer_type"?: Database["public"]['Enums']["buyer_type"] | null,"coop_id"?: string | null,"created_at"?: string,"id"?: string,"kind"?: Database["public"]['Enums']["client_kind"],"municipality_id"?: string | null,"name"?: string,"phone"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -512,7 +512,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "batch_ownership": "custom"|"irpc","batch_stage": "received"|"drying"|"stored"|"milling"|"milled"|"dispatched","booking_channel": "sms"|"staff","booking_status": "confirmed"|"reschedule_proposed"|"arrived"|"cancelled"|"no_show","client_kind": "farmer"|"coop"|"trader"|"buyer","forecast_source": "opa-2025"|"demo-synthetic","machine_type": "dryer"|"mill","prescription_kind": "move_bookings"|"fill_idle"|"mill_full_loads"|"store_mill_later","prescription_status": "accepted"|"dismissed","queue_status": "waiting"|"serving"|"done"|"left","sell_offer_status": "offered"|"accepted"|"declined"|"arrived"|"withdrawn","service": "drying"|"milling","sms_direction": "inbound"|"outbound","sms_prompt_kind": "ai_confirm"|"reschedule"|"weight_confirm","sms_prompt_status": "open"|"accepted"|"declined"|"expired","sms_status": "received"|"processed"|"queued"|"sent"|"failed","staff_role": "encoder"|"manager"
+            "batch_ownership": "custom"|"irpc","batch_stage": "received"|"drying"|"stored"|"milling"|"milled"|"dispatched","booking_channel": "sms"|"staff","booking_status": "confirmed"|"reschedule_proposed"|"arrived"|"cancelled"|"no_show","buyer_type": "wholesaler"|"retailer"|"institutional"|"cooperative"|"drop_point"|"subsidy_program","client_kind": "farmer"|"coop"|"trader"|"buyer","forecast_source": "opa-2025"|"demo-synthetic","machine_type": "dryer"|"mill","prescription_kind": "move_bookings"|"fill_idle"|"mill_full_loads"|"store_mill_later","prescription_status": "accepted"|"dismissed","queue_status": "waiting"|"serving"|"done"|"left","sell_offer_status": "offered"|"accepted"|"declined"|"arrived"|"withdrawn","service": "drying"|"milling","sms_direction": "inbound"|"outbound","sms_prompt_kind": "ai_confirm"|"reschedule"|"weight_confirm","sms_prompt_status": "open"|"accepted"|"declined"|"expired","sms_status": "received"|"processed"|"queued"|"sent"|"failed","staff_role": "encoder"|"manager"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -632,7 +632,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "batch_ownership": ["custom", "irpc"],"batch_stage": ["received", "drying", "stored", "milling", "milled", "dispatched"],"booking_channel": ["sms", "staff"],"booking_status": ["confirmed", "reschedule_proposed", "arrived", "cancelled", "no_show"],"client_kind": ["farmer", "coop", "trader", "buyer"],"forecast_source": ["opa-2025", "demo-synthetic"],"machine_type": ["dryer", "mill"],"prescription_kind": ["move_bookings", "fill_idle", "mill_full_loads", "store_mill_later"],"prescription_status": ["accepted", "dismissed"],"queue_status": ["waiting", "serving", "done", "left"],"sell_offer_status": ["offered", "accepted", "declined", "arrived", "withdrawn"],"service": ["drying", "milling"],"sms_direction": ["inbound", "outbound"],"sms_prompt_kind": ["ai_confirm", "reschedule", "weight_confirm"],"sms_prompt_status": ["open", "accepted", "declined", "expired"],"sms_status": ["received", "processed", "queued", "sent", "failed"],"staff_role": ["encoder", "manager"]
+            "batch_ownership": ["custom", "irpc"],"batch_stage": ["received", "drying", "stored", "milling", "milled", "dispatched"],"booking_channel": ["sms", "staff"],"booking_status": ["confirmed", "reschedule_proposed", "arrived", "cancelled", "no_show"],"buyer_type": ["wholesaler", "retailer", "institutional", "cooperative", "drop_point", "subsidy_program"],"client_kind": ["farmer", "coop", "trader", "buyer"],"forecast_source": ["opa-2025", "demo-synthetic"],"machine_type": ["dryer", "mill"],"prescription_kind": ["move_bookings", "fill_idle", "mill_full_loads", "store_mill_later"],"prescription_status": ["accepted", "dismissed"],"queue_status": ["waiting", "serving", "done", "left"],"sell_offer_status": ["offered", "accepted", "declined", "arrived", "withdrawn"],"service": ["drying", "milling"],"sms_direction": ["inbound", "outbound"],"sms_prompt_kind": ["ai_confirm", "reschedule", "weight_confirm"],"sms_prompt_status": ["open", "accepted", "declined", "expired"],"sms_status": ["received", "processed", "queued", "sent", "failed"],"staff_role": ["encoder", "manager"]
           }
         }
 } as const

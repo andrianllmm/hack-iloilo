@@ -1,4 +1,4 @@
-import type { Client, ClientKind, Municipality } from "./types";
+import type { BuyerType, Client, ClientKind, Municipality } from "./types";
 /** Philippine mobile numbers, stored in E.164 form. */
 export function normalizePhone(input: string): string | null {
   const text = input.trim();
@@ -17,6 +17,23 @@ export const kindLabels: Record<ClientKind, string> = {
   coop: "Co-op",
   trader: "Trader",
   buyer: "Buyer",
+};
+/** What kind of first-hand buyer a `buyer` client is (IRPC's Top Clients list). */
+export const buyerTypes = [
+  "wholesaler",
+  "retailer",
+  "institutional",
+  "cooperative",
+  "drop_point",
+  "subsidy_program",
+] as const;
+export const buyerTypeLabels: Record<BuyerType, string> = {
+  wholesaler: "Wholesaler",
+  retailer: "Retailer",
+  institutional: "Institutional",
+  cooperative: "Cooperative",
+  drop_point: "Municipal drop-point",
+  subsidy_program: "₱20/kg program",
 };
 export type ClientGroup = { coop: Client | null; clients: Client[] };
 /** Context headings do not contribute to the result count. */
