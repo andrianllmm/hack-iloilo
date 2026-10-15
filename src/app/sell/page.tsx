@@ -82,9 +82,7 @@ export default function SellPage() {
               />
             </CollapsibleTrigger>
             <CardDescription>
-              Today&apos;s buying price for your palay&apos;s moisture.
-              It&apos;s an estimate. The final price is set when we receive your
-              palay.
+              Estimate today&apos;s price from your palay&apos;s moisture.
             </CardDescription>
           </CardHeader>
           <CollapsibleContent>
