@@ -1,7 +1,8 @@
 "use server";
 
 // M4. Booking: Future drying and milling slots. See TRD.md.
-// Server actions. Check the staff role first with requireRole().
+// Server actions. Check the staff role first with requireRole(), except the
+// public /book and /track actions, which act only for the entered phone.
 
 import { revalidatePath } from "next/cache";
 import type { z } from "zod";
@@ -9,20 +10,34 @@ import { todayManila } from "@/lib/dates";
 import { requireRole } from "@/modules/accounts/auth";
 import { normalizePhone } from "@/modules/accounts/logic";
 import { findOrRegisterByPhone } from "@/modules/accounts/queries";
+import type { QueuePosition } from "@/modules/gate/logic";
+import { clientQueuePositions } from "@/modules/gate/queries";
+import { fillTemplate } from "@/modules/sms/logic";
+import { expirePrompt } from "@/modules/sms/queries";
 import {
   bookingSchema,
   moveBookingSchema,
+  trackAnswerSchema,
+  trackLookupSchema,
+  trackMoveSchema,
   webBookingSchema,
   type BookingInput,
+  type TrackLookupInput,
   type WebBookingInput,
 } from "./booking-schema";
+import { bookingSms, cleanRef, TRACK_WINDOW_MINUTES } from "./logic";
 import {
+  answerProposal,
   bookingClient,
   cancelBooking,
   createBooking,
   moveBooking,
   notifyBookingMoved,
   notifyBookingConfirmation,
+  recordTrackFailure,
+  textEach,
+  trackedBooking,
+  trackLocked,
 } from "./queries";
 import type { Booking } from "./types";
 
@@ -129,9 +144,9 @@ export type BookOnlineResult =
     };
 
 /**
- * Client self-service booking from the public /book page. The only action
- * without requireRole(): like an SMS `BOOK`, it can only create a confirmed
- * booking for the entered phone, which is texted the ref.
+ * Client self-service booking from the public /book page. No requireRole():
+ * like an SMS `BOOK`, it can only create a confirmed booking for the entered
+ * phone, which is texted the ref.
  */
 export async function bookOnline(input: unknown): Promise<BookOnlineResult> {
   const parsed = webBookingSchema.safeParse(input);
@@ -196,4 +211,164 @@ export async function cancelBookingByStaff(
       message: "Unable to cancel the booking. Please try again.",
     };
   }
+}
+
+/** What /track shows: the booking without its client, plus the place in line once checked in. */
+export type TrackedBooking = Pick<
+  Booking,
+  | "ref"
+  | "service"
+  | "est_kg"
+  | "scheduled_date"
+  | "proposed_date"
+  | "flex_days"
+  | "status"
+> & { queue: QueuePosition[] };
+
+export type TrackResult =
+  | { status: "found"; booking: TrackedBooking }
+  | {
+      status: "error";
+      message?: string;
+      fieldErrors?: Partial<Record<keyof TrackLookupInput, string>>;
+    };
+
+const TRACK_NOT_FOUND = "No booking matches that ref and phone.";
+const TRACK_LOCKED = `Too many tries. Wait ${TRACK_WINDOW_MINUTES} minutes and try again.`;
+
+async function tracked(booking: Booking): Promise<TrackedBooking> {
+  const { ref, service, est_kg, scheduled_date, proposed_date, flex_days } =
+    booking;
+  return {
+    ref,
+    service,
+    est_kg,
+    scheduled_date,
+    proposed_date,
+    flex_days,
+    status: booking.status,
+    queue:
+      booking.status === "arrived"
+        ? await clientQueuePositions(booking.client_id)
+        : [],
+  };
+}
+
+/**
+ * Runs a public /track request for its ref and normalized phone. `run` returns
+ * the booking, an error message, or null when the ref is unknown or not the
+ * phone's: both read "not found" and count toward the lock.
+ */
+async function trackRequest<T extends TrackLookupInput>(
+  schema: z.ZodType<T>,
+  input: unknown,
+  failure: string,
+  run: (
+    ref: string,
+    phone: string,
+    data: T,
+  ) => Promise<Booking | string | null>,
+): Promise<TrackResult> {
+  const parsed = schema.safeParse(input);
+  if (!parsed.success)
+    return { status: "error", fieldErrors: fieldErrors(parsed.error) };
+  const phone = normalizePhone(parsed.data.phone)!;
+  try {
+    if (await trackLocked(phone))
+      return { status: "error", message: TRACK_LOCKED };
+    const result = await run(cleanRef(parsed.data.ref), phone, parsed.data);
+    if (result === null) {
+      await recordTrackFailure(phone);
+      return { status: "error", message: TRACK_NOT_FOUND };
+    }
+    if (typeof result === "string") return { status: "error", message: result };
+    return { status: "found", booking: await tracked(result) };
+  } catch (error) {
+    console.error(failure, error);
+    return { status: "error", message: `${failure}. Please try again.` };
+  }
+}
+
+/** /track lookup, the web twin of checking a booking and `STATUS`. */
+export async function trackBooking(input: unknown): Promise<TrackResult> {
+  return trackRequest(
+    trackLookupSchema,
+    input,
+    "Unable to look up the booking",
+    (ref, phone) => trackedBooking(ref, phone),
+  );
+}
+
+/** /track twin of `CANCEL <ref>`: same rules, same text to the phone. */
+export async function cancelTrackedBooking(
+  input: unknown,
+): Promise<TrackResult> {
+  return trackRequest(
+    trackLookupSchema,
+    input,
+    "Unable to cancel the booking",
+    async (ref, phone) => {
+      const result = await cancelBooking(ref, phone);
+      switch (result.status) {
+        case "not_found":
+        case "forbidden":
+          return null;
+        case "not_cancellable":
+          return "Only confirmed bookings can be cancelled.";
+      }
+      await textEach([phone], fillTemplate(bookingSms.cancelled, { ref }));
+      revalidatePath("/bookings");
+      return result.booking;
+    },
+  );
+}
+
+/** /track twin of `MOVE <ref> <dd/mm> [+days]`: same rules and texts. */
+export async function moveTrackedBooking(input: unknown): Promise<TrackResult> {
+  return trackRequest(
+    trackMoveSchema,
+    input,
+    "Unable to move the booking",
+    async (ref, phone, { date, flexDays }) => {
+      const result = await moveBooking(ref, date, flexDays, phone);
+      switch (result.status) {
+        case "not_found":
+        case "forbidden":
+          return null;
+        case "invalid":
+          return result.message;
+        case "not_movable":
+          return "Only upcoming bookings can be moved.";
+      }
+      await notifyBookingMoved(result.booking, [phone, result.clientPhone]);
+      return result.booking;
+    },
+  );
+}
+
+/**
+ * /track twin of `YES <ref>` / `NO <ref>` to a reschedule proposal. Closes the
+ * SMS prompt so a late text answer is ignored.
+ */
+export async function answerTrackedProposal(
+  input: unknown,
+): Promise<TrackResult> {
+  return trackRequest(
+    trackAnswerSchema,
+    input,
+    "Unable to answer the proposal",
+    async (ref, phone, { yes }) => {
+      const result = await answerProposal(ref, yes, phone);
+      switch (result.status) {
+        case "not_found":
+        case "forbidden":
+          return null;
+        case "not_open":
+          return "This booking is no longer waiting for an answer.";
+      }
+      await expirePrompt(ref);
+      await textEach([phone, result.clientPhone], result.reply);
+      return result.booking;
+    },
+  );
 }

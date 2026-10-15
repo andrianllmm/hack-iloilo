@@ -6,6 +6,10 @@ import {
   SACK_KG,
   canCancel,
   canMove,
+  cleanRef,
+  isClientOrBooker,
+  isTrackLocked,
+  TRACK_MAX_FAILURES,
   defaultRange,
   formatDay,
   formatRange,
@@ -280,5 +284,22 @@ describe("bookingFromAi", () => {
     expect(bookingAiSchema.safeParse({ ...reading, estKg: 1000 }).success).toBe(
       false,
     );
+  });
+});
+
+describe("/track helpers", () => {
+  it("cleans a typed ref to its stored form", () => {
+    expect(cleanRef(" k7p-2qx ")).toBe("K7P2QX");
+    expect(cleanRef("K7P 2QX")).toBe("K7P2QX");
+  });
+  it("lets only the client or booker see a booking", () => {
+    const booking = { booked_by_phone: "+6392" };
+    expect(isClientOrBooker(booking, "+6391", "+6391")).toBe(true);
+    expect(isClientOrBooker(booking, "+6391", "+6392")).toBe(true);
+    expect(isClientOrBooker(booking, "+6391", "+6393")).toBe(false);
+  });
+  it("locks a phone at the failure limit", () => {
+    expect(isTrackLocked(TRACK_MAX_FAILURES - 1)).toBe(false);
+    expect(isTrackLocked(TRACK_MAX_FAILURES)).toBe(true);
   });
 });

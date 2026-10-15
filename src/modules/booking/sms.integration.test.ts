@@ -17,9 +17,21 @@ vi.mock("@/lib/sms", () => ({ smsGateway: () => ({ send: gatewaySend }) }));
 import * as dates from "@/lib/dates";
 import { db } from "@/lib/supabase/admin";
 import { findClientByPhone } from "@/modules/accounts/queries";
-import { fillTemplate, isGsm7, SMS_MAX_CHARS } from "@/modules/sms/logic";
+import {
+  fillTemplate,
+  isGsm7,
+  SMS_MAX_CHARS,
+  smsReplies,
+} from "@/modules/sms/logic";
 import * as sms from "@/modules/sms/queries";
-import { bookForClient, moveBookingByStaff } from "./actions";
+import {
+  answerTrackedProposal,
+  bookForClient,
+  cancelTrackedBooking,
+  moveBookingByStaff,
+  moveTrackedBooking,
+  trackBooking,
+} from "./actions";
 import { bookingSms, formatDay } from "./logic";
 import {
   bookingsBetween,
@@ -66,6 +78,7 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
         ["bookings", "booked_by_phone"],
         ["sms_messages", "phone"],
         ["sms_prompts", "phone"],
+        ["track_attempts", "phone"],
         ["clients", "phone"],
       ] as const) {
         const { error } = await db().from(table).delete().in(column, phones);
@@ -420,6 +433,106 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
       vi.spyOn(console, "error").mockImplementation(() => {});
       const booking = await book(`BOOK DRY 100 20/10 FOR ${beneficiary}`);
       expect(booking.status).toBe("confirmed");
+    });
+
+    it("accepts a proposal on /track like YES and ignores a late SMS YES", async () => {
+      const booking = await book(`BOOK DRY 700 20/10 ±3 FOR ${beneficiary}`);
+      const to = dates.addDays(booking.scheduled_date, 2);
+      await proposeReschedule(booking.id, to);
+      const owner = { ref: booking.ref.toLowerCase(), phone: sender };
+      expect(
+        await answerTrackedProposal({ ...owner, yes: true }),
+      ).toMatchObject({
+        status: "found",
+        booking: { status: "confirmed", scheduled_date: to },
+      });
+      expect(await findByRef(booking.ref)).toMatchObject({
+        status: "confirmed",
+        scheduled_date: to,
+        proposed_date: null,
+      });
+      const moved = fillTemplate(bookingSms.rescheduleMoved, {
+        ref: booking.ref,
+        date: formatDay(to),
+      });
+      expect((await lastReply()).body).toBe(moved);
+      expect((await lastReply(beneficiary)).body).toBe(moved);
+
+      await inbound(`YES ${booking.ref}`, beneficiary);
+      expect((await lastReply(beneficiary)).body).toBe(smsReplies.noPrompt);
+      expect(await answerTrackedProposal({ ...owner, yes: false })).toEqual({
+        status: "error",
+        message: "This booking is no longer waiting for an answer.",
+      });
+    });
+
+    it("cancels and moves on /track like CANCEL and MOVE, for the client or booker only", async () => {
+      const booking = await book(`BOOK DRY 400 20/10 ±1 FOR ${beneficiary}`);
+      const notFound = {
+        status: "error",
+        message: "No booking matches that ref and phone.",
+      };
+      expect(await trackBooking({ ref: booking.ref, phone: stranger })).toEqual(
+        notFound,
+      );
+      expect(
+        await cancelTrackedBooking({ ref: booking.ref, phone: stranger }),
+      ).toEqual(notFound);
+      expect((await findByRef(booking.ref))!.status).toBe("confirmed");
+
+      const to = dates.addDays(booking.scheduled_date, 3);
+      expect(
+        await moveTrackedBooking({
+          ref: booking.ref,
+          phone: beneficiary,
+          date: to,
+          flexDays: 2,
+        }),
+      ).toMatchObject({ status: "found", booking: { scheduled_date: to } });
+      expect(await findByRef(booking.ref)).toMatchObject({
+        status: "confirmed",
+        preferred_date: to,
+        scheduled_date: to,
+        flex_days: 2,
+      });
+      expect((await lastReply(beneficiary)).body).toContain(
+        `Na-saylo na ang booking ${booking.ref}`,
+      );
+
+      expect(
+        await cancelTrackedBooking({ ref: booking.ref, phone: sender }),
+      ).toMatchObject({ status: "found", booking: { status: "cancelled" } });
+      expect((await findByRef(booking.ref))!.status).toBe("cancelled");
+      expect((await lastReply()).body).toBe(
+        fillTemplate(bookingSms.cancelled, { ref: booking.ref }),
+      );
+      expect(
+        await moveTrackedBooking({
+          ref: booking.ref,
+          phone: sender,
+          date: to,
+          flexDays: 0,
+        }),
+      ).toEqual({
+        status: "error",
+        message: "Only upcoming bookings can be moved.",
+      });
+    });
+
+    it("locks /track for a phone after repeated misses", async () => {
+      const booking = await book();
+      await db().from("track_attempts").delete().eq("phone", stranger);
+      for (let i = 0; i < 5; i++)
+        expect(
+          await trackBooking({ ref: booking.ref, phone: stranger }),
+        ).toMatchObject({ message: "No booking matches that ref and phone." });
+      expect(
+        await trackBooking({ ref: booking.ref, phone: stranger }),
+      ).toMatchObject({ message: expect.stringContaining("Too many tries") });
+      // Other phones are unaffected.
+      expect(
+        await trackBooking({ ref: booking.ref, phone: sender }),
+      ).toMatchObject({ status: "found" });
     });
   },
 );

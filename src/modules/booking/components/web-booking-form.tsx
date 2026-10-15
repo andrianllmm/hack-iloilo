@@ -1,12 +1,13 @@
 "use client";
 
 import { useId, useState, useTransition } from "react";
-import { ImageDown } from "lucide-react";
+import Link from "next/link";
+import { CalendarSearch, ImageDown } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DatePicker } from "@/components/date-picker";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Field,
   FieldDescription,
@@ -91,7 +92,8 @@ export function WebBookingForm({ today }: { today: string }) {
         </div>
         <p className="text-sm text-muted-foreground">
           We texted this ref to your phone. Show it at the gate. To cancel, text{" "}
-          <span className="font-mono">CANCEL {booked.ref}</span>.
+          <span className="font-mono">CANCEL {booked.ref}</span>, or manage it
+          online.
         </p>
         <Button
           type="button"
@@ -121,6 +123,16 @@ export function WebBookingForm({ today }: { today: string }) {
         {saveError ? (
           <p className="text-sm text-destructive">{saveError}</p>
         ) : null}
+        <Link
+          href={`/track?ref=${booked.ref}`}
+          className={buttonVariants({
+            variant: "outline",
+            className: "w-full",
+          })}
+        >
+          <CalendarSearch data-icon="inline-start" />
+          Track or change this booking
+        </Link>
         <Button
           type="button"
           variant="outline"
