@@ -117,7 +117,7 @@ export function CapacityView({
   const selectedDays = allDays?.filter((d) => d.date === selected) ?? [];
 
   return (
-    <section className="flex min-w-0 flex-col gap-6">
+    <section className="flex min-w-0 flex-1 flex-col gap-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">Capacity</h1>
@@ -154,7 +154,12 @@ export function CapacityView({
           </Button>
         </Empty>
       ) : !pool || !days ? (
-        <PlantView days={allDays} today={today} onDetails={setSelected} />
+        <PlantView
+          days={allDays}
+          today={today}
+          onDetails={setSelected}
+          onOpenPool={setTab}
+        />
       ) : (
         <>
           <Headline

@@ -31,8 +31,10 @@
   --s: color-mix(in oklch, var(--muted-foreground) 60%, var(--border));
 }
 
+/* Sized by the layout; the drawing fits inside, centred. */
 .plant-sheet {
-  aspect-ratio: 4 / 3;
+  position: relative;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: calc(var(--radius) * 0.6);
   background-color: var(--card);
@@ -43,9 +45,14 @@
   background-position: -1px -1px;
 }
 .plant-sheet svg {
-  display: block;
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  transition: transform 0.3s ease;
+}
+.plant-unit:is(:hover, :has(:focus-visible)) .plant-sheet svg {
+  transform: scale(1.06);
 }
 
 .plant-forecast {

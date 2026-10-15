@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowUpRight } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -73,11 +74,14 @@ export function PlantView({
   days,
   today,
   onDetails,
+  onOpenPool,
 }: {
   /** Every pool, as `capacityByDay` returns it. */
   days: DayPool[];
   today: string;
   onDetails: (date: string) => void;
+  /** Opens that pool's tab. */
+  onOpenPool: (pool: Pool) => void;
 }) {
   const dates = [...new Set(days.map((d) => d.date))];
   const first = dates[0] ?? today;
@@ -99,7 +103,13 @@ export function PlantView({
   });
 
   return (
-    <div className={cn("plant-view", "flex min-w-0 flex-col gap-5")}>
+    <div
+      // `w-0 min-w-full`: fills the page without widening it (the layout's main has no `min-w-0`).
+      className={cn(
+        "plant-view",
+        "flex min-h-0 w-0 min-w-full flex-1 flex-col gap-3 sm:gap-4",
+      )}
+    >
       <PlantDefs />
 
       <MiniCalendar
@@ -109,7 +119,7 @@ export function PlantView({
         onValueChange={(d) => d && setSelected(toIso(d))}
         startDate={toDate(weekStart)}
         onStartDateChange={(d) => d && setWeekStart(clampWeek(toIso(d)))}
-        className="w-fit max-w-full self-center overflow-x-auto bg-card"
+        className="w-fit max-w-full [scrollbar-width:none] self-center overflow-x-auto bg-card"
       >
         <MiniCalendarNavigation
           direction="prev"
@@ -179,9 +189,16 @@ export function PlantView({
         </Button>
       </div>
 
-      <div className="grid items-stretch gap-2.5 lg:grid-cols-[1fr_auto_1fr_auto_1fr]">
+      {/* Fills the rest of the screen: one swipeable card at a time on phones, all three from lg. */}
+      <div className="-mx-4 flex min-h-0 flex-1 snap-x snap-mandatory [scrollbar-width:none] gap-2.5 overflow-x-auto px-4 lg:mx-0 lg:grid lg:grid-cols-[1fr_auto_1fr_auto_1fr] lg:overflow-visible lg:px-0">
         {pools.map((p, i) => (
-          <PoolUnit key={p} pool={p} day={day[p]} arrow={i > 0} />
+          <PoolUnit
+            key={p}
+            pool={p}
+            day={day[p]}
+            arrow={i > 0}
+            onOpen={() => onOpenPool(p)}
+          />
         ))}
       </div>
 
@@ -194,10 +211,12 @@ function PoolUnit({
   pool,
   day,
   arrow,
+  onOpen,
 }: {
   pool: Pool;
   day?: DayPool;
   arrow: boolean;
+  onOpen: () => void;
 }) {
   if (!day) return null;
   const status = plantStatus(day);
@@ -227,19 +246,32 @@ function PoolUnit({
       <Card
         data-s={status}
         className={cn(
-          "min-w-0 transition-colors",
+          "plant-unit group relative w-[85%] min-w-0 shrink-0 cursor-pointer snap-center transition-shadow hover:ring-foreground/25 has-focus-visible:ring-2 has-focus-visible:ring-ring lg:w-auto",
           status === "over" &&
             "ring-[color-mix(in_oklch,var(--destructive)_60%,var(--border))]",
         )}
       >
-        <CardContent className="flex flex-col gap-3">
+        <CardContent className="flex min-h-0 flex-1 flex-col gap-3">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="font-semibold">{names[pool]}</h3>
+            <h3 className="font-semibold">
+              {/* Stretched over the card, so the whole card opens the tab. */}
+              <button
+                type="button"
+                onClick={onOpen}
+                className="flex items-center gap-1 outline-none after:absolute after:inset-0 after:z-10"
+              >
+                {names[pool]}
+                <ArrowUpRight
+                  aria-hidden
+                  className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-has-focus-visible:opacity-100"
+                />
+              </button>
+            </h3>
             <span className="rounded-md border px-1.5 font-mono text-xs text-muted-foreground">
               {formatTonnes(day.capacityKg)} {per[pool]}
             </span>
           </div>
-          <div className="plant-sheet">{drawing}</div>
+          <div className="plant-sheet min-h-10 flex-1">{drawing}</div>
           <LoadBar day={day} />
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <div className="tabular-nums">
@@ -267,17 +299,17 @@ function PoolUnit({
 function FlowArrow() {
   return (
     <svg
-      viewBox="0 0 32 12"
+      viewBox="0 0 22 12"
       aria-hidden
-      className="h-3 w-8 self-center justify-self-center text-muted-foreground max-lg:rotate-90"
+      className="h-3 w-5.5 shrink-0 self-center justify-self-center text-muted-foreground"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path className="plant-flow" d="M1 6 H27" strokeDasharray="2 3" />
-      <path d="M24 2 L30 6 L24 10" />
+      <path className="plant-flow" d="M1 6 H17" strokeDasharray="2 3" />
+      <path d="M14 2 L20 6 L14 10" />
     </svg>
   );
 }
@@ -354,7 +386,7 @@ function Legend() {
     ["bg-muted-foreground/50", "Idle"],
   ];
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
+    <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground max-sm:hidden">
       {items.map(([swatch, label]) => (
         <span key={label} className="flex items-center gap-1.5">
           <i
