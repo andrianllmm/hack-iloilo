@@ -23,7 +23,11 @@ export async function priceOn(date: string): Promise<Prices> {
     .order("created_at", { ascending: false })
     .limit(1)
     .single();
-  if (error) throw new Error(`No prices on ${date}: ${error.message}`);
+  if (error) {
+    // PGRST116: the .single() query matched no row.
+    if (error.code === "PGRST116") throw new Error(`No prices on ${date}`);
+    throw new Error(`Prices on ${date}: ${error.message}`);
+  }
   return data;
 }
 

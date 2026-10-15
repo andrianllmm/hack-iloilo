@@ -10,6 +10,6 @@ insert into public.prices (
   buy_base_minor_per_kg, drying_fee_minor_per_kg, milling_fee_minor_per_kg, rice_minor_per_kg
 )
 values (
-  'f0000000-0000-0000-0000-000000000001', current_date,
+  'f0000000-0000-0000-0000-000000000001', (now() at time zone 'Asia/Manila')::date,
   2100, 160, 330, 4700
 );

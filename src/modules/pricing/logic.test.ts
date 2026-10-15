@@ -31,6 +31,19 @@ describe("electricityPerKg", () => {
     expect(perKg).toBe(312);
   });
 
+  it("throws when kg is 0 instead of returning Infinity", () => {
+    expect(() =>
+      electricityPerKg({
+        machineKwh: 1000,
+        kg: 0,
+        daysRun: 1,
+        baseLoadKw: 0,
+        hoursPerDay: 16,
+        tariffMinorPerKwh: 1200,
+      }),
+    ).toThrow();
+  });
+
   it("rounds to whole centavos", () => {
     // 1000 × 1200 ÷ 7000 = 171.43 → 171 centavos
     const perKg = electricityPerKg({
@@ -95,4 +108,10 @@ describe("parsePriceForm", () => {
       expect(parsePriceForm({ ...validPriceForm, damaged }).ok).toBe(false);
     },
   );
+
+  it("names the failing field in the error", () => {
+    const result = parsePriceForm({ ...validPriceForm, drying: "-1" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain("drying fee");
+  });
 });

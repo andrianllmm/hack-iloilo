@@ -60,11 +60,30 @@ const priceForm = z.object({
 export type PriceParseResult =
   { ok: true; value: PriceInput } | { ok: false; error: string };
 
+// Field labels for error messages, keyed by the form field name.
+const FIELD_LABELS: Record<string, string> = {
+  effectiveDate: "effective date",
+  buyBase: "palay buying base",
+  damaged: "damaged deduction",
+  immature: "immature deduction",
+  foreign: "foreign deduction",
+  rice: "rice selling price",
+  drying: "drying fee",
+  milling: "milling fee",
+};
+
 /** Parse and validate raw price-form values from untrusted input. */
 export function parsePriceForm(raw: Record<string, unknown>): PriceParseResult {
   const parsed = priceForm.safeParse(raw);
   if (!parsed.success) {
-    return { ok: false, error: "Check the price details and try again." };
+    const field = parsed.error.issues[0]?.path[0];
+    const label = typeof field === "string" ? FIELD_LABELS[field] : undefined;
+    return {
+      ok: false,
+      error: label
+        ? `Check the ${label} and try again.`
+        : "Check the price details and try again.",
+    };
   }
   const v = parsed.data;
   return {
@@ -84,6 +103,18 @@ export function parsePriceForm(raw: Record<string, unknown>): PriceParseResult {
       },
     },
   };
+}
+
+/**
+ * The price row in effect on `today`, from rows sorted newest effective date
+ * first: the first row with `effective_date <= today`. Shared by the page
+ * prefill and the History "In effect" tag.
+ */
+export function livePrice<T extends { effective_date: string }>(
+  rows: T[],
+  today: string,
+): T | undefined {
+  return rows.find((p) => p.effective_date <= today);
 }
 
 /** Inputs for the shared electricity cost basis. Energy in kWh, money in centavos. */
@@ -114,6 +145,9 @@ export function electricityPerKg({
   hoursPerDay,
   tariffMinorPerKwh,
 }: ElectricityInput): number {
+  if (kg <= 0) {
+    throw new Error("electricityPerKg: kg must be positive");
+  }
   const totalKwh = machineKwh + baseLoadKw * hoursPerDay * daysRun;
   return Math.round((totalKwh * tariffMinorPerKwh) / kg);
 }

@@ -9,13 +9,13 @@ import {
 } from "@/components/ui/table";
 import { splitManila, todayManila } from "@/lib/dates";
 import { formatMoney } from "@/lib/format";
+import { livePrice } from "../logic";
 import { listPrices } from "../queries";
 
 export async function PricesView() {
   const prices = await listPrices();
   const today = todayManila();
-  // Rows are newest effective date first; the first one on or before today is live.
-  const liveId = prices.find((p) => p.effective_date <= today)?.id;
+  const liveId = livePrice(prices, today)?.id;
 
   if (prices.length === 0) {
     return <p className="text-sm text-muted-foreground">No prices set yet.</p>;

@@ -40,7 +40,7 @@ export function PriceForm({ defaults }: { defaults: PriceFormDefaults }) {
             defaultValue={defaults.effectiveDate}
           />
           <FieldDescription>
-            Reads back on this date; re-saving a date overwrites it.
+            Reads back on this date; the newest save for a date wins.
           </FieldDescription>
         </Field>
 

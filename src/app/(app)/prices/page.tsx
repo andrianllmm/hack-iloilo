@@ -15,7 +15,7 @@ import {
   type PriceFormDefaults,
 } from "@/modules/pricing/components/price-form";
 import { PricesView } from "@/modules/pricing/components/prices-view";
-import type { BuyRules } from "@/modules/pricing/logic";
+import { type BuyRules, livePrice } from "@/modules/pricing/logic";
 import { listPrices } from "@/modules/pricing/queries";
 
 export const metadata: Metadata = { title: "Prices" };
@@ -25,7 +25,7 @@ const peso = (minor: number) => (minor / 100).toFixed(2);
 async function SetPrices() {
   const today = todayManila();
   const prices = await listPrices();
-  const live = prices.find((p) => p.effective_date <= today);
+  const live = livePrice(prices, today);
   const rules = live?.buy_rules as BuyRules | undefined;
 
   // Prefill from the live row; otherwise the TRD defaults (fees, deductions).
