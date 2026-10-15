@@ -1,8 +1,7 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,19 +25,13 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClientKindSelect } from "./client-kind-select";
-import { groupClients, kindLabels } from "../logic";
+import { groupClients } from "../logic";
 import type { Client, ClientKind, Municipality } from "../types";
 import { ClientForm } from "./client-form";
+import { ClientsDataTable } from "./clients-data-table";
 
 /** Client directory and walk-in registration, arranged like the reference frame. */
 export function ClientsDirectory({
@@ -55,11 +48,9 @@ export function ClientsDirectory({
     version: number;
   } | null>(null);
   const { groups, count } = groupClients(clients, search, kind, municipalities);
-  const names = new Map(municipalities.map((place) => [place.id, place.name]));
   const coops = clients
     .filter((client) => client.kind === "coop")
     .sort((a, b) => a.name.localeCompare(b.name));
-  const coopNames = new Map(coops.map((coop) => [coop.id, coop.name]));
   const edit = (client: Client) =>
     setSheet((previous) => ({ client, version: (previous?.version ?? 0) + 1 }));
   return (
@@ -133,72 +124,11 @@ export function ClientsDirectory({
               ) : null}
             </Empty>
           ) : (
-            <div className="max-h-120 min-w-0 overflow-auto rounded-lg border">
-              <Table>
-                <TableHeader className="sticky top-0 bg-background">
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Municipality</TableHead>
-                    <TableHead>Co-op</TableHead>
-                    <TableHead>Kind</TableHead>
-                    <TableHead>Joined via</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {groups.map((group) => (
-                    <Fragment key={group.coop?.id ?? "unaffiliated"}>
-                      {group.coop &&
-                      !group.clients.some(
-                        (client) => client.id === group.coop?.id,
-                      ) ? (
-                        <TableRow>
-                          <TableCell colSpan={6} className="bg-muted">
-                            {group.coop.name}
-                          </TableCell>
-                        </TableRow>
-                      ) : null}
-                      {group.clients.map((client) => (
-                        <TableRow key={client.id}>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              aria-label={`Edit ${client.name}`}
-                              onClick={() => edit(client)}
-                              className="h-auto justify-start px-0 text-left whitespace-normal"
-                            >
-                              {client.name}
-                            </Button>
-                          </TableCell>
-                          <TableCell>{client.phone}</TableCell>
-                          <TableCell>
-                            {client.municipality_id
-                              ? (names.get(client.municipality_id) ?? "—")
-                              : "—"}
-                          </TableCell>
-                          <TableCell className="max-w-40 whitespace-normal">
-                            {client.coop_id
-                              ? (coopNames.get(client.coop_id) ?? "—")
-                              : "—"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary">
-                              {kindLabels[client.kind]}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <span aria-label="Registration source not recorded">
-                              —
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </Fragment>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <ClientsDataTable
+              groups={groups}
+              municipalities={municipalities}
+              onEdit={edit}
+            />
           )}
           <Alert>
             <AlertDescription>
