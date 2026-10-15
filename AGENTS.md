@@ -33,7 +33,7 @@ Module folders: `setup` (M1), `accounts` (M2), `sms` (M3), `booking` (M4), `buyi
 - Tailwind CSS 4, shadcn/ui (Base UI), shadcn charts (Recharts)
 - Supabase (Postgres, Auth) via supabase-js and `@supabase/ssr`; Supabase CLI for local dev, migrations and types
 - Zod, React Hook Form
-- Vercel AI SDK with `@ai-sdk/google` (Gemini)
+- Vercel AI SDK with `@ai-sdk/google` (Gemini) and `@openrouter/ai-sdk-provider` (OpenRouter)
 - SMSGate cloud (SMS gateway for Android) with a webhook relay on Vercel, plus a web simulator
 - Python (uv, pandas, openpyxl, SciPy) for the offline forecast
 - pnpm, Vitest, ESLint, Prettier, commitlint, Husky, lint-staged
@@ -90,10 +90,12 @@ See `.env.example`. Validated in `src/lib/env.ts`.
 | `GOOGLE_GENERATIVE_AI_API_KEYS`                                    | Comma-separated Gemini key pool; overrides the single key           |
 | `GOOGLE_GENERATIVE_AI_RPM_LIMIT`, `GOOGLE_GENERATIVE_AI_RPD_LIMIT` | Local per-key request budgets (defaults: 10/minute, 250/Manila day) |
 | `GOOGLE_GENERATIVE_AI_QUOTA_THRESHOLD`                             | Switch keys at this share of either budget (default: `0.9`)         |
+| `OPENROUTER_API_KEY`                                               | Optional OpenRouter provider; also works without Gemini keys        |
+| `OPENROUTER_MODEL`                                                 | Structured-output model (default: `openai/gpt-5.4-nano`)            |
 
 `env()` maps the renamed SMS credentials to `SMSGATE_USERNAME`, `SMSGATE_PASSWORD`, and `SMSGATE_SIGNING_KEY` for internal consumers. Configure the `SMS_GATEWAY_*` input names shown above.
 
-Gemini quotas are shared by keys from the same Google project. Set the request budgets to match the model and tier in AI Studio; these defaults are local budgets. Counters are per server instance and reset on cold starts. `extract()` reserves requests before I/O, retries quota failures once on another available key within the existing 8-second total budget, and returns `null` when none is available. Keep credentials and raw provider errors out of logs.
+Gemini quotas are shared by keys from the same Google project. Set the request budgets to match the model and tier in AI Studio; these defaults are local budgets. Counters are per server instance and reset on cold starts. `extract()` tries an eligible Gemini key, OpenRouter if configured, then a different eligible Gemini key. Quota, server, timeout, billing and retryable network failures advance to the next option; schema and validation failures return `null`. Within the 8-second total budget, the first attempt reserves half for fallback; OpenRouter keeps up to one second for the final Gemini key. Log provider names and safe failure categories as `[ai:provider]`, and Gemini key switches by index as `[ai:key]`; keep credentials and raw errors out of logs.
 
 ## Code Conventions
 
