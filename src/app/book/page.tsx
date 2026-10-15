@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { Wordmark } from "@/components/brand";
@@ -33,7 +34,13 @@ export default function BookPage() {
         <CardHeader>
           <CardTitle>Book drying or milling</CardTitle>
           <CardDescription>
-            Your booking is confirmed right away.
+            Your booking is confirmed right away.{" "}
+            <Link
+              href="/track"
+              className="font-semibold text-primary underline"
+            >
+              Track a booking
+            </Link>
           </CardDescription>
         </CardHeader>
         <CardContent>

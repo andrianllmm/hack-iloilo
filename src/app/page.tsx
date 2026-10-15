@@ -1,6 +1,5 @@
 import {
   ArrowRight,
-  CalendarSearch,
   LogIn,
   MessageSquareText,
   ShoppingBasket,
@@ -130,23 +129,6 @@ export default function LandingPage() {
             <span className="text-lg font-semibold">Sell palay</span>
             <span className="text-sm text-muted-foreground">
               Get a quote, then offer your harvest.
-            </span>
-          </span>
-          <ArrowRight className="size-5 shrink-0" aria-hidden />
-        </Link>
-
-        <Link
-          href="/track"
-          className="flex items-center gap-4 rounded-xl border p-4"
-        >
-          <CalendarSearch
-            className="size-8 shrink-0 text-muted-foreground"
-            aria-hidden
-          />
-          <span className="flex flex-1 flex-col">
-            <span className="text-lg font-semibold">Track a booking</span>
-            <span className="text-sm text-muted-foreground">
-              Check your place in line, move or cancel.
             </span>
           </span>
           <ArrowRight className="size-5 shrink-0" aria-hidden />
