@@ -130,10 +130,10 @@ describe("parseSellArgs", () => {
 describe("formatVarietiesSms", () => {
   const codes = ["RC160", "RC216", "RC222"];
 
-  it("lists every code in the given order with the SELL reminder", () => {
+  it("leads with the count and lists every code in the given order", () => {
     const reply = formatVarietiesSms(codes, 320);
     expect(reply).toBe(
-      "IRPC rice varieties: RC160, RC216, RC222. To sell: SELL <kg> <variety> <dd/mm>",
+      "IRPC rice varieties (3): RC160, RC216, RC222. To sell: SELL <kg> <variety> <dd/mm>",
     );
   });
 
@@ -141,12 +141,13 @@ describe("formatVarietiesSms", () => {
     expect(formatVarietiesSms(codes, 320).length).toBeLessThanOrEqual(320);
   });
 
-  it("truncates with an ellipsis when the full list would overflow", () => {
+  it("keeps the full count even when the list is truncated", () => {
     const max =
-      "IRPC rice varieties: RC160, RC216 …. To sell: SELL <kg> <variety> <dd/mm>"
+      "IRPC rice varieties (3): RC160, RC216 …. To sell: SELL <kg> <variety> <dd/mm>"
         .length;
     const reply = formatVarietiesSms(codes, max);
     expect(reply.length).toBeLessThanOrEqual(max);
+    expect(reply).toContain("(3)");
     expect(reply).toContain("…");
     expect(reply).toContain("RC160");
     expect(reply).not.toContain("RC222");

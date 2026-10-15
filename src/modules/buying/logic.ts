@@ -86,15 +86,17 @@ export function parseSellArgs(args: string[]): unknown {
 }
 
 /**
- * The `VARIETIES` reply: the known variety codes, in the order given, and a
- * reminder of the `SELL` format. If the whole list would exceed `maxChars`
- * (the SMS limit, passed in to keep this pure), it is cut to the codes that
- * fit with a trailing `…`.
+ * The `VARIETIES` reply: the total count, the known variety codes in the order
+ * given, and a reminder of the `SELL` format. The count is the full total even
+ * when the list is cut, so a farmer can tell there are more than shown. If the
+ * whole reply would exceed `maxChars` (the SMS limit, passed in to keep this
+ * pure), the list is cut to the codes that fit with a trailing `…`.
  */
 export function formatVarietiesSms(codes: string[], maxChars: number): string {
-  const prefix = "IRPC rice varieties: ";
+  if (codes.length === 0)
+    return "IRPC rice varieties: none yet. To sell: SELL <kg> <variety> <dd/mm>";
+  const prefix = `IRPC rice varieties (${codes.length}): `;
   const suffix = ". To sell: SELL <kg> <variety> <dd/mm>";
-  if (codes.length === 0) return `${prefix}none yet${suffix}`;
 
   const full = `${prefix}${codes.join(", ")}${suffix}`;
   if (full.length <= maxChars) return full;
