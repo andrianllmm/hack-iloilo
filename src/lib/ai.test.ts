@@ -75,6 +75,7 @@ describe("AI extraction key failover", () => {
       sdk.createOpenRouter.mock.results[0].value.chat,
     ).toHaveBeenCalledWith("openai/custom-model", {
       provider: { require_parameters: true },
+      structuredOutputs: { strict: false },
     });
     expect(sdk.generateText).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({

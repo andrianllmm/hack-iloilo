@@ -22,7 +22,11 @@ function createPool() {
     openRouter: config.OPENROUTER_API_KEY
       ? createOpenRouter({ apiKey: config.OPENROUTER_API_KEY }).chat(
           config.OPENROUTER_MODEL,
-          { provider: { require_parameters: true } },
+          {
+            provider: { require_parameters: true },
+            // Preserve optional Zod fields; Output.object still validates the response.
+            structuredOutputs: { strict: false },
+          },
         )
       : undefined,
     state: createKeyPool(
