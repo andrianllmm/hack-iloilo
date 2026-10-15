@@ -19,7 +19,8 @@
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
     "db:migration": "supabase migration new",
-    "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts"
+    "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
+    "import:forecast": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-forecast.mts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.95",
