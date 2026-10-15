@@ -49,6 +49,7 @@ import {
   refCheckInError,
   refKindLabels,
   refLine,
+  riceStockKg,
 } from "./logic";
 import type {
   Batch,
@@ -676,6 +677,19 @@ export async function batchTrail(id: string): Promise<BatchTrail | null> {
     a.dispatched_at.localeCompare(b.dispatched_at),
   );
   return data as BatchTrail;
+}
+
+/** Kg of IRPC-owned rice not yet dispatched, for the public /buy page. */
+export async function riceStock(): Promise<number> {
+  const facility = await currentFacility();
+  const { data, error } = await db()
+    .from("batches")
+    .select("ownership, stage, rice_kg, dried_kg, dispatches(kg)")
+    .eq("facility_id", facility.id)
+    .eq("ownership", "irpc")
+    .not("rice_kg", "is", null);
+  if (error) throw error;
+  return riceStockKg(data);
 }
 
 /**

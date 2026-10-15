@@ -477,3 +477,19 @@ export function pickupText(input: {
   const husk = input.byproducts?.husk_kg;
   return `IRPC: Pwede na kuhaon / Ready for pickup. Batch ${input.batchNo}: ${formatKg(input.kg)} ${product}${bran != null ? `, ${formatKg(bran)} darak/bran` : ""}${husk != null ? `, ${formatKg(husk)} ipa/husk` : ""}. Pick up at IRPC, Amamaros, Pototan.`;
 }
+
+/** IRPC-owned rice still on hand: what's left to dispatch across IRPC batches. */
+export function riceStockKg(
+  batches: readonly (Pick<
+    Batch,
+    "ownership" | "stage" | "rice_kg" | "dried_kg"
+  > & { dispatches: readonly Pick<Dispatch, "kg">[] })[],
+): number {
+  return batches
+    .filter((b) => b.ownership === "irpc")
+    .reduce(
+      (sum, b) =>
+        sum + remainingKg(dispatchableKg(b), dispatchedKg(b.dispatches)),
+      0,
+    );
+}

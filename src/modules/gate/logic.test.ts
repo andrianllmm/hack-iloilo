@@ -25,6 +25,7 @@ import {
   refCheckInError,
   refLine,
   remainingKg,
+  riceStockKg,
   waitMinutes,
 } from "./logic";
 import type { QueueRow } from "./types";
@@ -489,5 +490,27 @@ describe("checkInSchema", () => {
       checkInSchema.safeParse({ ...input, mode: "walkIn", name: "Ana" })
         .success,
     ).toBe(true);
+  });
+});
+
+describe("riceStockKg", () => {
+  const milled = {
+    ownership: "irpc" as const,
+    stage: "milled" as const,
+    rice_kg: 1000,
+    dried_kg: 1500,
+    dispatches: [{ kg: 300 }],
+  };
+
+  it("sums what's left of IRPC rice", () => {
+    expect(riceStockKg([milled, { ...milled, dispatches: [] }])).toBe(1700);
+  });
+
+  it("ignores custom batches", () => {
+    expect(riceStockKg([{ ...milled, ownership: "custom" }])).toBe(0);
+  });
+
+  it("never goes below zero", () => {
+    expect(riceStockKg([{ ...milled, dispatches: [{ kg: 1200 }] }])).toBe(0);
   });
 });
