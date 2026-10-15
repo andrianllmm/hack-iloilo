@@ -1,31 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { toPickerDate } from "@/components/date-picker";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import type { Municipality } from "@/modules/accounts/types";
-import { queueLines, services } from "../logic";
-import type { QueueRow } from "../types";
+import type { CheckInMode } from "../checkin-schema";
+import { formatDay, queueLines, services } from "../logic";
+import type { QueueRow, RefPreview } from "../types";
 import { CheckInCard, type CheckInRequest } from "./check-in-card";
+import { DateContextCard } from "./date-context-card";
 import { QueueLine } from "./queue-line";
 
 const REFRESH_MS = 30_000;
 const TICK_MS = 60_000;
-const dayLabel = new Intl.DateTimeFormat("en-US", {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  timeZone: "UTC",
-});
 
 /** Gate workspace: check-in form and one live column per service line. */
 export function GateQueue({
@@ -43,8 +30,17 @@ export function GateQueue({
   // Starts at the server's clock so wait times hydrate identically.
   const [now, setNow] = useState(() => new Date(renderedAt));
   const [request, setRequest] = useState<CheckInRequest | null>(null);
+  const [context, setContext] = useState<{
+    mode: CheckInMode;
+    preview: RefPreview | null;
+  }>({ mode: "phone", preview: null });
+  const onContextChange = useCallback(
+    (mode: CheckInMode, preview: RefPreview | null) =>
+      setContext({ mode, preview }),
+    [],
+  );
   const lines = queueLines(rows);
-  const todayLabel = dayLabel.format(new Date(`${today}T00:00:00Z`));
+  const todayLabel = formatDay(today);
 
   useEffect(() => {
     const tick = setInterval(() => setNow(new Date()), TICK_MS);
@@ -73,21 +69,16 @@ export function GateQueue({
       </header>
       <div className="grid min-w-0 items-stretch gap-6 lg:grid-cols-[minmax(20rem,1fr)_1fr_1fr]">
         <div className="flex min-w-0 flex-col gap-6">
-          <CheckInCard municipalities={municipalities} request={request} />
-          <Card>
-            <CardHeader>
-              <CardTitle>Date context</CardTitle>
-              <CardDescription>Today · {todayLabel}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Calendar
-                mode="single"
-                selected={toPickerDate(today)}
-                defaultMonth={toPickerDate(today)}
-                className="mx-auto"
-              />
-            </CardContent>
-          </Card>
+          <CheckInCard
+            municipalities={municipalities}
+            request={request}
+            onContextChange={onContextChange}
+          />
+          <DateContextCard
+            today={today}
+            mode={context.mode}
+            preview={context.preview}
+          />
         </div>
         {services.map((service) => (
           <QueueLine
