@@ -15,6 +15,7 @@
 | `89_history.sql`  | ~14 weeks of past operations: batches, sales, prices, SMS   |
 | `90_peak.sql`     | Peak demo: dryer 30 t over in 2 weeks, idle in 3 weeks      |
 | `91_sms.sql`      | SMS threads for seeded bookings and offers, one open prompt |
+| `92_sms_ai.sql`   | Plain-language SMS threads read by AI, with their bookings  |
 
 Rules for every seed file:
 
