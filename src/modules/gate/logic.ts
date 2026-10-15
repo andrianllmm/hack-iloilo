@@ -81,14 +81,21 @@ export function dispatchMode(ownership: BatchOwnership): DispatchMode {
 
 /**
  * Kilograms a batch can dispatch: the milled rice once it's milled, otherwise
- * the custom-dried palay its owner picks up. IRPC palay isn't dispatchable
- * until it has been milled, so its pre-mill weight counts as nothing.
+ * the dried palay a custom owner picks up once it is `stored`. IRPC palay isn't
+ * dispatchable until milled. A custom batch's dried weight is only dispatchable
+ * at `stored` (dried, not in the mill) or `dispatched` (already picked up), so
+ * staff can't pick up dried palay mid-milling. `startMilling` refuses a batch
+ * that already has dispatches, so a dried pickup never mixes with later rice.
  */
 export function dispatchableKg(
-  batch: Pick<Batch, "ownership" | "rice_kg" | "dried_kg">,
+  batch: Pick<Batch, "ownership" | "stage" | "rice_kg" | "dried_kg">,
 ): number {
   if (batch.rice_kg != null) return batch.rice_kg;
-  if (batch.ownership === "custom" && batch.dried_kg != null)
+  if (
+    batch.ownership === "custom" &&
+    batch.dried_kg != null &&
+    (batch.stage === "stored" || batch.stage === "dispatched")
+  )
     return batch.dried_kg;
   return 0;
 }

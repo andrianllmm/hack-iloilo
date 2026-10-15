@@ -24,9 +24,6 @@ import {
   type BatchAction,
   batchOwnership,
   batchPrefix,
-  dispatchableKg,
-  dispatchedKg,
-  isFullyDispatched,
   nextBatchNo,
   nextStage,
   normalizeRef,
@@ -34,7 +31,6 @@ import {
   refCheckInError,
   refKindLabels,
   refLine,
-  remainingKg,
 } from "./logic";
 import type {
   Batch,
@@ -65,7 +61,8 @@ export class GateError extends Error {
       | "ref_not_found"
       | "ref_not_eligible"
       | "not_dispatchable"
-      | "over_dispatch",
+      | "over_dispatch"
+      | "already_dispatched",
     message: string,
   ) {
     super(message);
@@ -409,10 +406,23 @@ export function skipDrying(batchId: string): Promise<Batch> {
   return advance(batchId, "received", "skip_drying", {});
 }
 
-export function startMilling(
+export async function startMilling(
   batchId: string,
   fields: { mill_id: string; mill_start: string },
 ): Promise<Batch> {
+  // A batch that has already dispatched dried palay can't be milled — that
+  // would mix a pickup with later rice against the same batch.
+  const { data: dispatched, error } = await db()
+    .from("dispatches")
+    .select("id")
+    .eq("batch_id", batchId)
+    .limit(1);
+  if (error) throw error;
+  if (dispatched.length > 0)
+    throw new GateError(
+      "already_dispatched",
+      "This batch has dispatches and can no longer be milled.",
+    );
   return advance(batchId, "stored", "start_milling", fields);
 }
 
@@ -506,51 +516,37 @@ export async function dispatch(params: {
   priceMinorPerKg: number;
   orRef: string | null;
 }): Promise<Dispatch> {
-  const { data: batch, error } = await db()
-    .from("batches")
-    .select("ownership, rice_kg, dried_kg, dispatches(kg)")
-    .eq("id", params.batchId)
-    .maybeSingle();
-  if (error) throw error;
-  if (!batch)
-    throw new GateError(
+  const { data, error } = await db().rpc("dispatch_from_batch", {
+    p_batch_id: params.batchId,
+    p_buyer_id: params.buyerId,
+    p_kg: params.kg,
+    p_price_minor_per_kg: params.priceMinorPerKg,
+    // The generated arg type is non-null, but the SQL `text` param takes null
+    // (a pickup has no OR ref).
+    p_or_ref: params.orRef as string,
+  });
+  if (error) throw dispatchError(error);
+  return data as Dispatch;
+}
+
+/** Maps a `dispatch_from_batch` exception to the GateError the action expects. */
+function dispatchError(error: { message: string }): Error {
+  const { message } = error;
+  if (message.includes("batch_not_found"))
+    return new GateError(
       "not_found",
       "This batch no longer exists. Refresh the page.",
     );
-
-  const dispatchable = dispatchableKg(batch);
-  if (dispatchable === 0)
-    throw new GateError(
+  if (message.includes("not_dispatchable"))
+    return new GateError(
       "not_dispatchable",
       "This batch isn't ready to dispatch yet.",
     );
-  const already = dispatchedKg(batch.dispatches);
-  const remaining = remainingKg(dispatchable, already);
-  if (params.kg > remaining)
-    throw new GateError(
+  const over = message.match(/over_dispatch:(\d+)/);
+  if (over)
+    return new GateError(
       "over_dispatch",
-      `Only ${remaining} kg left to dispatch from this batch.`,
+      `Only ${over[1]} kg left to dispatch from this batch.`,
     );
-
-  const { data: row, error: insertError } = await db()
-    .from("dispatches")
-    .insert({
-      batch_id: params.batchId,
-      buyer_id: params.buyerId,
-      kg: params.kg,
-      price_minor_per_kg: params.priceMinorPerKg,
-      or_ref: params.orRef,
-    })
-    .select()
-    .single();
-  if (insertError) throw insertError;
-
-  if (isFullyDispatched(dispatchable, already + params.kg)) {
-    const { error: stageError } = await db()
-      .from("batches")
-      .update({ stage: "dispatched" })
-      .eq("id", params.batchId);
-    if (stageError) throw stageError;
-  }
-  return row;
+  return error instanceof Error ? error : new Error(message);
 }

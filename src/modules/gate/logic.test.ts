@@ -145,28 +145,75 @@ describe("dispatchMode", () => {
 describe("dispatchableKg", () => {
   it("is the milled rice once a batch is milled, either ownership", () => {
     expect(
-      dispatchableKg({ ownership: "irpc", rice_kg: 5400, dried_kg: 7800 }),
+      dispatchableKg({
+        ownership: "irpc",
+        stage: "milled",
+        rice_kg: 5400,
+        dried_kg: 7800,
+      }),
     ).toBe(5400);
     expect(
-      dispatchableKg({ ownership: "custom", rice_kg: 1200, dried_kg: 1800 }),
+      dispatchableKg({
+        ownership: "custom",
+        stage: "milled",
+        rice_kg: 1200,
+        dried_kg: 1800,
+      }),
     ).toBe(1200);
   });
 
-  it("is the dried palay for custom batches not yet milled", () => {
+  it("is the dried palay for a stored custom batch not yet milled", () => {
     expect(
-      dispatchableKg({ ownership: "custom", rice_kg: null, dried_kg: 2300 }),
+      dispatchableKg({
+        ownership: "custom",
+        stage: "stored",
+        rice_kg: null,
+        dried_kg: 2300,
+      }),
     ).toBe(2300);
+  });
+
+  it("keeps the dried palay dispatchable once a custom pickup is dispatched", () => {
+    expect(
+      dispatchableKg({
+        ownership: "custom",
+        stage: "dispatched",
+        rice_kg: null,
+        dried_kg: 2300,
+      }),
+    ).toBe(2300);
+  });
+
+  it("is nothing for a custom batch while it is being milled", () => {
+    expect(
+      dispatchableKg({
+        ownership: "custom",
+        stage: "milling",
+        rice_kg: null,
+        dried_kg: 2300,
+      }),
+    ).toBe(0);
   });
 
   it("is nothing for IRPC palay before it is milled", () => {
     expect(
-      dispatchableKg({ ownership: "irpc", rice_kg: null, dried_kg: 9000 }),
+      dispatchableKg({
+        ownership: "irpc",
+        stage: "stored",
+        rice_kg: null,
+        dried_kg: 9000,
+      }),
     ).toBe(0);
   });
 
   it("is nothing when neither rice nor dried weight is recorded", () => {
     expect(
-      dispatchableKg({ ownership: "custom", rice_kg: null, dried_kg: null }),
+      dispatchableKg({
+        ownership: "custom",
+        stage: "stored",
+        rice_kg: null,
+        dried_kg: null,
+      }),
     ).toBe(0);
   });
 });
