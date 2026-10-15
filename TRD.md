@@ -199,6 +199,7 @@ A short yes or no ("oo sige", "indi", "ok po") answers the sender's latest open 
 - `YES`, `NO`, `MOVE` and `CANCEL` only work from the client's phone or `booked_by_phone`. Others get the help reply.
 - `MOVE` keeps the ref, service and kg, confirms the new date right away, and drops a pending M10 proposal.
 - Staff use **Reschedule** on an open booking's list row to choose a date and flex days. The shared move operation rejects dates before Manila today and flex outside 0–7, updates both preferred and scheduled dates, and expires the old YES/NO prompt. Staff moves text the client and the original booker once each when their phones differ.
+- **Web tracking** (`/track`, public): ref plus the client's or booker's phone shows the booking and, once checked in, its place in line (same as `STATUS`). Accept/Decline, Move and Cancel call the same shared operations as `YES`/`NO`, `MOVE` and `CANCEL` and send the same texts; Accept/Decline also expires the SMS prompt. A wrong ref and someone else's booking both read "not found". Each miss is logged in `track_attempts`, and a phone with 5 misses in 15 minutes is locked out of `/track` until the window passes.
 
 ```mermaid
 stateDiagram-v2

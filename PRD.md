@@ -167,6 +167,7 @@ The input end for custom service: clients reserve slots for their own palay.
 **P1**
 
 - **Web booking:** book from a phone browser.
+- **Web tracking:** check, move, cancel and answer proposals from a phone browser.
 
 ### M5. Buying
 
