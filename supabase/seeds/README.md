@@ -9,12 +9,13 @@
 | `06_gate.sql`     | Today's live gate queue and its open batches                |
 | `04_booking.sql`  | Upcoming drying and milling bookings                        |
 | `05_buying.sql`   | Sell offers (offered and accepted) over the next weeks      |
-| `08_forecast.sql` | Demo forecast arrivals over the next 8 weeks                |
+| `08_forecast.sql` | Trained forecast and metrics (`pnpm seed:forecast`)         |
 | `NN_<module>.sql` | Each later ticket adds its own file; don't edit shared ones |
 | `90_peak.sql`     | Peak demo scenario (#44)                                    |
 
 Rules for every seed file:
 
 - **Dates are relative to `current_date`** (`current_date + 14`), never literal, so the demo works on any day.
+  Exception: `08_forecast.sql` keeps the trained calendar dates.
 - **Reference rows by fixed id or natural key.** The facility and base clients have fixed ids (listed at the top of their files). Look up machines by `code`, varieties by `code` and municipalities by `psgc_code`.
 - Number the file after its module (`04_booking.sql`, `05_buying.sql`, `07_pricing.sql`, ...) so it loads after what it references.
