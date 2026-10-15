@@ -56,7 +56,7 @@ export function GateQueue({
     <section className="flex min-w-0 flex-col gap-6 font-sans [--font-sans:var(--font-geist-sans)] lg:h-[calc(100svh-5rem)]">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Gate queue</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Queue</h1>
           <p className="text-sm text-muted-foreground">
             {todayLabel} · one line per service · first come, first served
           </p>
