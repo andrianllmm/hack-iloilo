@@ -110,3 +110,71 @@ export function formatVarietiesSms(codes: string[], maxChars: number): string {
   }
   return `${prefix}${kept.join(", ")} …${suffix}`;
 }
+
+// --- Price override (M5 P1). The manager replaces the computed price per kg
+// with a reason; the original computed price is kept in `deductions`. ---
+
+/** A required pesos field typed by the manager, stored as integer centavos. */
+const overridePesos = z
+  .string()
+  .trim()
+  .min(1)
+  .pipe(z.coerce.number())
+  .pipe(z.number().nonnegative())
+  .transform((p) => Math.round(p * 100));
+
+/** Validated override: a new price per kg (centavos) and a required reason. */
+export const overrideFormSchema = z.object({
+  priceMinorPerKg: overridePesos,
+  reason: z.string().trim().min(1),
+});
+export type OverrideInput = z.infer<typeof overrideFormSchema>;
+
+export type OverrideParseResult =
+  { ok: true; value: OverrideInput } | { ok: false; error: string };
+
+/** Parse and validate the raw override form (price in pesos, a reason). */
+export function parseOverrideForm(
+  raw: Record<string, unknown>,
+): OverrideParseResult {
+  const parsed = overrideFormSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: "Enter a price (₱/kg) and a reason for the override.",
+    };
+  }
+  return { ok: true, value: parsed.data };
+}
+
+/**
+ * Applies a price override to a purchase: the new price per kg, the total
+ * recomputed as paid kg × price, and the reason. The original computed price
+ * is kept in `deductions.original_minor_per_kg`, set only the first time so
+ * repeated overrides preserve the true computed original.
+ */
+export function applyOverride(
+  current: {
+    paidKg: number;
+    priceMinorPerKg: number;
+    deductions: Record<string, number>;
+  },
+  input: OverrideInput,
+): {
+  priceMinorPerKg: number;
+  totalMinor: number;
+  deductions: Record<string, number>;
+  overrideReason: string;
+} {
+  const originalMinorPerKg =
+    current.deductions.original_minor_per_kg ?? current.priceMinorPerKg;
+  return {
+    priceMinorPerKg: input.priceMinorPerKg,
+    totalMinor: current.paidKg * input.priceMinorPerKg,
+    deductions: {
+      ...current.deductions,
+      original_minor_per_kg: originalMinorPerKg,
+    },
+    overrideReason: input.reason,
+  };
+}

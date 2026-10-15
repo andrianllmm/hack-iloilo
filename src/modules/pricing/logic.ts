@@ -163,6 +163,8 @@ export type Deductions = {
   immature: number;
   foreign: number;
   sack: number;
+  /** The computed price per kg (centavos) before a manager override (M5 P1). */
+  original_minor_per_kg?: number;
 };
 
 /**

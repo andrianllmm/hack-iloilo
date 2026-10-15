@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyOverride,
   formatVarietiesSms,
   parseOfferForm,
+  parseOverrideForm,
   parseQuoteArgs,
   parseSellArgs,
   quoteSmsSchema,
@@ -157,5 +159,62 @@ describe("formatVarietiesSms", () => {
     expect(formatVarietiesSms([], 320)).toBe(
       "IRPC rice varieties: none yet. To sell: SELL <kg> <variety> <dd/mm>",
     );
+  });
+});
+
+describe("parseOverrideForm", () => {
+  it("accepts a pesos price and a reason, converting to centavos", () => {
+    const result = parseOverrideForm({
+      priceMinorPerKg: "21.50",
+      reason: "Loyal supplier",
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.priceMinorPerKg).toBe(2150);
+      expect(result.value.reason).toBe("Loyal supplier");
+    }
+  });
+
+  it("rejects a blank or whitespace-only reason", () => {
+    expect(parseOverrideForm({ priceMinorPerKg: "21", reason: "" }).ok).toBe(
+      false,
+    );
+    expect(parseOverrideForm({ priceMinorPerKg: "21", reason: "   " }).ok).toBe(
+      false,
+    );
+  });
+
+  it.each(["", "-1", "abc"])("rejects an invalid price: %s", (price) => {
+    expect(
+      parseOverrideForm({ priceMinorPerKg: price, reason: "any" }).ok,
+    ).toBe(false);
+  });
+});
+
+describe("applyOverride", () => {
+  const deductions = { damaged: 10, immature: 5, foreign: 0, sack: 20 };
+
+  it("recomputes the total and keeps the computed price as the original", () => {
+    const result = applyOverride(
+      { paidKg: 8000, priceMinorPerKg: 2100, deductions },
+      { priceMinorPerKg: 2200, reason: "Premium quality" },
+    );
+    expect(result.priceMinorPerKg).toBe(2200);
+    expect(result.totalMinor).toBe(8000 * 2200);
+    expect(result.overrideReason).toBe("Premium quality");
+    expect(result.deductions.original_minor_per_kg).toBe(2100);
+    expect(result.deductions.damaged).toBe(10);
+  });
+
+  it("preserves the true original across repeated overrides", () => {
+    const result = applyOverride(
+      {
+        paidKg: 8000,
+        priceMinorPerKg: 2200,
+        deductions: { ...deductions, original_minor_per_kg: 2100 },
+      },
+      { priceMinorPerKg: 2300, reason: "Second override" },
+    );
+    expect(result.deductions.original_minor_per_kg).toBe(2100);
   });
 });

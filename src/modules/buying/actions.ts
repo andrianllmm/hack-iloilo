@@ -6,8 +6,8 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase/admin";
 import { requireRole } from "@/modules/accounts/auth";
-import { parseOfferForm } from "./logic";
-import { createOffer } from "./queries";
+import { applyOverride, parseOfferForm, parseOverrideForm } from "./logic";
+import { createOffer, purchaseByBatch } from "./queries";
 
 export type OfferFormState =
   { ok: true; ref: string } | { ok: false; error: string } | undefined;
@@ -68,6 +68,49 @@ export async function setVoucherRef(
     .update({ voucher_ref: trimmed === "" ? null : trimmed })
     .eq("batch_id", batchId);
   if (error) return { ok: false, error: "Couldn't save the voucher number." };
+  revalidatePath(`/batches/${batchId}`);
+  return { ok: true };
+}
+
+export type OverrideResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Overrides a purchase's price per kg with a required reason. Manager only.
+ * The original computed price is preserved in `deductions`; the total is
+ * recomputed as paid kg × the new price.
+ */
+export async function overridePrice(
+  batchId: string,
+  priceInput: string,
+  reason: string,
+): Promise<OverrideResult> {
+  await requireRole("manager");
+
+  const parsed = parseOverrideForm({ priceMinorPerKg: priceInput, reason });
+  if (!parsed.ok) return { ok: false, error: parsed.error };
+
+  const purchase = await purchaseByBatch(batchId);
+  if (!purchase) return { ok: false, error: "No purchase to override." };
+
+  const update = applyOverride(
+    {
+      paidKg: purchase.paid_kg,
+      priceMinorPerKg: purchase.price_minor_per_kg,
+      deductions: purchase.deductions as Record<string, number>,
+    },
+    parsed.value,
+  );
+
+  const { error } = await db()
+    .from("purchases")
+    .update({
+      price_minor_per_kg: update.priceMinorPerKg,
+      total_minor: update.totalMinor,
+      deductions: update.deductions,
+      override_reason: update.overrideReason,
+    })
+    .eq("batch_id", batchId);
+  if (error) return { ok: false, error: "Couldn't save the override." };
   revalidatePath(`/batches/${batchId}`);
   return { ok: true };
 }
