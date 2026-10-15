@@ -30,3 +30,15 @@ export function formatMoney(minor: number): string {
 export function formatMoneySms(minor: number): string {
   return money(minor, "PHP ");
 }
+
+const shortDate = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+/** `May 16, 2025` from a `YYYY-MM-DD` calendar date. */
+export function formatDate(date: string): string {
+  return shortDate.format(new Date(`${date}T00:00:00Z`));
+}

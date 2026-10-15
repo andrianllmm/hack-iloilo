@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatKg, formatMoney, formatMoneySms, formatTonnes } from "./format";
+import {
+  formatDate,
+  formatKg,
+  formatMoney,
+  formatMoneySms,
+  formatTonnes,
+} from "./format";
 
 describe("formatMoney", () => {
   it("shows pesos and centavos with the peso sign", () => {
@@ -30,5 +36,11 @@ describe("formatTonnes", () => {
     expect(formatTonnes(56_000)).toBe("56 t");
     expect(formatTonnes(3_140)).toBe("3.1 t");
     expect(formatTonnes(30_960)).toBe("31 t");
+  });
+});
+
+describe("formatDate", () => {
+  it("formats a calendar date without shifting the day", () => {
+    expect(formatDate("2025-05-16")).toBe("May 16, 2025");
   });
 });
