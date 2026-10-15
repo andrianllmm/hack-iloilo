@@ -3,7 +3,7 @@
 import { ChevronsUpDown, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Logo } from "@/components/brand";
+import { Logo, Wordmark } from "@/components/brand";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -45,16 +45,16 @@ export function AppSidebar({ staff }: { staff: Staff }) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<Link href="/capacity" />}>
-              <div className="flex size-8 shrink-0 items-center justify-center text-primary">
-                <Logo className="size-8" />
-              </div>
-              <div className="grid text-left leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="font-medium">SACKTO</span>
-                <span className="text-xs text-muted-foreground">
-                  IRPC Capacity Planning
-                </span>
-              </div>
+            {/* The wordmark, or just the mark when the sidebar collapses to icons. */}
+            <SidebarMenuButton
+              size="lg"
+              render={<Link href="/capacity" aria-label="SACKTO" />}
+            >
+              <Wordmark
+                aria-hidden
+                className="h-6! w-auto! text-primary group-data-[collapsible=icon]:hidden"
+              />
+              <Logo className="hidden size-8! text-primary group-data-[collapsible=icon]:block" />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
