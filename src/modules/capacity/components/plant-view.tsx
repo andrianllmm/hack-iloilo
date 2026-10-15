@@ -180,7 +180,6 @@ export function PlantView({
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="font-semibold">{dayLabel(selected)}</h2>
           {flagged.length ? (
             flagged.map((x) => (
               <Chip key={x.pool} status={x.status}>
