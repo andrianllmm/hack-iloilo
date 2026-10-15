@@ -20,7 +20,7 @@ import { findClientByPhone } from "@/modules/accounts/queries";
 import { isGsm7, SMS_MAX_CHARS } from "@/modules/sms/logic";
 import * as sms from "@/modules/sms/queries";
 import { bookForClient } from "./actions";
-import { findByRef } from "./queries";
+import { findByRef, proposeReschedule } from "./queries";
 
 // Opt in with an existing local Supabase environment; no database reset required.
 describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
@@ -59,6 +59,7 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
       for (const [table, column] of [
         ["bookings", "booked_by_phone"],
         ["sms_messages", "phone"],
+        ["sms_prompts", "phone"],
         ["clients", "phone"],
       ] as const) {
         const { error } = await db().from(table).delete().in(column, phones);
@@ -198,6 +199,124 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
         throw new Error("Saved booking reported as failed");
       expect(await findByRef(saved.booking.ref)).not.toBeNull();
       expect(errorLog).toHaveBeenCalled();
+    });
+
+    it("texts a reschedule and moves the booking on YES", async () => {
+      const booking = await book("BOOK DRY 700 20/10 ±3");
+      const to = dates.addDays(booking.scheduled_date, 2);
+      expect(await proposeReschedule(booking.id, to)).toMatchObject({
+        status: "reschedule_proposed",
+        proposed_date: to,
+      });
+      const question = (await lastReply()).body;
+      expect(question).toContain(
+        `Reply YES ${booking.ref} or NO ${booking.ref}`,
+      );
+      expect(isGsm7(question)).toBe(true);
+      expect(question.length).toBeLessThanOrEqual(SMS_MAX_CHARS);
+      // Already proposed: not asked twice.
+      expect(await proposeReschedule(booking.id, to)).toBeNull();
+
+      await inbound(`YES ${booking.ref}`, stranger);
+      expect((await lastReply(stranger)).body).toContain("Unknown command");
+      expect((await findByRef(booking.ref))!.status).toBe(
+        "reschedule_proposed",
+      );
+
+      await inbound(`yes ${booking.ref.toLowerCase()}`);
+      expect(await findByRef(booking.ref)).toMatchObject({
+        status: "confirmed",
+        scheduled_date: to,
+        proposed_date: null,
+      });
+      expect((await lastReply()).body).toContain(`${booking.ref} moved to`);
+    });
+
+    it("keeps the date on NO from the booker and tells the client", async () => {
+      const booking = await book(`BOOK DRY 700 20/10 ±3 FOR ${beneficiary}`);
+      await proposeReschedule(
+        booking.id,
+        dates.addDays(booking.scheduled_date, 1),
+      );
+      expect((await lastReply(beneficiary)).body).toContain(
+        `YES ${booking.ref}`,
+      );
+      await inbound(`NO ${booking.ref}`);
+      expect(await findByRef(booking.ref)).toMatchObject({
+        status: "confirmed",
+        scheduled_date: booking.scheduled_date,
+        proposed_date: null,
+      });
+      expect((await lastReply()).body).toContain(`${booking.ref} stays on`);
+      expect((await lastReply(beneficiary)).body).toBe(
+        (await lastReply()).body,
+      );
+    });
+
+    it("moves a booking by MOVE from the client and keeps its ref and kg", async () => {
+      const booking = await book("BOOK DRY 800 20/10 ±2");
+      const to = dates.addDays(booking.scheduled_date, 3);
+      const [, month, day] = to.split("-");
+      await inbound(`move ${booking.ref.toLowerCase()} ${day}/${month}`);
+      expect(await findByRef(booking.ref)).toMatchObject({
+        id: booking.id,
+        status: "confirmed",
+        est_kg: 800,
+        preferred_date: to,
+        scheduled_date: to,
+        flex_days: 2,
+      });
+      const reply = (await lastReply()).body;
+      expect(reply).toContain(`${booking.ref} moved to`);
+      expect(isGsm7(reply)).toBe(true);
+      expect(reply.length).toBeLessThanOrEqual(SMS_MAX_CHARS);
+
+      await inbound(`MOVE ${booking.ref} ${day}/${month} ±5`);
+      expect((await findByRef(booking.ref))!.flex_days).toBe(5);
+    });
+
+    it("refuses MOVE from a stranger, for unknown refs and closed bookings", async () => {
+      const booking = await book(`BOOK DRY 100 20/10 FOR ${beneficiary}`);
+      await inbound(`MOVE ${booking.ref} 25/10 FOR ${beneficiary}`, stranger);
+      expect((await lastReply(stranger)).body).toContain("Unknown command");
+      expect((await findByRef(booking.ref))!.scheduled_date).toBe(
+        booking.scheduled_date,
+      );
+      await inbound("MOVE ZZZZZZ 25/10");
+      expect((await lastReply()).body).toContain("No booking with ref");
+      await inbound(`MOVE ${booking.ref} 31/02`);
+      expect((await lastReply()).body).toContain("Unknown command");
+      await inbound(`CANCEL ${booking.ref}`);
+      await inbound(`MOVE ${booking.ref} 25/10`);
+      expect((await lastReply()).body).toContain("cannot be moved");
+    });
+
+    it("drops a pending reschedule on MOVE from the booker and tells the client", async () => {
+      const booking = await book(`BOOK DRY 700 20/10 ±3 FOR ${beneficiary}`);
+      await proposeReschedule(
+        booking.id,
+        dates.addDays(booking.scheduled_date, 1),
+      );
+      const to = dates.addDays(booking.scheduled_date, 4);
+      const [, month, day] = to.split("-");
+      await inbound(`MOVE ${booking.ref} ${day}/${month}`);
+      expect(await findByRef(booking.ref)).toMatchObject({
+        status: "confirmed",
+        scheduled_date: to,
+        proposed_date: null,
+      });
+      expect((await lastReply(beneficiary)).body).toBe(
+        (await lastReply()).body,
+      );
+      const { data: prompts, error } = await db()
+        .from("sms_prompts")
+        .select("status")
+        .eq("ref", booking.ref);
+      if (error) throw error;
+      expect(prompts.map((p) => p.status)).toEqual(["expired"]);
+      // A late answer to the old question no longer moves the booking.
+      await inbound(`YES ${booking.ref}`, beneficiary);
+      expect((await findByRef(booking.ref))!.scheduled_date).toBe(to);
     });
 
     it("still confirms to the sender when beneficiary notification fails", async () => {

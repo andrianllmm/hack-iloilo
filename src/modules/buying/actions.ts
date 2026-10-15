@@ -50,3 +50,24 @@ export async function withdrawOffer(id: string): Promise<void> {
   if (error) throw new Error(`Withdraw offer: ${error.message}`);
   revalidatePath("/buying");
 }
+
+export type VoucherResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Sets (or clears) the voucher number on a batch's purchase, recorded after
+ * the receiving is priced. Any signed-in staff may add it.
+ */
+export async function setVoucherRef(
+  batchId: string,
+  ref: string,
+): Promise<VoucherResult> {
+  await requireRole();
+  const trimmed = ref.trim();
+  const { error } = await db()
+    .from("purchases")
+    .update({ voucher_ref: trimmed === "" ? null : trimmed })
+    .eq("batch_id", batchId);
+  if (error) return { ok: false, error: "Couldn't save the voucher number." };
+  revalidatePath(`/batches/${batchId}`);
+  return { ok: true };
+}

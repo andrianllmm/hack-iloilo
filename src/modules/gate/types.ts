@@ -33,6 +33,7 @@ export type RefPreview = {
 export type BatchSummary = Batch & {
   client: Pick<Tables["clients"]["Row"], "name" | "phone" | "kind">;
   entry: Pick<QueueEntry, "service" | "started_at" | "est_kg"> | null;
+  variety: Pick<Tables["varieties"]["Row"], "code" | "name"> | null;
 };
 /** A batch row for the list page. */
 export type BatchListRow = Pick<

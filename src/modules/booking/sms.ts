@@ -2,13 +2,28 @@
 
 import { todayManila } from "@/lib/dates";
 import { parseDayMonth } from "@/modules/sms/logic";
-import { registerCommand } from "@/modules/sms/registry";
-import { bookingSmsSchema, cancelSmsSchema } from "./booking-schema";
-import { describeBookingRequest, parseBookingArgs } from "./logic";
-import { bookBySms, cancelBySms } from "./queries";
+import { onPromptAnswer, registerCommand } from "@/modules/sms/registry";
+import {
+  bookingSmsSchema,
+  cancelSmsSchema,
+  moveSmsSchema,
+} from "./booking-schema";
+import {
+  describeBookingRequest,
+  parseBookingArgs,
+  parseMoveArgs,
+} from "./logic";
+import { answerReschedule, bookBySms, cancelBySms, moveBySms } from "./queries";
 
 export const BOOKING_CONFIRMATION =
   "IRPC: Booking confirmed. Ref {ref}: {service}, {kg} kg on {date}. Cancel: CANCEL {ref}.";
+export const RESCHEDULE_QUESTION =
+  "IRPC: {date} is full. Move your {service} booking {ref} ({kg} kg) to {newDate}? Reply YES {ref} or NO {ref}.";
+export const RESCHEDULE_MOVED =
+  "IRPC: Booking {ref} moved to {date}. Thank you!";
+export const RESCHEDULE_KEPT = "IRPC: Booking {ref} stays on {date}.";
+export const BOOKING_MOVED =
+  "IRPC: Booking {ref} moved to {date}: {service}, {kg} kg. Cancel: CANCEL {ref}.";
 
 registerCommand({
   keywords: ["BOOK"],
@@ -38,3 +53,12 @@ registerCommand({
     summary: ({ ref }) => `cancel booking ${ref}`,
   },
 });
+
+registerCommand({
+  keywords: ["MOVE"],
+  schema: moveSmsSchema,
+  parse: parseMoveArgs,
+  handle: moveBySms,
+});
+
+onPromptAnswer("reschedule", answerReschedule);

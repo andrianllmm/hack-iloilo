@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizePhone } from "@/modules/accounts/logic";
 import { MAX_FLEX_DAYS, services } from "./logic";
 
 /** Staff booking form. Past dates are checked on the server against Manila today. */
@@ -18,6 +19,18 @@ export const bookingSchema = z.object({
 });
 export type BookingInput = z.infer<typeof bookingSchema>;
 
+/** Public web booking: the client enters their own name and phone instead of picking a client. */
+export const webBookingSchema = bookingSchema.omit({ clientId: true }).extend({
+  name: z.string().trim().min(1, "Enter your name."),
+  phone: z
+    .string()
+    .refine(
+      (value) => normalizePhone(value) !== null,
+      "Enter a valid Philippine mobile number.",
+    ),
+});
+export type WebBookingInput = z.infer<typeof webBookingSchema>;
+
 /** SMS date resolution belongs to the shared SMS core. */
 export const bookingSmsSchema = bookingSchema
   .pick({ service: true, estKg: true, flexDays: true })
@@ -32,3 +45,9 @@ export type BookingSmsInput = z.infer<typeof bookingSmsSchema>;
 export const cancelSmsSchema = z.object({
   ref: z.string().regex(/^[A-Z0-9]{6}$/),
 });
+
+export const moveSmsSchema = cancelSmsSchema.extend({
+  dayMonth: bookingSmsSchema.shape.dayMonth,
+  flexDays: bookingSchema.shape.flexDays.optional(),
+});
+export type MoveSmsInput = z.infer<typeof moveSmsSchema>;

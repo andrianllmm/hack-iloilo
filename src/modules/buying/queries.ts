@@ -2,14 +2,27 @@
 // Server-side reads. May call other modules' queries.
 
 import "server-only";
+import { todayManila } from "@/lib/dates";
+import { formatDate, formatKg, formatMoneySms } from "@/lib/format";
 import { newRef } from "@/lib/ref";
 import { db } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
-import { currentFacility } from "@/modules/setup/queries";
-import type { CreateOfferInput } from "./logic";
+import { findOrRegisterByPhone } from "@/modules/accounts/queries";
+import {
+  type BuyRules,
+  type PriceRule,
+  priceReceiving,
+  quote,
+} from "@/modules/pricing/logic";
+import { priceOn } from "@/modules/pricing/queries";
+import { helpText, parseDayMonth } from "@/modules/sms/logic";
+import { commandUsages, type CommandContext } from "@/modules/sms/registry";
+import { currentFacility, findVarietyByCode } from "@/modules/setup/queries";
+import type { CreateOfferInput, QuoteSmsInput, SellSmsInput } from "./logic";
 
 export type Offer = Database["public"]["Tables"]["sell_offers"]["Row"];
 export type OfferStatus = Database["public"]["Enums"]["sell_offer_status"];
+export type Purchase = Database["public"]["Tables"]["purchases"]["Row"];
 
 /**
  * Create a sell offer in `offered` status with a fresh ref. Server-only (not a
@@ -103,6 +116,90 @@ export async function acceptedOffersBetween(
   return data;
 }
 
+/**
+ * Prices a `received` IRPC batch off its saved Receiving Report and records the
+ * purchase. Reads the batch's receiving fields, prices them with
+ * `priceReceiving` on the prices in effect today, and upserts the `purchases`
+ * row keyed by batch — re-saving the receiving re-prices without disturbing a
+ * voucher added later. Called by the gate receiving action; #42 texts the
+ * farmer off the saved row. Custom batches are never passed here.
+ */
+export async function createPurchase(batchId: string): Promise<Purchase> {
+  const { data: batch, error } = await db()
+    .from("batches")
+    .select(
+      "client_id, ownership, bags, net_kg, mc, damaged_pct, immature_pct, foreign_pct",
+    )
+    .eq("id", batchId)
+    .single();
+  if (error) throw new Error(`Purchase: ${error.message}`);
+  if (batch.ownership !== "irpc")
+    throw new Error("Purchase: only IRPC-owned batches are bought.");
+  if (batch.net_kg == null || batch.mc == null || batch.bags == null)
+    throw new Error("Purchase: the receiving report is incomplete.");
+
+  const priceDate = todayManila();
+  const prices = await priceOn(priceDate);
+  const rule: PriceRule = {
+    buy_base_minor_per_kg: prices.buy_base_minor_per_kg,
+    buy_reference_mc: prices.buy_reference_mc,
+    buy_rules: prices.buy_rules as BuyRules,
+  };
+  const priced = priceReceiving(rule, {
+    netKg: batch.net_kg,
+    mc: batch.mc,
+    damagedPct: batch.damaged_pct ?? 0,
+    immaturePct: batch.immature_pct ?? 0,
+    foreignPct: batch.foreign_pct ?? 0,
+    bags: batch.bags,
+  });
+
+  // Omit voucher_ref and override_reason so an upsert update leaves them alone.
+  const { data, error: upsertError } = await db()
+    .from("purchases")
+    .upsert(
+      {
+        batch_id: batchId,
+        client_id: batch.client_id,
+        price_date: priceDate,
+        net_kg: batch.net_kg,
+        paid_kg: priced.paidKg,
+        price_minor_per_kg: priced.minorPerKg,
+        total_minor: priced.totalMinor,
+        deductions: priced.deductions,
+      },
+      { onConflict: "batch_id" },
+    )
+    .select()
+    .single();
+  if (upsertError) throw new Error(`Purchase: ${upsertError.message}`);
+  return data;
+}
+
+/** Centavos IRPC pays for a batch's palay, or 0 if it was not bought. */
+export async function purchaseCost(batchId: string): Promise<number> {
+  const { data, error } = await db()
+    .from("purchases")
+    .select("total_minor")
+    .eq("batch_id", batchId)
+    .maybeSingle();
+  if (error) throw new Error(`Purchase cost: ${error.message}`);
+  return data?.total_minor ?? 0;
+}
+
+/** The purchase recorded for a batch, or null (a custom batch has none). */
+export async function purchaseByBatch(
+  batchId: string,
+): Promise<Purchase | null> {
+  const { data, error } = await db()
+    .from("purchases")
+    .select()
+    .eq("batch_id", batchId)
+    .maybeSingle();
+  if (error) throw new Error(`Purchase: ${error.message}`);
+  return data;
+}
+
 /** Offers for the current facility by harvest date, optionally filtered by status. */
 export async function listOffers(
   status?: OfferStatus,
@@ -116,4 +213,66 @@ export async function listOffers(
   const { data, error } = await query.order("harvest_date");
   if (error) throw new Error(`Offers: ${error.message}`);
   return data;
+}
+
+// --- SMS handlers (M5). Registered from `sms.ts`; each returns the reply the
+// registry sends to the sender exactly once. See TRD M5. ---
+
+/** `PRICE`: today's buying base, drying and milling fees, and rice price. */
+export async function priceBySms(): Promise<string> {
+  const prices = await priceOn(todayManila());
+  return (
+    `IRPC prices today: palay base ${formatMoneySms(prices.buy_base_minor_per_kg)}/kg ` +
+    `at ${prices.buy_reference_mc}% MC, drying ${formatMoneySms(prices.drying_fee_minor_per_kg)}/kg, ` +
+    `milling ${formatMoneySms(prices.milling_fee_minor_per_kg)}/kg, ` +
+    `rice ${formatMoneySms(prices.rice_minor_per_kg)}/kg. For a quote: QUOTE <mc>% <kg>.`
+  );
+}
+
+/** `QUOTE <mc>% [<kg>]`: the MC-adjusted price per kg and total, as an estimate. */
+export async function quoteBySms(input: QuoteSmsInput): Promise<string> {
+  const prices = await priceOn(todayManila());
+  const rule: PriceRule = {
+    buy_base_minor_per_kg: prices.buy_base_minor_per_kg,
+    buy_reference_mc: prices.buy_reference_mc,
+    buy_rules: prices.buy_rules as BuyRules,
+  };
+  const { minorPerKg, totalMinor } = quote(rule, input.mc, input.kg);
+  const total =
+    totalMinor === undefined
+      ? ""
+      : `, ${formatKg(input.kg as number)} = ${formatMoneySms(totalMinor)}`;
+  return (
+    `IRPC estimate at ${input.mc}% MC: ${formatMoneySms(minorPerKg)}/kg${total}. ` +
+    `Estimate only; the final price is set at receiving.`
+  );
+}
+
+/** `SELL <kg> <variety> <dd/mm>` (with optional `FOR <phone>`): records an offer. */
+export async function sellBySms(
+  input: SellSmsInput,
+  ctx: CommandContext,
+): Promise<string> {
+  const variety = await findVarietyByCode(input.varietyCode);
+  if (!variety)
+    return `IRPC: We don't recognize variety "${input.varietyCode}". Please check the code and try again.`;
+  const harvestDate = parseDayMonth(input.dayMonth, todayManila());
+  if (!harvestDate) return helpText(commandUsages());
+
+  // FOR records the offer under another client; authority is never granted by it.
+  const client =
+    ctx.forPhone && ctx.forPhone !== ctx.phone
+      ? await findOrRegisterByPhone(ctx.forPhone)
+      : ctx.client;
+  const offer = await createOffer({
+    clientId: client.id,
+    varietyId: variety.id,
+    estKg: input.estKg,
+    harvestDate,
+    bookedByPhone: ctx.phone,
+  });
+  return (
+    `IRPC: Offer recorded. Ref ${offer.ref}: ${formatKg(offer.est_kg)} ${variety.code} ` +
+    `for harvest ${formatDate(harvestDate)}. We will text you when the manager decides.`
+  );
 }

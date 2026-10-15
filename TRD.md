@@ -196,13 +196,16 @@ A short yes or no ("oo sige", "indi", "ok po") answers the sender's latest open 
 
 - Every booking confirms on arrival, even past capacity. Overloads are caught by M9 and cleared by M10, which only moves flexible bookings.
 - A booking made `FOR <phone>` texts the client.
-- `YES`, `NO` and `CANCEL` only work from the client's phone or `booked_by_phone`. Others get the help reply.
+- `YES`, `NO`, `MOVE` and `CANCEL` only work from the client's phone or `booked_by_phone`. Others get the help reply.
+- `MOVE` keeps the ref, service and kg, confirms the new date right away, and drops a pending M10 proposal.
 
 ```mermaid
 stateDiagram-v2
   [*] --> confirmed
   confirmed --> reschedule_proposed: M10 accepted
   reschedule_proposed --> confirmed: YES (new date) or NO (keeps date)
+  reschedule_proposed --> confirmed: MOVE (client's date)
+  confirmed --> confirmed: MOVE
   confirmed --> arrived: check-in
   confirmed --> cancelled
   confirmed --> no_show
@@ -214,6 +217,7 @@ stateDiagram-v2
 | ------- | --------------------------------------- | ------------------------ |
 | Book    | `BOOK DRY\|MILL <kg> <dd/mm> [±<days>]` | `BOOK DRY 5000 20/10 ±3` |
 | Answer  | `YES <ref>` / `NO <ref>`                | `YES K7P2QX`             |
+| Move    | `MOVE <ref> <dd/mm> [±<days>]`          | `MOVE K7P2QX 25/10`      |
 | Cancel  | `CANCEL <ref>`                          | `CANCEL K7P2QX`          |
 
 Any command accepts `FOR <phone>`.

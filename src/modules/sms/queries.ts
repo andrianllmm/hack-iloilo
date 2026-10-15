@@ -93,14 +93,7 @@ export async function openPrompt({
 }): Promise<string> {
   for (let attempt = 0; ; attempt++) {
     const candidate = (ref ?? newRef()).toUpperCase();
-    if (ref) {
-      const { error } = await db()
-        .from("sms_prompts")
-        .update({ status: "expired" })
-        .eq("ref", candidate)
-        .eq("status", "open");
-      if (error) throw error;
-    }
+    if (ref) await expirePrompt(candidate);
     const { error } = await db()
       .from("sms_prompts")
       .insert({ phone, kind, payload: payload ?? {}, ref: candidate });
@@ -108,6 +101,16 @@ export async function openPrompt({
     // A random ref collided with another open prompt: draw again.
     if (error.code !== "23505" || ref || attempt >= 3) throw error;
   }
+}
+
+/** Closes the open prompt under `ref`, if any, so a late answer is ignored. */
+export async function expirePrompt(ref: string): Promise<void> {
+  const { error } = await db()
+    .from("sms_prompts")
+    .update({ status: "expired" })
+    .eq("ref", ref.toUpperCase())
+    .eq("status", "open");
+  if (error) throw error;
 }
 
 /** Shared by the simulator and the webhook relay. Dedupes on `gatewayId`. */

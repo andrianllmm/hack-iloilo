@@ -7,9 +7,11 @@ import { revalidatePath } from "next/cache";
 import { z, type ZodType } from "zod";
 import { requireRole } from "@/modules/accounts/auth";
 import { ClientInputError } from "@/modules/accounts/queries";
+import { createPurchase } from "@/modules/buying/queries";
 import {
   finishDryingSchema,
   finishMillingSchema,
+  receivingSchema,
   startDryingSchema,
   startMillingSchema,
 } from "./batch-schema";
@@ -23,6 +25,7 @@ import {
   finishMilling,
   GateError,
   markLeft,
+  recordReceiving,
   refPreview,
   skipDrying,
   start,
@@ -224,6 +227,32 @@ async function record<T>(
       ),
     };
   return commit(batchId, label, () => write(batchId, parsed.data));
+}
+
+/**
+ * Records the Receiving Report on a `received` batch. For IRPC-bought palay it
+ * also prices the receiving and saves the purchase; a custom batch gets none.
+ * The priced result is shown by the batch page's purchase card after this
+ * revalidates it.
+ */
+export async function recordReceivingBatch(
+  batchId: string,
+  input: unknown,
+): Promise<StageResult> {
+  return record(
+    batchId,
+    "record receiving",
+    receivingSchema,
+    input,
+    async (id, data) => {
+      const batch = await recordReceiving(id, {
+        ...data,
+        // A blank variety select means "not recorded".
+        variety_id: data.variety_id === "" ? null : data.variety_id,
+      });
+      if (batch.ownership === "irpc") await createPurchase(id);
+    },
+  );
 }
 
 export async function startDryingBatch(
