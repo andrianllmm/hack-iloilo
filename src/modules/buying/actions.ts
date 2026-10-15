@@ -42,7 +42,7 @@ export async function submitOffer(
   if (!parsed.ok) return { ok: false, error: parsed.error };
 
   const offer = await createOffer(parsed.value);
-  revalidatePath("/buying");
+  revalidatePath("/selling");
   return { ok: true, ref: offer.ref };
 }
 
@@ -91,7 +91,7 @@ export async function offerOnline(input: unknown): Promise<OfferOnlineResult> {
       bookedByPhone: normalized,
     });
     await notifyOfferRecorded(created, normalized);
-    revalidatePath("/buying");
+    revalidatePath("/selling");
     const { ref, est_kg, harvest_date } = created;
     return { status: "created", offer: { ref, est_kg, harvest_date } };
   } catch (error) {
@@ -117,7 +117,7 @@ export async function decideOffer(id: string, accept: boolean): Promise<void> {
     .eq("id", id)
     .eq("status", "offered");
   if (error) throw new Error(`Decide offer: ${error.message}`);
-  revalidatePath("/buying");
+  revalidatePath("/selling");
 }
 
 /** Withdraw an offer. Available to any signed-in staff. Only from `offered`. */
@@ -129,7 +129,7 @@ export async function withdrawOffer(id: string): Promise<void> {
     .eq("id", id)
     .eq("status", "offered");
   if (error) throw new Error(`Withdraw offer: ${error.message}`);
-  revalidatePath("/buying");
+  revalidatePath("/selling");
 }
 
 export type VoucherResult = { ok: true } | { ok: false; error: string };
@@ -220,6 +220,6 @@ export async function saveBudget(
     })
     .eq("id", facility.id);
   if (error) return { ok: false, error: "Couldn't save the budget." };
-  revalidatePath("/buying");
+  revalidatePath("/selling");
   return { ok: true };
 }

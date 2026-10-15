@@ -50,7 +50,7 @@ export async function OffersView({
           return (
             <Link
               key={f.label}
-              href={f.value ? `/buying?status=${f.value}` : "/buying"}
+              href={f.value ? `/selling?status=${f.value}` : "/selling"}
               className={cn(
                 badgeVariants({ variant: active ? "default" : "outline" }),
               )}

@@ -69,7 +69,7 @@ it("records an offer online without staff auth, for the entered phone", async ()
     bookedByPhone: "+639171234567",
   });
   expect(notifyOfferRecorded).toHaveBeenCalledWith(offer, "+639171234567");
-  expect(revalidatePath).toHaveBeenCalledWith("/buying");
+  expect(revalidatePath).toHaveBeenCalledWith("/selling");
 });
 
 it("records a blank variety as unknown and accepts today's harvest date", async () => {

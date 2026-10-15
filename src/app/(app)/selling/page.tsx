@@ -14,7 +14,7 @@ import { QuoteCalculator } from "@/modules/pricing/components/quote-calculator";
 import { priceOn } from "@/modules/pricing/queries";
 import { listVarieties } from "@/modules/setup/queries";
 
-export const metadata: Metadata = { title: "Buying" };
+export const metadata: Metadata = { title: "Selling" };
 
 async function NewOffer() {
   // Reference data read fresh per request; defer past the prerendered shell.
@@ -58,12 +58,12 @@ async function Quote() {
   return <QuoteCalculator priceRule={priceRule} />;
 }
 
-export default function BuyingPage({ searchParams }: PageProps<"/buying">) {
+export default function SellingPage({ searchParams }: PageProps<"/selling">) {
   return (
     <section className="flex min-w-0 flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Buying</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Selling</h1>
           <p className="text-sm text-muted-foreground">
             Offers by harvest date · managers accept or decline
           </p>
