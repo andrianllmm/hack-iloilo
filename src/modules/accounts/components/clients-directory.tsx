@@ -35,8 +35,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { clientKinds, groupClients, kindLabels } from "../logic";
+import { ClientKindSelect } from "./client-kind-select";
+import { groupClients, kindLabels } from "../logic";
 import type { Client, ClientKind, Municipality } from "../types";
 import { ClientForm } from "./client-form";
 
@@ -95,23 +95,15 @@ export function ClientsDirectory({
                 onChange={(event) => setSearch(event.target.value)}
               />
             </Field>
-            <ToggleGroup
-              aria-label="Filter client kind"
-              value={[kind]}
-              onValueChange={(values) =>
-                setKind((values[0] as ClientKind | "all") ?? "all")
-              }
-              variant="outline"
-              size="sm"
-              className="max-w-full flex-wrap"
-            >
-              <ToggleGroupItem value="all">All</ToggleGroupItem>
-              {clientKinds.map((value) => (
-                <ToggleGroupItem key={value} value={value}>
-                  {kindLabels[value]}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
+            <Field className="w-40">
+              <FieldLabel htmlFor="client-kind-filter">Kind</FieldLabel>
+              <ClientKindSelect
+                id="client-kind-filter"
+                value={kind}
+                onChange={setKind}
+                includeAll
+              />
+            </Field>
           </div>
           <p aria-live="polite" className="sr-only">
             {count} {count === 1 ? "client" : "clients"}

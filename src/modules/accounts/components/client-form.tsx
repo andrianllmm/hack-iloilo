@@ -11,7 +11,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ClientKindSelect } from "./client-kind-select";
 import {
   Combobox,
   ComboboxContent,
@@ -24,7 +24,6 @@ import { SheetFooter } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { saveClient } from "../actions";
 import { clientSchema, type ClientInput } from "../client-schema";
-import { clientKinds, kindLabels } from "../logic";
 import type { Client, Municipality } from "../types";
 
 type Props = {
@@ -235,27 +234,21 @@ export function ClientForm({
           name="kind"
           render={({ field, fieldState }) => (
             <Field data-invalid={!!fieldState.error}>
-              <FieldLabel id={`${formId}-kind-label`}>Kind</FieldLabel>
-              <ToggleGroup
-                aria-labelledby={`${formId}-kind-label`}
-                value={[field.value]}
+              <FieldLabel htmlFor={`${formId}-kind`}>Kind</FieldLabel>
+              <ClientKindSelect
+                id={`${formId}-kind`}
+                value={field.value}
                 disabled={pending}
-                onValueChange={(values) => {
-                  if (!values[0]) return;
-                  field.onChange(values[0]);
-                  if (values[0] === "coop")
+                invalid={!!fieldState.error}
+                onBlur={field.onBlur}
+                triggerRef={field.ref}
+                onChange={(value) => {
+                  if (value === "all") return;
+                  field.onChange(value);
+                  if (value === "coop")
                     form.setValue("coop_id", null, { shouldValidate: true });
                 }}
-                variant="outline"
-                size="sm"
-                className="flex-wrap"
-              >
-                {clientKinds.map((value) => (
-                  <ToggleGroupItem key={value} value={value}>
-                    {kindLabels[value]}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
+              />
               <FieldError errors={[fieldState.error]} />
             </Field>
           )}
