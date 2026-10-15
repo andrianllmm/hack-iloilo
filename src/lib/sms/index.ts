@@ -14,11 +14,13 @@ export function smsGateway(): SmsGateway {
   const e = env();
   gateway =
     e.SMS_GATEWAY === "smsgate"
-      ? new SmsGateGateway(
-          e.SMS_GATEWAY_URL!,
-          e.SMSGATE_USERNAME!,
-          e.SMSGATE_PASSWORD!,
-        )
+      ? new SmsGateGateway({
+          url: e.SMS_GATEWAY_URL,
+          username: e.SMSGATE_USERNAME!,
+          password: e.SMSGATE_PASSWORD!,
+          deviceId: e.SMS_GATEWAY_DEVICE_ID,
+          simNumber: e.SMS_GATEWAY_SIM_NUMBER,
+        })
       : new SimulatorGateway();
   return gateway;
 }

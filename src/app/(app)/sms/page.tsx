@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import { PagePlaceholder } from "@/components/page-placeholder";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SmsLoader } from "@/modules/sms/components/sms-loader";
 
-export const metadata: Metadata = { title: "SMS simulator" };
+export const metadata: Metadata = { title: "SMS" };
 
-export default function SmsPage() {
+export default function SmsPage({ searchParams }: PageProps<"/sms">) {
   return (
-    <PagePlaceholder
-      title="SMS simulator"
-      module="M3"
-      description="A phone screen per number for demoing SMS commands."
-    />
+    <Suspense fallback={<Skeleton className="h-96" />}>
+      <SmsLoader searchParams={searchParams} />
+    </Suspense>
   );
 }

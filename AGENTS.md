@@ -21,7 +21,8 @@ src/
 supabase/           config, migrations, seeds/ (local dev via Docker)
 data/opa/raw/       source data from IRPC/OPA (read-only)
 data/forecast/      Python (uv): train the arrival forecast offline
-infra/sms-gateway/  Docker Compose for the SMSGate server
+services/sms-webhook/  SMSGate webhook relay (separate Vercel project)
+infra/sms-gateway/  Optional self-hosted SMSGate server (Docker Compose)
 ```
 
 Module folders: `setup` (M1), `accounts` (M2), `sms` (M3), `booking` (M4), `buying` (M5), `gate` (M6), `pricing` (M7), `forecast` (M8), `capacity` (M9), `prescriptions` (M10).
@@ -33,7 +34,7 @@ Module folders: `setup` (M1), `accounts` (M2), `sms` (M3), `booking` (M4), `buyi
 - Supabase (Postgres, Auth) via supabase-js and `@supabase/ssr`; Supabase CLI for local dev, migrations and types
 - Zod, React Hook Form
 - Vercel AI SDK with `@ai-sdk/google` (Gemini)
-- SMSGate (self-hosted SMS gateway for Android) plus a web simulator
+- SMSGate cloud (SMS gateway for Android) with a webhook relay on Vercel, plus a web simulator
 - Python (uv, pandas, openpyxl, SciPy) for the offline forecast
 - pnpm, Vitest, ESLint, Prettier, commitlint, Husky, lint-staged
 
@@ -74,16 +75,17 @@ After changing the schema: add a migration, `pnpm db:reset`, `pnpm db:types`, an
 
 See `.env.example`. Validated in `src/lib/env.ts`.
 
-| Name                                                              | Used by                                                               |
-| ----------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`       | App, auth                                                             |
-| `SUPABASE_SERVICE_ROLE_KEY`                                       | Server data access, SMS webhook, seed                                 |
-| `SMS_GATEWAY`                                                     | `simulator` (default) or `smsgate`                                    |
-| `SMS_GATEWAY_URL`, `SMS_GATEWAY_USERNAME`, `SMS_GATEWAY_PASSWORD` | Sending SMS, webhook setup                                            |
-| `SMS_GATEWAY_WEBHOOK_SIGNING_KEY`                                 | Verifying inbound webhooks                                            |
-| `SMS_GATEWAY_DEVICE_ID`, `SMS_GATEWAY_SIM_NUMBER`                 | Optional; validated for future device/SIM selection, not yet consumed |
-| `SMS_GATEWAY_WEBHOOK_PORT`                                        | Validated; defaults to 3000, not yet consumed                         |
-| `GOOGLE_GENERATIVE_AI_API_KEY`                                    | Gemini (optional; falls back to templates)                            |
+| Name                                                              | Used by                                                           |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`       | App, auth                                                         |
+| `SUPABASE_SERVICE_ROLE_KEY`                                       | Server data access, SMS relay, seed                               |
+| `SMS_GATEWAY`                                                     | `simulator` (default) or `smsgate`                                |
+| `SMS_GATEWAY_URL`, `SMS_GATEWAY_USERNAME`, `SMS_GATEWAY_PASSWORD` | Sending SMS, webhook setup; URL defaults to the SMSGate cloud API |
+| `SMS_GATEWAY_WEBHOOK_SIGNING_KEY`                                 | Webhook relay: verifying inbound webhooks                         |
+| `SMS_RELAY_SECRET`                                                | Shared by the app and relay; authenticates `/api/sms/process`     |
+| `SMS_GATEWAY_DEVICE_ID`, `SMS_GATEWAY_SIM_NUMBER`                 | Optional; pick the gateway phone and SIM slot                     |
+| `SMS_GATEWAY_WEBHOOK_PORT`                                        | Validated; defaults to 3000, not yet consumed                     |
+| `GOOGLE_GENERATIVE_AI_API_KEY`                                    | Gemini (optional; falls back to templates)                        |
 
 `env()` maps the renamed SMS credentials to `SMSGATE_USERNAME`, `SMSGATE_PASSWORD`, and `SMSGATE_SIGNING_KEY` for internal consumers. Configure the `SMS_GATEWAY_*` input names shown above.
 
@@ -95,7 +97,7 @@ See `.env.example`. Validated in `src/lib/env.ts`.
 - Cross-module calls live only in `actions.ts` and `queries.ts`.
 - All database access is server-side through `db()` (`src/lib/supabase/admin.ts`). RLS is on with no public policies.
 - Server actions call `requireRole()` (`src/modules/accounts/auth.ts`) first; manager-only pages wrap content in `<RoleGate role="manager">`. Managers only: costs, prices, prescriptions, settings.
-- Send SMS through `smsGateway()` (`src/lib/sms`); AI through `explain()`/`extract()` (`src/lib/ai.ts`), always with a non-AI fallback. AI never computes numbers.
+- Send SMS through `send()` (`src/modules/sms/queries.ts`), which logs and calls `smsGateway()`; register commands from each module's `sms.ts` with `registerCommand()`; AI through `explain()`/`extract()` (`src/lib/ai.ts`), always with a non-AI fallback. AI never computes numbers.
 - Units: weight in integer kg, money in integer centavos (`_minor`), MC as `numeric(4,1)`. Time zone Asia/Manila; columns are `date` or `timestamptz`.
 - Every table has `id` (UUID), `created_at`, `updated_at` (use the `set_updated_at()` trigger).
 - With Cache Components, wrap components that read cookies, params or uncached data in `<Suspense>`.
