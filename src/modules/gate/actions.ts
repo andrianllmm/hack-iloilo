@@ -8,7 +8,16 @@ import { z } from "zod";
 import { requireRole } from "@/modules/accounts/auth";
 import { ClientInputError } from "@/modules/accounts/queries";
 import { checkInSchema, type CheckInInput } from "./checkin-schema";
-import { checkIn, finish, GateError, markLeft, start } from "./queries";
+import {
+  checkIn,
+  finish,
+  GateError,
+  markLeft,
+  refPreview,
+  start,
+  type CheckInParams,
+} from "./queries";
+import type { RefPreview } from "./types";
 
 type Failure = {
   status: "error";
@@ -19,6 +28,8 @@ export type CheckInResult = { status: "ok"; entryId: string } | Failure;
 export type StartResult =
   { status: "ok"; batch: { id: string; batch_no: string } } | Failure;
 export type MoveResult = { status: "ok" } | Failure;
+export type LookupRefResult =
+  { status: "ok"; preview: RefPreview } | { status: "error"; message: string };
 
 const invalidEntry: Failure = {
   status: "error",
@@ -35,26 +46,35 @@ export async function checkInClient(input: unknown): Promise<CheckInResult> {
         parsed.error.issues.map((issue) => [issue.path[0], issue.message]),
       ),
     };
-  const { mode, phone, service, ownership, estKg, name, kind } = parsed.data;
+  const { mode, ref, phone, service, ownership, estKg, name, kind } =
+    parsed.data;
+  const params: CheckInParams =
+    mode === "booking"
+      ? { bookingRef: ref }
+      : mode === "offer"
+        ? { offerRef: ref }
+        : mode === "walkIn"
+          ? {
+              walkIn: {
+                name,
+                phone,
+                kind,
+                municipality_id: parsed.data.municipality_id,
+              },
+              service,
+              ownership,
+              estKg,
+            }
+          : { phone, service, ownership, estKg };
   try {
-    const entry = await checkIn(
-      mode === "walkIn"
-        ? {
-            walkIn: {
-              name,
-              phone,
-              kind,
-              municipality_id: parsed.data.municipality_id,
-            },
-            service,
-            ownership,
-            estKg,
-          }
-        : { phone, service, ownership, estKg },
-    );
+    const entry = await checkIn(params);
     revalidatePath("/queue");
+    if (mode === "booking") revalidatePath("/bookings");
+    if (mode === "offer") revalidatePath("/buying");
     return { status: "ok", entryId: entry.id };
   } catch (error) {
+    if (error instanceof GateError)
+      return { status: "error", fieldErrors: { ref: error.message } };
     if (error instanceof ClientInputError)
       return {
         status: "error",
@@ -66,6 +86,24 @@ export async function checkInClient(input: unknown): Promise<CheckInResult> {
     return {
       status: "error",
       message: "Unable to check in the client. Please try again.",
+    };
+  }
+}
+
+/** What a booking or offer ref would check in, for the card's summary. */
+export async function lookupRef(ref: string): Promise<LookupRefResult> {
+  await requireRole();
+  if (typeof ref !== "string")
+    return { status: "error", message: "Enter the ref." };
+  try {
+    return { status: "ok", preview: await refPreview(ref) };
+  } catch (error) {
+    if (error instanceof GateError)
+      return { status: "error", message: error.message };
+    console.error("Unable to look up ref", error);
+    return {
+      status: "error",
+      message: "Unable to look up the ref. Please try again.",
     };
   }
 }

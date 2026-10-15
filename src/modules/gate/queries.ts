@@ -9,14 +9,35 @@ import {
   registerClientRecord,
 } from "@/modules/accounts/queries";
 import type { ClientKind } from "@/modules/accounts/types";
+import {
+  findByRef,
+  markArrived,
+  unmarkArrived,
+} from "@/modules/booking/queries";
+import {
+  findOfferByRef,
+  markOfferArrived,
+  unmarkOfferArrived,
+} from "@/modules/buying/queries";
 import { currentFacility } from "@/modules/setup/queries";
-import { batchOwnership, batchPrefix, nextBatchNo } from "./logic";
+import {
+  batchOwnership,
+  batchPrefix,
+  nextBatchNo,
+  normalizeRef,
+  REF_LENGTH,
+  refCheckInError,
+  refKindLabels,
+  refLine,
+} from "./logic";
 import type {
   Batch,
   BatchOwnership,
   BatchSummary,
   QueueEntry,
   QueueRow,
+  RefKind,
+  RefPreview,
   Service,
 } from "./types";
 export { municipalities } from "@/modules/accounts/queries";
@@ -27,14 +48,22 @@ const BATCH_NO_ATTEMPTS = 5;
 /** The entry is no longer in the state the action expects (another staff member moved it). */
 export class GateError extends Error {
   constructor(
-    public reason: "not_found" | "not_waiting" | "not_serving",
+    public reason:
+      | "not_found"
+      | "not_waiting"
+      | "not_serving"
+      | "ref_not_found"
+      | "ref_not_eligible",
     message: string,
   ) {
     super(message);
   }
 }
 
-export type CheckInParams = (
+export type CheckInParams =
+  { bookingRef: string } | { offerRef: string } | PhoneCheckIn;
+
+type PhoneCheckIn = (
   | { phone: string }
   | {
       walkIn: {
@@ -50,11 +79,35 @@ export type CheckInParams = (
   estKg?: number | null;
 };
 
+type NewEntry = Pick<
+  QueueEntry,
+  | "facility_id"
+  | "service"
+  | "client_id"
+  | "ownership"
+  | "est_kg"
+  | "booking_id"
+  | "offer_id"
+>;
+
+async function addToLine(entry: NewEntry): Promise<QueueEntry> {
+  const { data, error } = await db()
+    .from("queue_entries")
+    .insert({ ...entry, status: "waiting" })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 /**
- * Adds a client to the back of a service line. Unknown phones are registered;
- * existing clients keep their details. #28 adds booking and offer refs.
+ * Adds a client to the back of a service line. A booking or offer ref fills in
+ * the client, service and ownership and marks the record `arrived`. Unknown
+ * phones are registered; existing clients keep their details.
  */
 export async function checkIn(input: CheckInParams): Promise<QueueEntry> {
+  if ("bookingRef" in input) return checkInBooking(input.bookingRef);
+  if ("offerRef" in input) return checkInOffer(input.offerRef);
   const client =
     "walkIn" in input
       ? (
@@ -66,20 +119,121 @@ export async function checkIn(input: CheckInParams): Promise<QueueEntry> {
         ).client
       : await findOrRegisterByPhone(input.phone);
   const facility = await currentFacility();
-  const { data, error } = await db()
-    .from("queue_entries")
-    .insert({
-      facility_id: facility.id,
-      service: input.service,
-      client_id: client.id,
-      ownership: input.ownership,
-      est_kg: input.estKg ?? null,
-      status: "waiting",
-    })
-    .select()
+  return addToLine({
+    facility_id: facility.id,
+    service: input.service,
+    client_id: client.id,
+    ownership: input.ownership,
+    est_kg: input.estKg ?? null,
+    booking_id: null,
+    offer_id: null,
+  });
+}
+
+function notFound(kind: RefKind | null, ref: string): GateError {
+  const what = kind
+    ? `${refKindLabels[kind].toLowerCase()}`
+    : "booking or offer";
+  return new GateError("ref_not_found", `No ${what} has ref ${ref}.`);
+}
+
+async function checkInBooking(input: string): Promise<QueueEntry> {
+  const ref = normalizeRef(input);
+  const booking = ref.length === REF_LENGTH ? await findByRef(ref) : null;
+  if (!booking) throw notFound("booking", ref);
+  const problem = refCheckInError({ kind: "booking", status: booking.status });
+  if (problem) throw new GateError("ref_not_eligible", problem);
+  // The conditional update is the lock: a second check-in of the same ref finds it arrived.
+  if (!(await markArrived(booking.id)))
+    throw new GateError(
+      "ref_not_eligible",
+      "This booking has already checked in.",
+    );
+  try {
+    return await addToLine({
+      facility_id: booking.facility_id,
+      client_id: booking.client_id,
+      est_kg: booking.est_kg,
+      booking_id: booking.id,
+      offer_id: null,
+      ...refLine({ kind: "booking", service: booking.service }),
+    });
+  } catch (cause) {
+    await unmarkArrived(booking.id, booking.status);
+    throw cause;
+  }
+}
+
+async function checkInOffer(input: string): Promise<QueueEntry> {
+  const ref = normalizeRef(input);
+  const offer = ref.length === REF_LENGTH ? await findOfferByRef(ref) : null;
+  if (!offer) throw notFound("offer", ref);
+  const problem = refCheckInError({ kind: "offer", status: offer.status });
+  if (problem) throw new GateError("ref_not_eligible", problem);
+  if (!(await markOfferArrived(offer.id)))
+    throw new GateError(
+      "ref_not_eligible",
+      "This offer has already checked in.",
+    );
+  try {
+    return await addToLine({
+      facility_id: offer.facility_id,
+      client_id: offer.client_id,
+      est_kg: offer.est_kg,
+      booking_id: null,
+      offer_id: offer.id,
+      ...refLine({ kind: "offer" }),
+    });
+  } catch (cause) {
+    await unmarkOfferArrived(offer.id);
+    throw cause;
+  }
+}
+
+/**
+ * What a booking or offer ref would check in, looking up bookings first, then
+ * offers. Throws a `GateError` when the ref is unknown or can't check in.
+ */
+export async function refPreview(input: string): Promise<RefPreview> {
+  const ref = normalizeRef(input);
+  if (ref.length !== REF_LENGTH) throw notFound(null, ref);
+  const booking = await findByRef(ref);
+  const offer = booking ? null : await findOfferByRef(ref);
+  const record = booking
+    ? {
+        kind: "booking" as const,
+        problem: refCheckInError({ kind: "booking", status: booking.status }),
+        line: refLine({ kind: "booking", service: booking.service }),
+        clientId: booking.client_id,
+        estKg: booking.est_kg,
+        date: booking.scheduled_date,
+      }
+    : offer
+      ? {
+          kind: "offer" as const,
+          problem: refCheckInError({ kind: "offer", status: offer.status }),
+          line: refLine({ kind: "offer" }),
+          clientId: offer.client_id,
+          estKg: offer.est_kg,
+          date: offer.harvest_date,
+        }
+      : null;
+  if (!record) throw notFound(null, ref);
+  if (record.problem) throw new GateError("ref_not_eligible", record.problem);
+  const { data: client, error } = await db()
+    .from("clients")
+    .select("name, kind, phone")
+    .eq("id", record.clientId)
     .single();
   if (error) throw error;
-  return data;
+  return {
+    kind: record.kind,
+    ref,
+    client,
+    ...record.line,
+    estKg: record.estKg,
+    date: record.date,
+  };
 }
 
 async function issuedToday(today: string): Promise<string[]> {
@@ -177,7 +331,9 @@ export async function liveQueue(): Promise<QueueRow[]> {
   const facility = await currentFacility();
   const { data, error } = await db()
     .from("queue_entries")
-    .select("*, client:clients(name, phone, kind), batch:batches(id, batch_no)")
+    .select(
+      "*, client:clients(name, phone, kind), batch:batches(id, batch_no), booking:bookings(ref), offer:sell_offers(ref)",
+    )
     .eq("facility_id", facility.id)
     .in("status", ["waiting", "serving"])
     .order("checked_in_at");

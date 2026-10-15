@@ -4,9 +4,15 @@ import {
   arrivalLabel,
   batchNo,
   batchOwnership,
+  formatDay,
   formatWait,
+  maskPhone,
   nextBatchNo,
+  normalizeRef,
   queueLines,
+  recordDateNote,
+  refCheckInError,
+  refLine,
   waitMinutes,
 } from "./logic";
 import type { QueueRow } from "./types";
@@ -28,6 +34,8 @@ const row = (overrides: Partial<QueueRow> = {}): QueueRow => ({
   updated_at: "",
   client: { name: "Rodel Panes", phone: "+639172000001", kind: "farmer" },
   batch: null,
+  booking: null,
+  offer: null,
   ...overrides,
 });
 
@@ -95,11 +103,77 @@ describe("arrivalLabel", () => {
     expect(arrivalLabel({ booking_id: null, offer_id: "o" })).toBe("Offer");
     expect(arrivalLabel({ booking_id: null, offer_id: null })).toBe("Walk-in");
   });
+  it("shows the ref when the row has one", () => {
+    expect(
+      arrivalLabel(row({ booking_id: "b", booking: { ref: "K7P2QX" } })),
+    ).toBe("K7P2QX");
+    expect(arrivalLabel(row({ offer_id: "o", offer: { ref: "SELL06" } }))).toBe(
+      "SELL06",
+    );
+  });
+});
+
+describe("ref check-in", () => {
+  it("normalizes typed refs", () => {
+    expect(normalizeRef(" k7p-2qx ")).toBe("K7P2QX");
+    expect(normalizeRef("k7p 2qx")).toBe("K7P2QX");
+  });
+  it.each(["confirmed", "reschedule_proposed"] as const)(
+    "lets a %s booking check in",
+    (status) => {
+      expect(refCheckInError({ kind: "booking", status })).toBeNull();
+    },
+  );
+  it.each(["arrived", "cancelled", "no_show"] as const)(
+    "stops a %s booking",
+    (status) => {
+      expect(refCheckInError({ kind: "booking", status })).toMatch(/booking/);
+    },
+  );
+  it("lets only accepted offers check in", () => {
+    expect(refCheckInError({ kind: "offer", status: "accepted" })).toBeNull();
+    for (const status of [
+      "offered",
+      "declined",
+      "arrived",
+      "withdrawn",
+    ] as const)
+      expect(refCheckInError({ kind: "offer", status })).toMatch(/offer/);
+  });
+  it("takes the booking's service as custom and offers to drying as IRPC", () => {
+    expect(refLine({ kind: "booking", service: "milling" })).toEqual({
+      service: "milling",
+      ownership: "custom",
+    });
+    expect(refLine({ kind: "offer" })).toEqual({
+      service: "drying",
+      ownership: "irpc",
+    });
+  });
+  it("masks phones", () => {
+    expect(maskPhone("+639163393390")).toBe("0916•••3390");
+  });
+  it("places the record date against today", () => {
+    expect(formatDay("2026-10-15")).toBe("Thu, Oct 15");
+    expect(recordDateNote("booking", "2026-10-15", "2026-10-15")).toBe(
+      "Scheduled for today",
+    );
+    expect(recordDateNote("booking", "2026-10-16", "2026-10-15")).toBe(
+      "Arrived 1 day early",
+    );
+    expect(recordDateNote("booking", "2026-10-12", "2026-10-15")).toBe(
+      "Arrived 3 days late",
+    );
+    expect(recordDateNote("offer", "2026-10-20", "2026-10-15")).toBe(
+      "Harvest date shown",
+    );
+  });
 });
 
 describe("checkInSchema", () => {
   const input = {
     mode: "phone",
+    ref: "",
     phone: "0917 123 4567",
     service: "drying",
     ownership: "custom",
@@ -119,6 +193,17 @@ describe("checkInSchema", () => {
     { mode: "walkIn" },
   ])("rejects %o", (bad) => {
     expect(checkInSchema.safeParse({ ...input, ...bad }).success).toBe(false);
+  });
+  it("needs only a full ref for booking and offer check-ins", () => {
+    for (const mode of ["booking", "offer"]) {
+      expect(
+        checkInSchema.safeParse({ ...input, mode, ref: "k7p-2qx", phone: "" })
+          .success,
+      ).toBe(true);
+      expect(
+        checkInSchema.safeParse({ ...input, mode, ref: "K7P" }).success,
+      ).toBe(false);
+    }
   });
   it("accepts a named walk-in", () => {
     expect(
