@@ -32,7 +32,7 @@ export function FacilityForm({ defaults }: { defaults: FacilityFormDefaults }) {
   return (
     <form action={action} className="flex flex-col gap-6">
       <Section title="Capacity">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-3">
           <NumberField
             id="storageT"
             label="Storage (t)"
@@ -51,7 +51,7 @@ export function FacilityForm({ defaults }: { defaults: FacilityFormDefaults }) {
       </Section>
 
       <Section title="Costs" unconfirmed>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-3">
           <NumberField
             id="baseLoadKw"
             label="Base load kW"
@@ -74,7 +74,7 @@ export function FacilityForm({ defaults }: { defaults: FacilityFormDefaults }) {
       </Section>
 
       <Section title="Planning">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-3">
           <NumberField
             id="idleThresholdPct"
             label="Idle threshold %"
@@ -154,7 +154,7 @@ export function NumberField({
 }) {
   return (
     <Field>
-      <FieldLabel htmlFor={id}>
+      <FieldLabel htmlFor={id} className="whitespace-nowrap">
         {label}
         {info && <InfoIcon text={info} />}
         {unconfirmed && <UnconfirmedIcon />}
