@@ -57,6 +57,7 @@ export function FacilityForm({ defaults }: { defaults: FacilityFormDefaults }) {
             label="Base load kW"
             defaultValue={defaults.baseLoadKw}
             step={0.01}
+            info="Power the plant draws on any operating day apart from the machines, like lights, pumps and the office."
           />
           <NumberField
             id="tariff"

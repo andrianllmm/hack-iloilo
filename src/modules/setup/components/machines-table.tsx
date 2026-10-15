@@ -226,6 +226,7 @@ function MachineForm({
               label="Load (t)"
               defaultValue={t(machine?.capacity_kg ?? null)}
               step={0.001}
+              info="Palay one batch holds. Daily capacity counts only whole loads."
               unconfirmed
             />
             <NumberField
@@ -233,6 +234,7 @@ function MachineForm({
               label="Cycle hours"
               defaultValue={machine?.cycle_hours?.toString() ?? ""}
               step={0.1}
+              info="Hours to dry one load, from loading to unloading."
               unconfirmed
             />
           </div>
@@ -242,6 +244,7 @@ function MachineForm({
             label="Throughput (t/hour)"
             defaultValue={t(machine?.kg_per_hour ?? null)}
             step={0.001}
+            info="Palay the mill takes in per hour of running."
             unconfirmed
           />
         )}
@@ -251,6 +254,7 @@ function MachineForm({
           label="Rated kW"
           defaultValue={machine?.rated_kw.toString() ?? "0"}
           step={0.01}
+          info="Power the machine draws while running, from its nameplate. Used for electricity cost."
           unconfirmed
         />
 
