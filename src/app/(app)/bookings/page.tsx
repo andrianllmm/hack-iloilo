@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import { PagePlaceholder } from "@/components/page-placeholder";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BookingsLoader } from "@/modules/booking/components/bookings-loader";
 
 export const metadata: Metadata = { title: "Bookings" };
 
-export default function BookingsPage() {
+export default function BookingsPage({ searchParams }: PageProps<"/bookings">) {
   return (
-    <PagePlaceholder
-      title="Bookings"
-      module="M4"
-      description="Upcoming drying and milling bookings per service and day."
-    />
+    <Suspense fallback={<Skeleton className="h-96" />}>
+      <BookingsLoader searchParams={searchParams} />
+    </Suspense>
   );
 }
