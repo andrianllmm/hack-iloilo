@@ -2,8 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // /api/sms/process authenticates the webhook relay with SMS_RELAY_SECRET.
-// /book is client self-service booking.
-const PUBLIC_PATHS = ["/login", "/book", "/api/sms/process"];
+// /book is client self-service booking; /sell is quotes and sell offers.
+const PUBLIC_PATHS = ["/login", "/book", "/sell", "/api/sms/process"];
 const DASHBOARD = "/capacity";
 
 /** Refreshes the Supabase session and sends signed-out visitors to /login. */
