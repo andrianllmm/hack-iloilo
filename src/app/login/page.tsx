@@ -20,13 +20,22 @@ export default function LoginPage() {
       </Link>
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>IRPC Capacity Planning</CardTitle>
+          <CardTitle>Staff sign in</CardTitle>
           <CardDescription>Sign in with your staff account.</CardDescription>
         </CardHeader>
         <CardContent>
           <LoginForm />
         </CardContent>
       </Card>
+      <p className="text-sm text-muted-foreground">
+        Booking, selling palay or tracking a ref?{" "}
+        <Link
+          href="/"
+          className="font-medium text-primary underline-offset-4 hover:underline"
+        >
+          Go to the home page
+        </Link>
+      </p>
     </main>
   );
 }
