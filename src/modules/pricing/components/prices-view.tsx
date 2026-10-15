@@ -1,5 +1,5 @@
 import { ServiceLabel } from "@/components/service-icon";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
 import {
   Table,
   TableBody,
@@ -46,7 +46,9 @@ export async function PricesView() {
               <TableCell>
                 <span className="flex items-center gap-2">
                   {p.effective_date}
-                  {p.id === liveId && <Badge>In effect</Badge>}
+                  {p.id === liveId && (
+                    <StatusBadge tone="success">In effect</StatusBadge>
+                  )}
                 </span>
               </TableCell>
               <TableCell className="text-muted-foreground">

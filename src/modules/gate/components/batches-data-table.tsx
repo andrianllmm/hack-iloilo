@@ -19,7 +19,7 @@ import {
   useTable,
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -30,7 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatKg } from "@/lib/format";
-import { serviceLabels, stageLabels } from "../logic";
+import { serviceLabels, stageLabels, stageTones } from "../logic";
 import type { BatchListRow } from "../types";
 
 const features = tableFeatures({
@@ -89,12 +89,18 @@ const columns = columnHelper.columns([
       const stage = getValue();
       return (
         <span className="flex flex-wrap items-center gap-1">
-          <Badge variant="secondary">
-            {isServiceIconKind(stage) ? <ServiceIcon kind={stage} /> : null}
+          <StatusBadge
+            tone={stageTones[stage]}
+            icon={
+              isServiceIconKind(stage) ? (
+                <ServiceIcon kind={stage} />
+              ) : undefined
+            }
+          >
             {stageLabels[stage]}
-          </Badge>
+          </StatusBadge>
           {row.original.confirmations.some((c) => c.status === "disputed") ? (
-            <Badge variant="destructive">Weight disputed</Badge>
+            <StatusBadge tone="danger">Weight disputed</StatusBadge>
           ) : null}
         </span>
       );

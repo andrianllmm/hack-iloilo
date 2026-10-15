@@ -3,7 +3,7 @@
 import { ServiceIcon, isServiceIconKind } from "@/components/service-icon";
 import { ArrowUpRight } from "lucide-react";
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -15,7 +15,13 @@ import {
 import { addDays } from "@/lib/dates";
 import { formatTonnes } from "@/lib/format";
 import { cn } from "cn";
-import { dayLabel, expectedKg, plantStatus, type PlantStatus } from "../logic";
+import {
+  dayLabel,
+  expectedKg,
+  plantStatus,
+  plantStatusTones,
+  type PlantStatus,
+} from "../logic";
 import type { DayPool, Pool } from "../types";
 import {
   DryerDrawing,
@@ -366,16 +372,7 @@ function Chip({
   status: PlantStatus;
   children: React.ReactNode;
 }) {
-  return (
-    <Badge
-      data-s={status}
-      variant="secondary"
-      className="h-6 gap-1.5 rounded-full bg-[color-mix(in_oklch,var(--s)_16%,transparent)] px-2.5 font-semibold text-foreground"
-    >
-      <span className="size-1.5 rounded-full bg-(--s)" />
-      {children}
-    </Badge>
-  );
+  return <StatusBadge tone={plantStatusTones[status]}>{children}</StatusBadge>;
 }
 
 function Legend() {

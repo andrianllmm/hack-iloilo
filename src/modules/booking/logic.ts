@@ -3,6 +3,7 @@
 
 import { addDays } from "@/lib/dates";
 import { formatKg } from "@/lib/format";
+import type { StatusTone } from "@/lib/status";
 import type { Booking, BookingRow, BookingStatus, Service } from "./types";
 
 export const services = ["drying", "milling"] as const;
@@ -23,6 +24,13 @@ export const statusLabels: Record<BookingStatus, string> = {
   arrived: "Arrived",
   cancelled: "Cancelled",
   no_show: "No-show",
+};
+export const statusTones: Record<BookingStatus, StatusTone> = {
+  confirmed: "info",
+  reschedule_proposed: "warning",
+  arrived: "success",
+  cancelled: "neutral",
+  no_show: "danger",
 };
 export const MAX_FLEX_DAYS = 7;
 // TODO(M3): confirm IRPC's sack weight.

@@ -1,6 +1,11 @@
-import { ServiceLabel } from "@/components/service-icon";
+import {
+  ServiceIcon,
+  ServiceLabel,
+  isServiceIconKind,
+} from "@/components/service-icon";
 import { notFound } from "next/navigation";
 import { z } from "zod";
+import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -17,6 +22,7 @@ import {
   recoveryPct,
   serviceLabels,
   stageLabels,
+  stageTones,
 } from "../logic";
 import { WeightConfirmations } from "./weight-confirmations";
 import { batchWeightConfirmations, batchSummary } from "../queries";
@@ -96,7 +102,17 @@ export async function BatchSummaryCard({ id }: { id: string }) {
         <CardHeader>
           <CardTitle>Batch record</CardTitle>
           <CardDescription>
-            Stage <Badge variant="secondary">{stageLabels[batch.stage]}</Badge>
+            Stage{" "}
+            <StatusBadge
+              tone={stageTones[batch.stage]}
+              icon={
+                isServiceIconKind(batch.stage) ? (
+                  <ServiceIcon kind={batch.stage} />
+                ) : undefined
+              }
+            >
+              {stageLabels[batch.stage]}
+            </StatusBadge>
           </CardDescription>
         </CardHeader>
         <CardContent>

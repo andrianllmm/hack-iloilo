@@ -4,7 +4,7 @@ import { ServiceIcon, ServiceLabel } from "@/components/service-icon";
 import { Pencil, Plus } from "lucide-react";
 import { useActionState, useState, useTransition } from "react";
 import { OptionSelect } from "@/components/option-select";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -103,7 +103,9 @@ export function MachinesTable({ machines }: { machines: Machine[] }) {
               <TableCell className="font-medium">
                 <span className="flex items-center gap-2">
                   {m.code}
-                  {!m.active && <Badge variant="secondary">Inactive</Badge>}
+                  {!m.active && (
+                    <StatusBadge tone="neutral">Inactive</StatusBadge>
+                  )}
                 </span>
               </TableCell>
               <TableCell>

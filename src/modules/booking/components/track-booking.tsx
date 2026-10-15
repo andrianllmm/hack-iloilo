@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -38,19 +38,12 @@ import {
   type TrackResult,
 } from "../actions";
 import { trackLookupSchema, type TrackLookupInput } from "../booking-schema";
-import { MAX_FLEX_DAYS, serviceLabels, statusLabels } from "../logic";
-import type { BookingStatus } from "../types";
-
-const statusVariants: Record<
-  BookingStatus,
-  "default" | "secondary" | "outline" | "destructive"
-> = {
-  confirmed: "secondary",
-  reschedule_proposed: "outline",
-  arrived: "default",
-  cancelled: "destructive",
-  no_show: "destructive",
-};
+import {
+  MAX_FLEX_DAYS,
+  serviceLabels,
+  statusLabels,
+  statusTones,
+} from "../logic";
 
 /** Public /track: look up a booking by ref and phone, then check, move, cancel or answer a proposal. */
 export function TrackBooking({
@@ -220,9 +213,9 @@ function BookingDetails({
         <p className="font-mono text-4xl font-bold tracking-widest">
           {booking.ref}
         </p>
-        <Badge variant={statusVariants[booking.status]}>
+        <StatusBadge tone={statusTones[booking.status]}>
           {statusLabels[booking.status]}
-        </Badge>
+        </StatusBadge>
         <p>
           <ServiceLabel kind={booking.service} className="align-bottom">
             {serviceLabels[booking.service]}

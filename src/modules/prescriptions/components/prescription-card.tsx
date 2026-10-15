@@ -3,7 +3,7 @@
 import { ChevronRight } from "lucide-react";
 import { useTransition } from "react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -113,9 +113,9 @@ function Rows({
 function Remainder({ kg, why }: { kg: number; why: string }) {
   if (kg <= 0) return null;
   return (
-    <Badge variant="warning">
+    <StatusBadge tone="danger">
       {formatTonnes(kg)} still over: {why}
-    </Badge>
+    </StatusBadge>
   );
 }
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cn } from "cn";
-import { Badge, badgeVariants } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
+import { badgeVariants } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { formatDate, formatKg } from "@/lib/format";
 import { getStaff } from "@/modules/accounts/auth";
+import { offerStatusLabels, offerStatusTones } from "../logic";
 import { listOffers, type OfferListItem, type OfferStatus } from "../queries";
 import { OfferActions } from "./offer-actions";
 
@@ -22,19 +24,8 @@ const FILTERS: { label: string; value: OfferStatus | undefined }[] = [
   { label: "Withdrawn", value: "withdrawn" },
 ];
 
-const STATUS_VARIANT: Record<
-  OfferStatus,
-  "default" | "secondary" | "destructive" | "outline"
-> = {
-  offered: "secondary",
-  accepted: "default",
-  arrived: "default",
-  declined: "destructive",
-  withdrawn: "outline",
-};
-
-// Single source of truth for valid statuses; STATUS_VARIANT is exhaustive.
-const KNOWN = Object.keys(STATUS_VARIANT) as OfferStatus[];
+// Single source of truth for valid statuses; the tone map is exhaustive.
+const KNOWN = Object.keys(offerStatusTones) as OfferStatus[];
 
 function asStatus(raw: string | string[] | undefined): OfferStatus | undefined {
   const value = Array.isArray(raw) ? raw[0] : raw;
@@ -121,9 +112,9 @@ function OfferRow({
       <TableCell className="text-right">{formatKg(offer.est_kg)}</TableCell>
       <TableCell>{formatDate(offer.harvest_date)}</TableCell>
       <TableCell>
-        <Badge variant={STATUS_VARIANT[offer.status]} className="capitalize">
-          {offer.status}
-        </Badge>
+        <StatusBadge tone={offerStatusTones[offer.status]}>
+          {offerStatusLabels[offer.status]}
+        </StatusBadge>
       </TableCell>
       <TableCell>
         {decidable && <OfferActions id={offer.id} isManager={isManager} />}

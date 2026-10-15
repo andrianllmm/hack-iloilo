@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusBadge } from "@/components/status-badge";
 import { ServiceLabel } from "@/components/service-icon";
 import { Fragment, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -13,7 +14,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -31,24 +31,15 @@ import {
   formatShortDate,
   serviceLabels,
   statusLabels,
+  statusTones,
   type BookingGroup,
 } from "../logic";
-import type { BookingClient, BookingRow, BookingStatus } from "../types";
+import type { BookingClient, BookingRow } from "../types";
 
 /** Rows shown per day before `+ N more`. */
 const GROUP_PREVIEW = 6;
 const COLUMNS = 8;
 const kgFormat = new Intl.NumberFormat("en-US");
-const statusVariants: Record<
-  BookingStatus,
-  "default" | "secondary" | "outline" | "destructive"
-> = {
-  confirmed: "secondary",
-  reschedule_proposed: "outline",
-  arrived: "default",
-  cancelled: "destructive",
-  no_show: "destructive",
-};
 
 export function BookingsTable({
   groups,
@@ -129,9 +120,9 @@ export function BookingsTable({
                         {row.flex_days ? `${row.flex_days} d` : "—"}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={statusVariants[row.status]}>
+                        <StatusBadge tone={statusTones[row.status]}>
                           {statusLabels[row.status]}
-                        </Badge>
+                        </StatusBadge>
                       </TableCell>
                       <TableCell className="text-right">
                         {row.status === "confirmed" ||

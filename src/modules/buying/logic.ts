@@ -3,6 +3,25 @@
 
 import { z } from "zod";
 import { formatKg, formatMoneySms } from "@/lib/format";
+import type { StatusTone } from "@/lib/status";
+import type { Database } from "@/lib/supabase/database.types";
+
+type OfferStatus = Database["public"]["Enums"]["sell_offer_status"];
+
+export const offerStatusLabels: Record<OfferStatus, string> = {
+  offered: "Offered",
+  accepted: "Accepted",
+  arrived: "Arrived",
+  declined: "Declined",
+  withdrawn: "Withdrawn",
+};
+export const offerStatusTones: Record<OfferStatus, StatusTone> = {
+  offered: "warning",
+  accepted: "info",
+  arrived: "success",
+  declined: "danger",
+  withdrawn: "neutral",
+};
 
 type PurchasePrice = {
   paid_kg: number;
