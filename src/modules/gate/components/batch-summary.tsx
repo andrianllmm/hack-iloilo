@@ -17,7 +17,8 @@ import {
   serviceLabels,
   stageLabels,
 } from "../logic";
-import { batchSummary } from "../queries";
+import { WeightConfirmations } from "./weight-confirmations";
+import { batchWeightConfirmations, batchSummary } from "../queries";
 import { BatchStages } from "./batch-stages";
 
 const started = new Intl.DateTimeFormat("en-PH", {
@@ -49,10 +50,11 @@ export async function BatchSummaryCard({ id }: { id: string }) {
   if (!z.guid().safeParse(id).success) notFound();
   const batch = await batchSummary(id);
   if (!batch) notFound();
-  const [dryers, mills, varieties] = await Promise.all([
+  const [dryers, mills, varieties, confirmations] = await Promise.all([
     listMachines("dryer"),
     listMachines("mill"),
     listVarieties(),
+    batchWeightConfirmations(id),
   ]);
   const recovery = recoveryPct(batch.rice_kg, batch.mill_in_kg);
   const skippedDrying = !batch.dry_start && batch.stage !== "received";
@@ -88,6 +90,8 @@ export async function BatchSummaryCard({ id }: { id: string }) {
           <FieldList rows={rows} />
         </CardContent>
       </Card>
+
+      <WeightConfirmations batchId={id} confirmations={confirmations} />
 
       {showReceiving ? (
         <Card className="max-w-xl">

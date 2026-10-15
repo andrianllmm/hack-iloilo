@@ -269,7 +269,9 @@ Any command accepts `FOR <phone>`.
 - Saving a dispatch texts the buyer the receipt and batch numbers.
 - Queue texts go to the next `notify_ahead_n` waiting entries in the same facility and service line after a successful start (0 disables them). Purchase texts include saved paid kg, price/kg and total, on first save or when those figures change. Every dispatch texts its recipient, including owner pickups; sale texts include saved kg, price/kg, total and an optional OR number; pickup texts include only batch number and kg. Notification failures never undo saved operations. Delivery status is logged by M3; there is no automatic retry.
 
-**Tests:** stage transitions, recovery.
+Weight confirmation: receiving and drying measurements each have a `batch_weight_confirmations` row (snapshot, pending/confirmed/disputed status, prompt and responder). A service-only SQL operation saves the measurements and `weight_confirm` SMS prompt atomically; gateway delivery runs afterward. Revised receiving weights expire the old prompt; unchanged weights preserve their confirmation. Owners and original booking/offer bookers may answer. Explicit closed references never fall through to another prompt. Staff can confirm the displayed snapshot in person; disputes flag the list and detail page. Confirmation never blocks processing, expires after the usual 24 hours, and historical batches are not backfilled. IRPC receiving combines purchase figures and the confirmation request into one bilingual text.
+
+**Tests:** stage transitions, recovery, confirmation authorization and lifecycle.
 
 ### M7. Pricing and Cost
 

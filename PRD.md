@@ -198,6 +198,7 @@ The input end for IRPC-owned palay. Private mills win on fast, clear quotes, and
   - **Drying:** dryer, start and end, MC out, dried kg. Skipped for dry palay.
   - **Milling:** start and end, kg in, rice kg, by-products. Recovery is computed.
   - **Dispatch:** buyer, kg, price, receipt number. The buyer is texted the receipt and batch numbers. A batch can have several dispatches.
+- **Weight confirmation:** text the owner at receiving and after drying. YES confirms; NO flags a dispute for re-weighing. Staff can record in-person agreement. Processing continues regardless of confirmation.
 - **Trace:** a batch page showing the trail from gate to buyers.
 
 ### M7. Pricing and Cost

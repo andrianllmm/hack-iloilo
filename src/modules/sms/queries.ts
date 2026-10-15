@@ -292,9 +292,18 @@ async function answerPrompt(
   ctx: CommandContext,
 ): Promise<string> {
   // A ref may just be a word ("yes please"), so fall back to the latest.
-  const prompt =
-    (ref && (await openPromptByRef(ref))) ||
-    (await latestOpenPrompt(ctx.phone));
+  const referenced = ref ? await openPromptByRef(ref) : null;
+  if (ref && !referenced) {
+    const { data, error } = await db()
+      .from("sms_prompts")
+      .select("id")
+      .eq("ref", ref)
+      .limit(1);
+    if (error) throw error;
+    // A late reply to a known closed reference must not answer another stage.
+    if (data.length) return smsReplies.noPrompt;
+  }
+  const prompt = referenced || (await latestOpenPrompt(ctx.phone));
   const handler = prompt && promptHandler(prompt.kind);
   if (!prompt || !handler) return smsReplies.noPrompt;
 

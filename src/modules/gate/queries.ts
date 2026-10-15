@@ -2,6 +2,9 @@
 // Server-side reads. May call other modules' queries.
 
 import "server-only";
+import { revalidatePath } from "next/cache";
+import { newRef } from "@/lib/ref";
+import type { Json } from "@/lib/supabase/database.types";
 import { todayManila } from "@/lib/dates";
 import { db } from "@/lib/supabase/admin";
 import {
@@ -15,14 +18,19 @@ import {
   unmarkArrived,
 } from "@/modules/booking/queries";
 import {
+  createPurchase,
   findOfferByRef,
   markOfferArrived,
   unmarkOfferArrived,
 } from "@/modules/buying/queries";
 import { currentFacility } from "@/modules/setup/queries";
+import { PromptRefusal, type SmsPrompt } from "@/modules/sms/registry";
 import type { CommandContext } from "@/modules/sms/registry";
 import { send } from "@/modules/sms/queries";
 import {
+  weightConfirmationText,
+  weightAnswerText,
+  type WeightStage,
   type BatchAction,
   batchOwnership,
   batchPrefix,
@@ -443,20 +451,20 @@ export async function recordReceiving(
     foreign_pct: number;
   },
 ): Promise<Batch> {
-  const { data, error } = await db()
-    .from("batches")
-    .update(fields)
-    .eq("id", batchId)
-    .eq("stage", "received")
-    .select()
-    .maybeSingle();
-  if (error) throw error;
-  if (!data)
-    throw new GateError(
-      "stale_stage",
-      "This batch has moved on. Refresh the page.",
-    );
-  return data;
+  const { batch, promptRef } = await recordMeasurement(
+    batchId,
+    "receiving",
+    fields,
+  );
+  // A new measurement request includes the purchase details in a single text.
+  // Unchanged measurements retain confirmation and ordinary price-change texts.
+  const purchase =
+    batch.ownership === "irpc"
+      ? await createPurchase(batchId, { notify: !promptRef })
+      : undefined;
+  if (promptRef)
+    await sendWeightRequest(batch, "receiving", promptRef, purchase);
+  return batch;
 }
 
 /**
@@ -492,11 +500,17 @@ export function startDrying(
   return advance(batchId, "received", "start_drying", fields);
 }
 
-export function finishDrying(
+export async function finishDrying(
   batchId: string,
   fields: { dry_end: string; mc_out: number; dried_kg: number },
 ): Promise<Batch> {
-  return advance(batchId, "drying", "finish_drying", fields);
+  const { batch, promptRef } = await recordMeasurement(
+    batchId,
+    "drying",
+    fields,
+  );
+  if (promptRef) await sendWeightRequest(batch, "drying", promptRef);
+  return batch;
 }
 
 export function skipDrying(batchId: string): Promise<Batch> {
@@ -578,7 +592,7 @@ export async function listBatches(
   let query = db()
     .from("batches")
     .select(
-      "id, batch_no, ownership, stage, net_kg, dried_kg, rice_kg, created_at, client:clients(name), entry:queue_entries(service)",
+      "id, batch_no, ownership, stage, net_kg, dried_kg, rice_kg, created_at, client:clients(name), entry:queue_entries(service), confirmations:batch_weight_confirmations(status)",
     )
     .eq("facility_id", facility.id)
     .order("batch_no", { ascending: false });
@@ -682,4 +696,112 @@ function dispatchError(error: { message: string }): Error {
       `Only ${over[1]} kg left to dispatch from this batch.`,
     );
   return error instanceof Error ? error : new Error(message);
+}
+
+/** Same transaction saves the measurements and their prompt; no SMS runs under a lock. */
+async function recordMeasurement(
+  batchId: string,
+  stage: WeightStage,
+  fields: object,
+) {
+  for (let attempt = 0; ; attempt++) {
+    const { data, error } = await db().rpc("record_batch_measurement", {
+      p_batch_id: batchId,
+      p_stage: stage,
+      p_fields: fields as Json,
+      p_ref: newRef(),
+    });
+    if (error?.code === "23505" && attempt < 3) continue;
+    if (error?.message.includes("stale_stage"))
+      throw new GateError(
+        "stale_stage",
+        "This batch has moved on. Refresh the page.",
+      );
+    if (error) throw error;
+    return data as unknown as { batch: Batch; promptRef: string | null };
+  }
+}
+async function sendWeightRequest(
+  batch: Batch,
+  stage: WeightStage,
+  ref: string,
+  purchase?: {
+    paid_kg: number;
+    price_minor_per_kg: number;
+    total_minor: number;
+  },
+) {
+  try {
+    const { data: owner, error } = await db()
+      .from("clients")
+      .select("phone")
+      .eq("id", batch.client_id)
+      .single();
+    if (error) throw error;
+    await send(
+      owner.phone,
+      weightConfirmationText({
+        batchNo: batch.batch_no,
+        stage,
+        measurements:
+          stage === "receiving"
+            ? { bags: batch.bags!, kg: batch.net_kg!, mc: batch.mc! }
+            : { kg: batch.dried_kg!, mc: batch.mc_out! },
+        ref,
+        purchase,
+      }),
+    );
+  } catch (error) {
+    console.error("Unable to send weight confirmation", error);
+  }
+}
+export async function batchWeightConfirmations(batchId: string) {
+  const { data, error } = await db()
+    .from("batch_weight_confirmations")
+    .select()
+    .eq("batch_id", batchId)
+    .order("created_at");
+  if (error) throw error;
+  return data;
+}
+export async function answerWeightConfirmation(
+  prompt: SmsPrompt,
+  yes: boolean,
+  ctx: CommandContext,
+): Promise<string> {
+  const { data, error } = await db().rpc("answer_batch_weight", {
+    p_prompt_id: prompt.id,
+    p_phone: ctx.phone,
+    p_yes: yes,
+  });
+  if (error?.message.includes("weight_forbidden"))
+    throw new PromptRefusal(
+      "IRPC: Only the owner or original booker can confirm this weight.",
+    );
+  if (error) throw error;
+  const { batchId } = prompt.payload as { batchId: string };
+  revalidatePath(`/batches/${batchId}`);
+  revalidatePath("/batches");
+  return data
+    ? weightAnswerText(yes)
+    : "IRPC: This weight request is no longer pending. Ask staff to check the batch.";
+}
+export async function confirmWeightInPerson(
+  batchId: string,
+  stage: WeightStage,
+  staffId: string,
+  updatedAt: string,
+) {
+  const { data, error } = await db().rpc("confirm_batch_weight_in_person", {
+    p_batch_id: batchId,
+    p_stage: stage,
+    p_staff_id: staffId,
+    p_confirmation_updated_at: updatedAt,
+  });
+  if (error) throw error;
+  if (!data)
+    throw new GateError(
+      "stale_stage",
+      "These measurements have changed. Refresh the page.",
+    );
 }

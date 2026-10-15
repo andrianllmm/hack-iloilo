@@ -381,3 +381,32 @@ export function recordDateNote(
     ? `Arrived ${days(offset)} early`
     : `Arrived ${days(-offset)} late`;
 }
+
+export type WeightStage = "receiving" | "drying";
+export type WeightMeasurements = { kg: number; mc: number; bags?: number };
+export function weightConfirmationText(input: {
+  batchNo: string;
+  stage: WeightStage;
+  measurements: WeightMeasurements;
+  ref: string;
+  purchase?: {
+    paid_kg: number;
+    price_minor_per_kg: number;
+    total_minor: number;
+  };
+}): string {
+  const { batchNo, stage, measurements: m, ref, purchase } = input;
+  const label =
+    stage === "receiving"
+      ? `Nabaton / Received: ${m.bags} bags,`
+      : "Na-dry / Dried:";
+  const price = purchase
+    ? ` Paid: ${formatKg(purchase.paid_kg)} at ${formatMoneySms(purchase.price_minor_per_kg)}/kg. Total: ${formatMoneySms(purchase.total_minor)}.`
+    : "";
+  return `IRPC: Batch ${batchNo}. ${label} ${formatKg(m.kg)}, MC ${m.mc}%.${price} Sakto ang timbang / Weight correct? YES ${ref} / NO ${ref}.`;
+}
+export function weightAnswerText(yes: boolean): string {
+  return yes
+    ? "IRPC: Salamat. Timbang nakumpirma / Weight confirmed."
+    : "IRPC: Timbang ginakontra / Weight disputed. Staff will check and re-weigh.";
+}

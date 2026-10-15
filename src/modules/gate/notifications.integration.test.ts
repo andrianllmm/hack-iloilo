@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import { existsSync } from "node:fs";
 import { randomInt, randomUUID } from "node:crypto";
 import {
@@ -11,6 +12,7 @@ import {
   vi,
 } from "vitest";
 vi.mock("server-only", () => ({}));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 const { gatewaySend } = vi.hoisted(() => ({ gatewaySend: vi.fn() }));
 vi.mock("@/lib/sms", () => ({ smsGateway: () => ({ send: gatewaySend }) }));
 vi.mock("@/modules/setup/queries", async (original) => ({
@@ -24,7 +26,15 @@ import { createPurchase, purchaseByBatch } from "@/modules/buying/queries";
 import { purchaseText } from "@/modules/buying/logic";
 import { currentFacility, type Facility } from "@/modules/setup/queries";
 import * as sms from "@/modules/sms/queries";
-import { dispatch, start } from "./queries";
+import {
+  batchWeightConfirmations,
+  confirmWeightInPerson,
+  dispatch,
+  finishDrying,
+  listBatches,
+  recordReceiving,
+  start,
+} from "./queries";
 
 type Tables = Database["public"]["Tables"];
 
@@ -159,7 +169,13 @@ describe.skipIf(process.env.RUN_GATE_SMS_DB_TESTS !== "1")(
         const { error } = await db().from(table).delete().in("batch_id", ids);
         if (error) throw error;
       }
-      for (const table of ["batches", "queue_entries", "prices"] as const) {
+      for (const table of [
+        "batches",
+        "queue_entries",
+        "bookings",
+        "sell_offers",
+        "prices",
+      ] as const) {
         const { error } = await db()
           .from(table)
           .delete()
@@ -168,6 +184,7 @@ describe.skipIf(process.env.RUN_GATE_SMS_DB_TESTS !== "1")(
       }
       for (const [table, column, values] of [
         ["sms_messages", "phone", phones],
+        ["sms_prompts", "phone", phones],
         ["clients", "id", clientIds],
         ["facilities", "id", facilityIds],
       ] as const) {
@@ -315,6 +332,204 @@ describe.skipIf(process.env.RUN_GATE_SMS_DB_TESTS !== "1")(
       vi.spyOn(console, "error").mockImplementation(() => {});
       const saved = await createPurchase(received.id);
       expect((await purchaseByBatch(received.id))!.id).toBe(saved.id);
+    });
+
+    const receiving = {
+      bags: 20,
+      net_kg: 1000,
+      mc: 25,
+      variety_id: null,
+      damaged_pct: 0,
+      immature_pct: 0,
+      foreign_pct: 0,
+    };
+    const confirmation = async (id: string, stage = "receiving") =>
+      (await batchWeightConfirmations(id)).find((c) => c.stage === stage)!;
+    const refFor = async (id: string, stage = "receiving") => {
+      const c = await confirmation(id, stage);
+      const { data, error } = await db()
+        .from("sms_prompts")
+        .select("ref, status")
+        .eq("id", c.prompt_id!)
+        .single();
+      if (error) throw error;
+      return data;
+    };
+    it("sends one receiving text and preserves unchanged confirmed measurements", async () => {
+      const b = await batch({ ownership: "custom" });
+      await recordReceiving(b.id, receiving);
+      const ref = (await refFor(b.id)).ref;
+      expect(await outbound(clients[0].phone)).toHaveLength(1);
+      await sms.handleInbound({ phone: clients[0].phone, body: `YES ${ref}` });
+      expect((await confirmation(b.id)).status).toBe("confirmed");
+      const count = gatewaySend.mock.calls.length;
+      await recordReceiving(b.id, receiving);
+      expect(gatewaySend).toHaveBeenCalledTimes(count);
+      expect((await confirmation(b.id)).status).toBe("confirmed");
+      await recordReceiving(b.id, { ...receiving, net_kg: 1100 });
+      expect((await confirmation(b.id)).status).toBe("pending");
+      expect((await refFor(b.id)).ref).not.toBe(ref);
+      await sms.handleInbound({ phone: clients[0].phone, body: `YES ${ref}` });
+      expect((await confirmation(b.id)).status).toBe("pending");
+    });
+    it("combines purchase and confirmation into one receiving message", async () => {
+      const b = await batch();
+      await recordReceiving(b.id, receiving);
+      const messages = await outbound(clients[0].phone);
+      expect(messages).toHaveLength(1);
+      expect(messages[0].body).toContain("1,000 kg");
+      expect(messages[0].body).toContain("PHP 21.00/kg");
+      expect(messages[0].body).toContain("YES ");
+      expect(await purchaseByBatch(b.id)).not.toBeNull();
+    });
+    it("refuses strangers without consuming the prompt and visibly flags a dispute", async () => {
+      const b = await batch({ ownership: "custom" });
+      await recordReceiving(b.id, receiving);
+      const ref = (await refFor(b.id)).ref;
+      await sms.handleInbound({ phone: clients[1].phone, body: `NO ${ref}` });
+      expect((await refFor(b.id)).status).toBe("open");
+      expect((await confirmation(b.id)).status).toBe("pending");
+      await sms.handleInbound({ phone: clients[0].phone, body: `NO ${ref}` });
+      expect((await confirmation(b.id)).status).toBe("disputed");
+      expect(
+        (await listBatches()).find((row) => row.id === b.id)!.confirmations,
+      ).toContainEqual({ status: "disputed" });
+    });
+
+    it("accepts the original booker by explicit ref, but not a plain reply", async () => {
+      const { data: booking, error } = await db()
+        .from("bookings")
+        .insert({
+          facility_id: facility.id,
+          client_id: clients[0].id,
+          booked_by_phone: clients[1].phone,
+          channel: "staff",
+          service: "drying",
+          est_kg: 1000,
+          preferred_date: todayManila(),
+          scheduled_date: todayManila(),
+          ref: randomUUID().replaceAll("-", "").slice(0, 6).toUpperCase(),
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      const q = await queue({ booking_id: booking.id });
+      const b = await batch({ ownership: "custom", queue_entry_id: q.id });
+      await recordReceiving(b.id, receiving);
+      await sms.handleInbound({ phone: clients[1].phone, body: "YES" });
+      expect((await confirmation(b.id)).status).toBe("pending");
+      await sms.handleInbound({
+        phone: clients[1].phone,
+        body: `YES ${(await refFor(b.id)).ref}`,
+      });
+      expect((await confirmation(b.id)).answered_by_phone).toBe(
+        clients[1].phone,
+      );
+      expect((await confirmation(b.id)).status).toBe("confirmed");
+    });
+
+    it("keeps confirmation data and RPCs unavailable to public clients", async () => {
+      const publicClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { auth: { persistSession: false } },
+      );
+      expect(
+        (await publicClient.from("batch_weight_confirmations").select()).error,
+      ).not.toBeNull();
+      expect(
+        (
+          await publicClient.rpc("answer_batch_weight", {
+            p_prompt_id: randomUUID(),
+            p_phone: clients[0].phone,
+            p_yes: true,
+          })
+        ).error,
+      ).not.toBeNull();
+    });
+    it("leaves expired weight requests pending", async () => {
+      const b = await batch({ ownership: "custom" });
+      await recordReceiving(b.id, receiving);
+      const c = await confirmation(b.id);
+      const ref = (await refFor(b.id)).ref;
+      await db()
+        .from("sms_prompts")
+        .update({ expires_at: "2020-01-01T00:00:00Z" })
+        .eq("id", c.prompt_id!)
+        .throwOnError();
+      await sms.handleInbound({ phone: clients[0].phone, body: `YES ${ref}` });
+      expect((await confirmation(b.id)).status).toBe("pending");
+      expect((await refFor(b.id)).status).toBe("expired");
+    });
+    it("records in-person confirmation and refuses stale staff snapshots", async () => {
+      const b = await batch({ ownership: "custom" });
+      await recordReceiving(b.id, receiving);
+      const previous = await confirmation(b.id);
+      const oldRef = (await refFor(b.id)).ref;
+      const { data: staff, error } = await db()
+        .from("staff")
+        .select("id")
+        .limit(1)
+        .single();
+      if (error) throw error;
+      await recordReceiving(b.id, { ...receiving, net_kg: 1200 });
+      await expect(
+        confirmWeightInPerson(b.id, "receiving", staff.id, previous.updated_at),
+      ).rejects.toThrow("measurements have changed");
+      const current = await confirmation(b.id);
+      await confirmWeightInPerson(
+        b.id,
+        "receiving",
+        staff.id,
+        current.updated_at,
+      );
+      expect((await confirmation(b.id)).confirmed_by_staff_id).toBe(staff.id);
+      await sms.handleInbound({
+        phone: clients[0].phone,
+        body: `NO ${oldRef}`,
+      });
+      expect((await confirmation(b.id)).status).toBe("confirmed");
+      expect((await refFor(b.id)).status).toBe("expired");
+    });
+    it("tracks receiving and drying separately, without blocking a disputed batch", async () => {
+      const b = await batch({ ownership: "custom" });
+      await recordReceiving(b.id, receiving);
+      const ref = (await refFor(b.id)).ref;
+      await sms.handleInbound({ phone: clients[0].phone, body: `NO ${ref}` });
+      await db()
+        .from("batches")
+        .update({ stage: "drying" })
+        .eq("id", b.id)
+        .throwOnError();
+      await finishDrying(b.id, {
+        dry_end: new Date().toISOString(),
+        dried_kg: 890,
+        mc_out: 14,
+      });
+      expect((await confirmation(b.id)).status).toBe("disputed");
+      expect((await confirmation(b.id, "drying")).status).toBe("pending");
+      await sms.handleInbound({
+        phone: clients[0].phone,
+        body: `YES ${(await refFor(b.id, "drying")).ref}`,
+      });
+      expect((await confirmation(b.id, "drying")).status).toBe("confirmed");
+      expect((await confirmation(b.id)).status).toBe("disputed");
+      await expect(
+        finishDrying(b.id, {
+          dry_end: new Date().toISOString(),
+          dried_kg: 890,
+          mc_out: 14,
+        }),
+      ).rejects.toThrow("moved on");
+    });
+    it("keeps receiving saved and pending when SMS fails", async () => {
+      const b = await batch({ ownership: "custom" });
+      gatewaySend.mockRejectedValueOnce(new Error("Gateway unavailable"));
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const saved = await recordReceiving(b.id, receiving);
+      expect(saved.net_kg).toBe(1000);
+      expect((await confirmation(b.id)).status).toBe("pending");
+      expect((await outbound(clients[0].phone))[0].status).toBe("failed");
     });
 
     it("texts each successful partial dispatch and rejects excess kg without texting", async () => {

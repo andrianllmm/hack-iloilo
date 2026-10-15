@@ -2,8 +2,8 @@
 // SMS commands owned by this module, registered with M3.
 
 import { z } from "zod";
-import { registerCommand } from "@/modules/sms/registry";
-import { queueStatusBySms } from "./queries";
+import { onPromptAnswer, registerCommand } from "@/modules/sms/registry";
+import { answerWeightConfirmation, queueStatusBySms } from "./queries";
 
 registerCommand({
   keywords: ["STATUS"],
@@ -15,3 +15,5 @@ registerCommand({
     description: "Ask for the sender's place in the drying or milling line.",
   },
 });
+
+onPromptAnswer("weight_confirm", answerWeightConfirmation);
