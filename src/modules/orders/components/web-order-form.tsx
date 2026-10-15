@@ -17,10 +17,11 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { addDays } from "@/lib/dates";
 import { formatDate, formatKg, formatMoney } from "@/lib/format";
 import { buyerTypeLabels, buyerTypes } from "@/modules/accounts/logic";
 import { requestRiceOnline, type BuyerOrder } from "../actions";
-import { estimateMinor } from "../logic";
+import { estimateMinor, MAX_PICKUP_DAYS } from "../logic";
 import {
   webOrderSchema,
   type WebOrderFormValues,
@@ -195,6 +196,7 @@ export function WebOrderForm({
                 id={`${formId}-date`}
                 value={field.value}
                 min={today}
+                max={addDays(today, MAX_PICKUP_DAYS)}
                 disabled={pending}
                 aria-invalid={!!fieldState.error}
                 onChange={(value) => field.onChange(value ?? "")}

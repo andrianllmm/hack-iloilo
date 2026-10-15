@@ -4,6 +4,8 @@ import {
   estimateMinor,
   exceedsFree,
   freeKg,
+  isRealDate,
+  pickupDateError,
   orderStatusTones,
 } from "./logic";
 
@@ -37,5 +39,29 @@ describe("exceedsFree", () => {
 
   it("ignores requests already decided", () => {
     expect(exceedsFree({ kg: 800, status: "accepted" }, 0)).toBe(false);
+  });
+});
+
+describe("isRealDate", () => {
+  it("rejects dates that don't exist", () => {
+    expect(isRealDate("2026-02-28")).toBe(true);
+    expect(isRealDate("2026-02-30")).toBe(false);
+    expect(isRealDate("2026-13-01")).toBe(false);
+  });
+});
+
+describe("pickupDateError", () => {
+  it("allows today through 30 days ahead", () => {
+    expect(pickupDateError("2026-10-16", "2026-10-16")).toBeNull();
+    expect(pickupDateError("2026-11-15", "2026-10-16")).toBeNull();
+  });
+
+  it("rejects past days and days too far ahead", () => {
+    expect(pickupDateError("2026-10-15", "2026-10-16")).toBe(
+      "Choose today or a later date.",
+    );
+    expect(pickupDateError("2026-11-16", "2026-10-16")).toBe(
+      "Choose a date within 30 days.",
+    );
   });
 });

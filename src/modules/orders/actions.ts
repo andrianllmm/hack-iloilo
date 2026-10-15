@@ -15,6 +15,7 @@ import {
 } from "@/modules/booking/booking-schema";
 import { cleanRef, TRACK_WINDOW_MINUTES } from "@/modules/booking/logic";
 import { recordTrackFailure, trackLocked } from "@/modules/booking/queries";
+import { pickupDateError } from "./logic";
 import { webOrderSchema, type WebOrderInput } from "./order-schema";
 import {
   cancelOrder,
@@ -61,11 +62,9 @@ export async function requestRiceOnline(
   if (!parsed.success)
     return { status: "error", fieldErrors: fieldErrors(parsed.error) };
   const { name, phone, buyerType, kg, pickupDate } = parsed.data;
-  if (pickupDate < todayManila())
-    return {
-      status: "error",
-      fieldErrors: { pickupDate: "Choose today or a later date." },
-    };
+  const dateError = pickupDateError(pickupDate, todayManila());
+  if (dateError)
+    return { status: "error", fieldErrors: { pickupDate: dateError } };
   const normalized = normalizePhone(phone)!;
   try {
     // Name and type only label a new buyer; an existing client is never changed.

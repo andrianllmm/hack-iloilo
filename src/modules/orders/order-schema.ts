@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { buyerTypes, normalizePhone } from "@/modules/accounts/logic";
+import { isRealDate } from "./logic";
 
 /**
- * Public rice request from /buy. Past pickup dates are checked on the server
- * against Manila today, as on /sell.
+ * Public rice request from /buy. The pickup range (today to 30 days ahead) is
+ * checked on the server against Manila today, as on /sell.
  */
 export const webOrderSchema = z.object({
   name: z.string().trim().min(1, "Enter your name or your store's name."),
@@ -18,7 +19,10 @@ export const webOrderSchema = z.object({
     .number("Enter the kg of rice.")
     .int("Enter whole kilograms.")
     .positive("Enter more than 0 kg."),
-  pickupDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a pickup date."),
+  pickupDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a pickup date.")
+    .refine(isRealDate, "Choose a real date."),
 });
 export type WebOrderFormValues = z.input<typeof webOrderSchema>;
 export type WebOrderInput = z.output<typeof webOrderSchema>;

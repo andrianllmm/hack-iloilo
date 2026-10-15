@@ -275,7 +275,7 @@ The output end, mirroring the farmer side: buyers get a form and tracking, as fa
 
 **P0**
 
-- **Web request:** name, phone, buyer type, kilos and pickup date from a phone browser. The buyer is texted a code.
+- **Web request:** name, phone, buyer type, kilos and pickup date (up to 30 days ahead) from a phone browser. The buyer is texted a code.
 - **Tracking:** `/buy/track` with code and phone shows the status. The buyer can cancel while it's requested or accepted.
 - **Rice Buying list:** the manager accepts or declines. Staff mark it picked up. The buyer is texted each decision.
 - **Price at pickup:** the request shows today's rice price as an estimate; the dispatch sets the final price. The app doesn't take payment.
