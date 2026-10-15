@@ -23,16 +23,48 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "batches": {
+            "batch_weight_confirmations": {
                   Row: {
-                    "bags": number | null,"batch_no": string,"byproducts": NonNullable<Json>,"client_id": string,"created_at": string,"damaged_pct": number | null,"doc_refs": NonNullable<Json>,"dried_kg": number | null,"dry_end": string | null,"dry_start": string | null,"dryer_id": string | null,"facility_id": string,"foreign_pct": number | null,"id": string,"immature_pct": number | null,"mc": number | null,"mc_out": number | null,"mill_end": string | null,"mill_id": string | null,"mill_in_kg": number | null,"mill_start": string | null,"net_kg": number | null,"ownership": Database["public"]['Enums']["batch_ownership"],"queue_entry_id": string | null,"rice_kg": number | null,"stage": Database["public"]['Enums']["batch_stage"],"updated_at": string,"variety_id": string | null
+                    "answered_at": string | null,"answered_by_phone": string | null,"batch_id": string,"confirmed_by_staff_id": string | null,"created_at": string,"id": string,"measurements": NonNullable<Json>,"prompt_id": string | null,"stage": string,"status": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "bags"?: number | null,"batch_no": string,"byproducts"?: NonNullable<Json>,"client_id": string,"created_at"?: string,"damaged_pct"?: number | null,"doc_refs"?: NonNullable<Json>,"dried_kg"?: number | null,"dry_end"?: string | null,"dry_start"?: string | null,"dryer_id"?: string | null,"facility_id": string,"foreign_pct"?: number | null,"id"?: string,"immature_pct"?: number | null,"mc"?: number | null,"mc_out"?: number | null,"mill_end"?: string | null,"mill_id"?: string | null,"mill_in_kg"?: number | null,"mill_start"?: string | null,"net_kg"?: number | null,"ownership": Database["public"]['Enums']["batch_ownership"],"queue_entry_id"?: string | null,"rice_kg"?: number | null,"stage"?: Database["public"]['Enums']["batch_stage"],"updated_at"?: string,"variety_id"?: string | null
+                    "answered_at"?: string | null,"answered_by_phone"?: string | null,"batch_id": string,"confirmed_by_staff_id"?: string | null,"created_at"?: string,"id"?: string,"measurements": NonNullable<Json>,"prompt_id"?: string | null,"stage": string,"status"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "bags"?: number | null,"batch_no"?: string,"byproducts"?: NonNullable<Json>,"client_id"?: string,"created_at"?: string,"damaged_pct"?: number | null,"doc_refs"?: NonNullable<Json>,"dried_kg"?: number | null,"dry_end"?: string | null,"dry_start"?: string | null,"dryer_id"?: string | null,"facility_id"?: string,"foreign_pct"?: number | null,"id"?: string,"immature_pct"?: number | null,"mc"?: number | null,"mc_out"?: number | null,"mill_end"?: string | null,"mill_id"?: string | null,"mill_in_kg"?: number | null,"mill_start"?: string | null,"net_kg"?: number | null,"ownership"?: Database["public"]['Enums']["batch_ownership"],"queue_entry_id"?: string | null,"rice_kg"?: number | null,"stage"?: Database["public"]['Enums']["batch_stage"],"updated_at"?: string,"variety_id"?: string | null
+                    "answered_at"?: string | null,"answered_by_phone"?: string | null,"batch_id"?: string,"confirmed_by_staff_id"?: string | null,"created_at"?: string,"id"?: string,"measurements"?: NonNullable<Json>,"prompt_id"?: string | null,"stage"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "batch_weight_confirmations_batch_id_fkey"
+      columns: ["batch_id"]
+isOneToOne: false
+      referencedRelation: "batches"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "batch_weight_confirmations_confirmed_by_staff_id_fkey"
+      columns: ["confirmed_by_staff_id"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "batch_weight_confirmations_prompt_id_fkey"
+      columns: ["prompt_id"]
+isOneToOne: false
+      referencedRelation: "sms_prompts"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"batches": {
+                  Row: {
+                    "bags": number | null,"batch_no": string,"byproducts": NonNullable<Json>,"client_id": string,"created_at": string,"damaged_pct": number | null,"doc_refs": NonNullable<Json>,"dried_kg": number | null,"dry_end": string | null,"dry_start": string | null,"dryer_id": string | null,"facility_id": string,"foreign_pct": number | null,"id": string,"immature_pct": number | null,"mc": number | null,"mc_out": number | null,"mill_end": string | null,"mill_id": string | null,"mill_in_kg": number | null,"mill_start": string | null,"net_kg": number | null,"ownership": Database["public"]['Enums']["batch_ownership"],"pickup_after_drying": boolean,"queue_entry_id": string | null,"rice_kg": number | null,"stage": Database["public"]['Enums']["batch_stage"],"updated_at": string,"variety_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "bags"?: number | null,"batch_no": string,"byproducts"?: NonNullable<Json>,"client_id": string,"created_at"?: string,"damaged_pct"?: number | null,"doc_refs"?: NonNullable<Json>,"dried_kg"?: number | null,"dry_end"?: string | null,"dry_start"?: string | null,"dryer_id"?: string | null,"facility_id": string,"foreign_pct"?: number | null,"id"?: string,"immature_pct"?: number | null,"mc"?: number | null,"mc_out"?: number | null,"mill_end"?: string | null,"mill_id"?: string | null,"mill_in_kg"?: number | null,"mill_start"?: string | null,"net_kg"?: number | null,"ownership": Database["public"]['Enums']["batch_ownership"],"pickup_after_drying"?: boolean,"queue_entry_id"?: string | null,"rice_kg"?: number | null,"stage"?: Database["public"]['Enums']["batch_stage"],"updated_at"?: string,"variety_id"?: string | null
+                  }
+                  Update: {
+                    "bags"?: number | null,"batch_no"?: string,"byproducts"?: NonNullable<Json>,"client_id"?: string,"created_at"?: string,"damaged_pct"?: number | null,"doc_refs"?: NonNullable<Json>,"dried_kg"?: number | null,"dry_end"?: string | null,"dry_start"?: string | null,"dryer_id"?: string | null,"facility_id"?: string,"foreign_pct"?: number | null,"id"?: string,"immature_pct"?: number | null,"mc"?: number | null,"mc_out"?: number | null,"mill_end"?: string | null,"mill_id"?: string | null,"mill_in_kg"?: number | null,"mill_start"?: string | null,"net_kg"?: number | null,"ownership"?: Database["public"]['Enums']["batch_ownership"],"pickup_after_drying"?: boolean,"queue_entry_id"?: string | null,"rice_kg"?: number | null,"stage"?: Database["public"]['Enums']["batch_stage"],"updated_at"?: string,"variety_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -445,7 +477,13 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "dispatch_from_batch":
+            "answer_batch_weight":
+{ Args: { "p_phone": string,"p_prompt_id": string,"p_yes": boolean }; Returns: boolean
+                           },
+"confirm_batch_weight_in_person":
+{ Args: { "p_batch_id": string,"p_confirmation_updated_at": string,"p_staff_id": string,"p_stage": string }; Returns: boolean
+                           },
+"dispatch_from_batch":
 { Args: { "p_batch_id": string,"p_buyer_id": string,"p_kg": number,"p_or_ref": string,"p_price_minor_per_kg": number }; Returns: {
               "batch_id": string,
 "buyer_id": string,
@@ -463,12 +501,18 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"finish_batch_drying":
+{ Args: { "p_batch_id": string,"p_fields": Json,"p_ready_for_pickup": boolean,"p_ref": string }; Returns: Json
+                           },
 "import_forecast":
 { Args: { "p_arrivals": Json,"p_metrics": Json,"p_trained_on": string }; Returns: undefined
+                           },
+"record_batch_measurement":
+{ Args: { "p_batch_id": string,"p_fields": Json,"p_ref": string,"p_stage": string }; Returns: Json
                            }
           }
           Enums: {
-            "batch_ownership": "custom"|"irpc","batch_stage": "received"|"drying"|"stored"|"milling"|"milled"|"dispatched","booking_channel": "sms"|"staff","booking_status": "confirmed"|"reschedule_proposed"|"arrived"|"cancelled"|"no_show","client_kind": "farmer"|"coop"|"trader"|"buyer","forecast_source": "opa-2025"|"demo-synthetic","machine_type": "dryer"|"mill","prescription_kind": "move_bookings"|"fill_idle"|"mill_full_loads"|"store_mill_later","prescription_status": "accepted"|"dismissed","queue_status": "waiting"|"serving"|"done"|"left","sell_offer_status": "offered"|"accepted"|"declined"|"arrived"|"withdrawn","service": "drying"|"milling","sms_direction": "inbound"|"outbound","sms_prompt_kind": "ai_confirm"|"reschedule","sms_prompt_status": "open"|"accepted"|"declined"|"expired","sms_status": "received"|"processed"|"queued"|"sent"|"failed","staff_role": "encoder"|"manager"
+            "batch_ownership": "custom"|"irpc","batch_stage": "received"|"drying"|"stored"|"milling"|"milled"|"dispatched","booking_channel": "sms"|"staff","booking_status": "confirmed"|"reschedule_proposed"|"arrived"|"cancelled"|"no_show","client_kind": "farmer"|"coop"|"trader"|"buyer","forecast_source": "opa-2025"|"demo-synthetic","machine_type": "dryer"|"mill","prescription_kind": "move_bookings"|"fill_idle"|"mill_full_loads"|"store_mill_later","prescription_status": "accepted"|"dismissed","queue_status": "waiting"|"serving"|"done"|"left","sell_offer_status": "offered"|"accepted"|"declined"|"arrived"|"withdrawn","service": "drying"|"milling","sms_direction": "inbound"|"outbound","sms_prompt_kind": "ai_confirm"|"reschedule"|"weight_confirm","sms_prompt_status": "open"|"accepted"|"declined"|"expired","sms_status": "received"|"processed"|"queued"|"sent"|"failed","staff_role": "encoder"|"manager"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -588,7 +632,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "batch_ownership": ["custom", "irpc"],"batch_stage": ["received", "drying", "stored", "milling", "milled", "dispatched"],"booking_channel": ["sms", "staff"],"booking_status": ["confirmed", "reschedule_proposed", "arrived", "cancelled", "no_show"],"client_kind": ["farmer", "coop", "trader", "buyer"],"forecast_source": ["opa-2025", "demo-synthetic"],"machine_type": ["dryer", "mill"],"prescription_kind": ["move_bookings", "fill_idle", "mill_full_loads", "store_mill_later"],"prescription_status": ["accepted", "dismissed"],"queue_status": ["waiting", "serving", "done", "left"],"sell_offer_status": ["offered", "accepted", "declined", "arrived", "withdrawn"],"service": ["drying", "milling"],"sms_direction": ["inbound", "outbound"],"sms_prompt_kind": ["ai_confirm", "reschedule"],"sms_prompt_status": ["open", "accepted", "declined", "expired"],"sms_status": ["received", "processed", "queued", "sent", "failed"],"staff_role": ["encoder", "manager"]
+            "batch_ownership": ["custom", "irpc"],"batch_stage": ["received", "drying", "stored", "milling", "milled", "dispatched"],"booking_channel": ["sms", "staff"],"booking_status": ["confirmed", "reschedule_proposed", "arrived", "cancelled", "no_show"],"client_kind": ["farmer", "coop", "trader", "buyer"],"forecast_source": ["opa-2025", "demo-synthetic"],"machine_type": ["dryer", "mill"],"prescription_kind": ["move_bookings", "fill_idle", "mill_full_loads", "store_mill_later"],"prescription_status": ["accepted", "dismissed"],"queue_status": ["waiting", "serving", "done", "left"],"sell_offer_status": ["offered", "accepted", "declined", "arrived", "withdrawn"],"service": ["drying", "milling"],"sms_direction": ["inbound", "outbound"],"sms_prompt_kind": ["ai_confirm", "reschedule", "weight_confirm"],"sms_prompt_status": ["open", "accepted", "declined", "expired"],"sms_status": ["received", "processed", "queued", "sent", "failed"],"staff_role": ["encoder", "manager"]
           }
         }
 } as const

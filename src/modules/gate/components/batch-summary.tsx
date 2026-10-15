@@ -17,7 +17,8 @@ import {
   serviceLabels,
   stageLabels,
 } from "../logic";
-import { batchSummary } from "../queries";
+import { WeightConfirmations } from "./weight-confirmations";
+import { batchWeightConfirmations, batchSummary } from "../queries";
 import { BatchStages } from "./batch-stages";
 
 const started = new Intl.DateTimeFormat("en-PH", {
@@ -49,10 +50,11 @@ export async function BatchSummaryCard({ id }: { id: string }) {
   if (!z.guid().safeParse(id).success) notFound();
   const batch = await batchSummary(id);
   if (!batch) notFound();
-  const [dryers, mills, varieties] = await Promise.all([
+  const [dryers, mills, varieties, confirmations] = await Promise.all([
     listMachines("dryer"),
     listMachines("mill"),
     listVarieties(),
+    batchWeightConfirmations(id),
   ]);
   const recovery = recoveryPct(batch.rice_kg, batch.mill_in_kg);
   const skippedDrying = !batch.dry_start && batch.stage !== "received";
@@ -62,6 +64,9 @@ export async function BatchSummaryCard({ id }: { id: string }) {
     ["Ownership", ownershipLabels[batch.ownership]],
     ["Est. weight", batch.entry?.est_kg ? formatKg(batch.entry.est_kg) : "—"],
     ["Started", when(batch.entry?.started_at ?? null)],
+    ...(batch.pickup_after_drying
+      ? [["After drying", "Ready for pickup"] as [string, string]]
+      : []),
   ];
   const showDrying = batch.dry_start || skippedDrying;
   const showMilling = batch.mill_start !== null;
@@ -88,6 +93,8 @@ export async function BatchSummaryCard({ id }: { id: string }) {
           <FieldList rows={rows} />
         </CardContent>
       </Card>
+
+      <WeightConfirmations batchId={id} confirmations={confirmations} />
 
       {showReceiving ? (
         <Card className="max-w-xl">
@@ -184,7 +191,11 @@ export async function BatchSummaryCard({ id }: { id: string }) {
         <Card className="max-w-xl">
           <CardContent>
             <BatchStages
-              batch={{ id: batch.id, stage: batch.stage }}
+              batch={{
+                id: batch.id,
+                stage: batch.stage,
+                ownership: batch.ownership,
+              }}
               dryers={dryers.map((m) => ({ id: m.id, code: m.code }))}
               mills={mills.map((m) => ({ id: m.id, code: m.code }))}
               varieties={varieties.map((v) => ({

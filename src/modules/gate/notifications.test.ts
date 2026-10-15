@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { isGsm7, SMS_MAX_CHARS } from "@/modules/sms/logic";
-import { dispatchText, nextInLineTexts } from "./logic";
+import {
+  pickupText,
+  dispatchText,
+  nextInLineTexts,
+  weightConfirmationText,
+  weightAnswerText,
+} from "./logic";
 
 const waiting = (id: string, changes = {}) => ({
   id,
@@ -53,19 +59,147 @@ describe("next-in-line texts", () => {
 });
 
 describe("dispatch texts", () => {
-  it("includes the batch and saved receipt reference", () => {
-    const body = dispatchText("261015-001", " OR-123 ");
-    expect(body).toBe(
-      "IRPC: Dispatch recorded. Batch 261015-001. Receipt: OR-123.",
-    );
+  const sale = {
+    batchNo: "261015-001",
+    ownership: "irpc" as const,
+    kg: 1500,
+    priceMinorPerKg: 4500,
+    orRef: " OR-123 ",
+  };
+  it("includes saved sale values in bilingual text", () => {
+    const body = dispatchText(sale);
+    for (const value of [
+      "Nabaton / Collected",
+      "1,500 kg",
+      "261015-001",
+      "PHP 45.00/kg",
+      "PHP 67,500.00",
+      "OR OR-123.",
+    ])
+      expect(body).toContain(value);
     expect(isGsm7(body)).toBe(true);
     expect(
-      dispatchText("261015-001", "9".repeat(50)).length,
+      dispatchText({ ...sale, orRef: "9".repeat(50) }).length,
     ).toBeLessThanOrEqual(SMS_MAX_CHARS);
   });
-  it.each([null, "", "  "])("labels a missing receipt: %s", (receipt) => {
-    expect(dispatchText("261015-001", receipt)).toBe(
-      "IRPC: Dispatch recorded. Batch 261015-001. No receipt recorded.",
-    );
+  it.each([null, "", "  "])("omits missing OR: %s", (orRef) => {
+    expect(dispatchText({ ...sale, orRef })).not.toMatch(/OR|receipt/i);
+  });
+  it("omits money and OR for owner pickups", () => {
+    const body = dispatchText({ ...sale, ownership: "custom" });
+    expect(body).toContain("1,500 kg");
+    expect(body).not.toMatch(/PHP|OR|Price|Total/);
+  });
+});
+
+describe("weight confirmation texts", () => {
+  const input = {
+    batchNo: "261015-001",
+    stage: "receiving" as const,
+    measurements: { bags: 120, kg: 8763, mc: 23 },
+    ref: "ABC123",
+  };
+  it("contains receiving measurements and explicit answer references", () => {
+    const text = weightConfirmationText(input);
+    for (const part of [
+      "Nabaton / Received",
+      "120 bags",
+      "8,763 kg",
+      "MC 23%",
+      "YES ABC123",
+      "NO ABC123",
+    ])
+      expect(text).toContain(part);
+  });
+  it("includes purchase figures without dropping the weight or prompt", () => {
+    const text = weightConfirmationText({
+      ...input,
+      purchase: {
+        paid_kg: 8763,
+        price_minor_per_kg: 2100,
+        total_minor: 18402300,
+      },
+    });
+    expect(text).toContain("PHP 184,023.00");
+    expect(text).toContain("PHP 21.00/kg");
+    expect(text).toContain("YES ABC123");
+  });
+  it("describes dried weight, not receiving bags", () => {
+    const text = weightConfirmationText({
+      ...input,
+      stage: "drying",
+      measurements: { kg: 7500, mc: 14 },
+    });
+    expect(text).toContain("Na-dry / Dried: 7,500 kg, MC 14%");
+    expect(text).not.toContain("bags");
+  });
+  it("keeps large valid values and replies within the SMS limit", () => {
+    for (const text of [
+      weightConfirmationText({
+        ...input,
+        measurements: { bags: 2147483647, kg: 2147483647, mc: 99.9 },
+        purchase: {
+          paid_kg: 2147483647,
+          price_minor_per_kg: 2147483647,
+          total_minor: 2147483647,
+        },
+      }),
+      weightAnswerText(true),
+      weightAnswerText(false),
+    ]) {
+      expect(isGsm7(text)).toBe(true);
+      expect(text.length).toBeLessThanOrEqual(SMS_MAX_CHARS);
+    }
+  });
+});
+
+describe("pickup texts", () => {
+  it("includes bilingual readiness, rice, byproducts and location", () => {
+    const text = pickupText({
+      batchNo: "261015-001",
+      stage: "milling",
+      kg: 5985,
+      byproducts: { bran_kg: 750, husk_kg: 0 },
+    });
+    for (const part of [
+      "Pwede na kuhaon / Ready for pickup",
+      "5,985 kg rice",
+      "750 kg darak/bran",
+      "0 kg ipa/husk",
+      "Amamaros, Pototan",
+    ])
+      expect(text).toContain(part);
+  });
+  it("describes dried palay without invented rice or byproducts", () => {
+    const text = pickupText({
+      batchNo: "261015-001",
+      stage: "drying",
+      kg: 890,
+    });
+    expect(text).toContain("890 kg dried palay");
+    expect(text).not.toMatch(/rice|bran|husk/);
+  });
+  it("keeps pickup and combined drying prompts GSM-7 within the limit", () => {
+    const texts = [
+      pickupText({
+        batchNo: "261015-001",
+        stage: "milling",
+        kg: 2147483647,
+        byproducts: { bran_kg: 2147483647, husk_kg: 2147483647 },
+      }),
+      weightConfirmationText({
+        batchNo: "261015-001",
+        stage: "drying",
+        measurements: { kg: 2147483647, mc: 99.9 },
+        ref: "ABC123",
+        readyForPickup: true,
+      }),
+    ];
+    for (const text of texts) {
+      expect(isGsm7(text)).toBe(true);
+      expect(text.length).toBeLessThanOrEqual(SMS_MAX_CHARS);
+    }
+    expect(texts[1]).toContain("YES ABC123");
+    expect(texts[1]).toContain("Amamaros, Pototan");
   });
 });

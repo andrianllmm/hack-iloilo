@@ -7,7 +7,6 @@ import { revalidatePath } from "next/cache";
 import { z, type ZodType } from "zod";
 import { requireRole } from "@/modules/accounts/auth";
 import { ClientInputError } from "@/modules/accounts/queries";
-import { createPurchase } from "@/modules/buying/queries";
 import {
   finishDryingSchema,
   finishMillingSchema,
@@ -18,6 +17,7 @@ import {
 import { checkInSchema, type CheckInInput } from "./checkin-schema";
 import { dispatchSchema } from "./dispatch-schema";
 import {
+  confirmWeightInPerson,
   checkIn,
   dispatch,
   finish,
@@ -245,12 +245,11 @@ export async function recordReceivingBatch(
     receivingSchema,
     input,
     async (id, data) => {
-      const batch = await recordReceiving(id, {
+      await recordReceiving(id, {
         ...data,
         // A blank variety select means "not recorded".
         variety_id: data.variety_id === "" ? null : data.variety_id,
       });
-      if (batch.ownership === "irpc") await createPurchase(id);
     },
   );
 }
@@ -320,5 +319,32 @@ export async function dispatchBatch(
 ): Promise<StageResult> {
   return record(batchId, "record dispatch", dispatchSchema, input, (id, data) =>
     dispatch({ batchId: id, ...data }),
+  );
+}
+
+export async function confirmBatchWeightInPerson(
+  batchId: string,
+  input: unknown,
+): Promise<StageResult> {
+  const staff = await requireRole();
+  if (!z.guid().safeParse(batchId).success) return invalidBatch;
+  const parsed = z
+    .object({
+      stage: z.enum(["receiving", "drying"]),
+      updatedAt: z.iso.datetime({ offset: true }),
+    })
+    .safeParse(input);
+  if (!parsed.success)
+    return {
+      status: "error",
+      message: "Invalid weight confirmation. Refresh the page.",
+    };
+  return commit(batchId, "confirm weight", () =>
+    confirmWeightInPerson(
+      batchId,
+      parsed.data.stage,
+      staff.id,
+      parsed.data.updatedAt,
+    ),
   );
 }

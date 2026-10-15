@@ -49,6 +49,7 @@ export type BatchListRow = Pick<
 > & {
   client: Pick<Tables["clients"]["Row"], "name">;
   entry: Pick<QueueEntry, "service"> | null;
+  confirmations: { status: string }[];
 };
 /** A dispatch with the buyer (or owner, for a pickup) it went to. */
 export type DispatchRow = Dispatch & {

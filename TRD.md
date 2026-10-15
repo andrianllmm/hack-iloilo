@@ -267,9 +267,13 @@ Any command accepts `FOR <phone>`.
 - Stages: `received → drying → stored → milling → milled → dispatched`. Dry palay skips drying. Forward only.
 - Recovery = `rice_kg` ÷ `mill_in_kg`. A batch is `dispatched` when dispatched kg reaches `rice_kg`.
 - Saving a dispatch texts the buyer the receipt and batch numbers.
-- Queue texts go to the next `notify_ahead_n` waiting entries in the same facility and service line after a successful start (0 disables them). Purchase texts include saved paid kg, price/kg and total, on first save or when those figures change. Every dispatch texts its recipient, including owner pickups; a missing receipt is labelled "No receipt recorded." Notification failures never undo saved operations. Delivery status is logged by M3; there is no automatic retry.
+- Queue texts go to the next `notify_ahead_n` waiting entries in the same facility and service line after a successful start (0 disables them). Purchase texts include saved paid kg, price/kg and total, on first save or when those figures change. Every dispatch texts its recipient, including owner pickups; sale texts include saved kg, price/kg, total and an optional OR number; pickup texts include only batch number and kg. Notification failures never undo saved operations. Delivery status is logged by M3; there is no automatic retry.
 
-**Tests:** stage transitions, recovery.
+Weight confirmation: receiving and drying measurements each have a `batch_weight_confirmations` row (snapshot, pending/confirmed/disputed status, prompt and responder). A service-only SQL operation saves the measurements and `weight_confirm` SMS prompt atomically; gateway delivery runs afterward. Revised receiving weights expire the old prompt; unchanged weights preserve their confirmation. Owners and original booking/offer bookers may answer. Explicit closed references never fall through to another prompt. Staff can confirm the displayed snapshot in person; disputes flag the list and detail page. Confirmation never blocks processing, expires after the usual 24 hours, and historical batches are not backfilled. IRPC receiving combines purchase figures and the confirmation request into one bilingual text.
+
+Pickup alerts: finishing custom milling texts rice kg and recorded by-products to the owner and distinct original booker. Finishing custom drying records an explicit `pickup_after_drying` choice (form defaults to continuing to milling). If ready, the owner receives the pickup location in the weight-confirmation text and a distinct booker receives a separate pickup notice. IRPC-owned batches never send pickup alerts. Successful guarded transitions send once per recipient; failures are logged without undoing the stage or retrying automatically.
+
+**Tests:** stage transitions, recovery, confirmation authorization and lifecycle, pickup timing and recipient deduplication.
 
 ### M7. Pricing and Cost
 

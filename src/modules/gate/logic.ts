@@ -1,6 +1,7 @@
 // M6. Gate and Batches: Queue, batch record, dispatch. See TRD.md.
 // Pure functions only: no I/O and no imports from other modules. Unit-test here.
 
+import { formatKg, formatMoneySms } from "@/lib/format";
 import { daysBetween } from "@/lib/dates";
 import type {
   Batch,
@@ -61,10 +62,18 @@ export function nextInLineTexts(
     }));
 }
 
-/** Uses the saved receipt reference, including dispatches that have no receipt. */
-export function dispatchText(batchNo: string, receipt: string | null): string {
-  const ref = receipt?.trim();
-  return `IRPC: Dispatch recorded. Batch ${batchNo}. ${ref ? `Receipt: ${ref}.` : "No receipt recorded."}`;
+/** Receipt notification from persisted values, never an official receipt. */
+export function dispatchText(input: {
+  batchNo: string;
+  ownership: BatchOwnership;
+  kg: number;
+  priceMinorPerKg: number;
+  orRef: string | null;
+}): string {
+  const base = `IRPC: Nabaton / Collected: ${formatKg(input.kg)}. Batch ${input.batchNo}.`;
+  if (input.ownership === "custom") return `${base} Salamat!`;
+  const ref = input.orRef?.trim();
+  return `${base} Presyo / Price: ${formatMoneySms(input.priceMinorPerKg)}/kg. Total: ${formatMoneySms(input.kg * input.priceMinorPerKg)}.${ref ? ` OR ${ref}.` : ""} Salamat!`;
 }
 
 export const stageLabels: Record<Batch["stage"], string> = {
@@ -371,4 +380,46 @@ export function recordDateNote(
   return offset > 0
     ? `Arrived ${days(offset)} early`
     : `Arrived ${days(-offset)} late`;
+}
+
+export type WeightStage = "receiving" | "drying";
+export type WeightMeasurements = { kg: number; mc: number; bags?: number };
+export function weightConfirmationText(input: {
+  batchNo: string;
+  stage: WeightStage;
+  measurements: WeightMeasurements;
+  ref: string;
+  readyForPickup?: boolean;
+  purchase?: {
+    paid_kg: number;
+    price_minor_per_kg: number;
+    total_minor: number;
+  };
+}): string {
+  const { batchNo, stage, measurements: m, ref, purchase } = input;
+  const label =
+    stage === "receiving"
+      ? `Nabaton / Received: ${m.bags} bags,`
+      : "Na-dry / Dried:";
+  const price = purchase
+    ? ` Paid: ${formatKg(purchase.paid_kg)} at ${formatMoneySms(purchase.price_minor_per_kg)}/kg. Total: ${formatMoneySms(purchase.total_minor)}.`
+    : "";
+  return `IRPC: Batch ${batchNo}. ${label} ${formatKg(m.kg)}, MC ${m.mc}%.${price}${input.readyForPickup ? " Ready / Pwede na kuhaon sa IRPC, Amamaros, Pototan." : ""} Sakto ang timbang / Weight correct? YES ${ref} / NO ${ref}.`;
+}
+export function weightAnswerText(yes: boolean): string {
+  return yes
+    ? "IRPC: Salamat. Timbang nakumpirma / Weight confirmed."
+    : "IRPC: Timbang ginakontra / Weight disputed. Staff will check and re-weigh.";
+}
+
+export function pickupText(input: {
+  batchNo: string;
+  stage: "drying" | "milling";
+  kg: number;
+  byproducts?: { bran_kg?: number | null; husk_kg?: number | null };
+}): string {
+  const product = input.stage === "drying" ? "dried palay" : "rice";
+  const bran = input.byproducts?.bran_kg;
+  const husk = input.byproducts?.husk_kg;
+  return `IRPC: Pwede na kuhaon / Ready for pickup. Batch ${input.batchNo}: ${formatKg(input.kg)} ${product}${bran != null ? `, ${formatKg(bran)} darak/bran` : ""}${husk != null ? `, ${formatKg(husk)} ipa/husk` : ""}. Pick up at IRPC, Amamaros, Pototan.`;
 }

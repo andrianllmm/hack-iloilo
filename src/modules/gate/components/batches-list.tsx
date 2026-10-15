@@ -104,6 +104,11 @@ export async function BatchesList({
                     <Badge variant="secondary">
                       {stageLabels[batch.stage]}
                     </Badge>
+                    {batch.confirmations.some(
+                      (c) => c.status === "disputed",
+                    ) ? (
+                      <Badge variant="destructive">Weight disputed</Badge>
+                    ) : null}
                   </TableCell>
                   <TableCell className="text-right">{weight(batch)}</TableCell>
                   <TableCell>

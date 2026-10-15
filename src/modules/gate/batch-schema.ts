@@ -53,6 +53,7 @@ export const finishDryingSchema = z.object({
   dry_end: timestamp,
   mc_out: mc,
   dried_kg: kg,
+  ready_for_pickup: z.boolean(),
 });
 export type FinishDryingInput = z.infer<typeof finishDryingSchema>;
 

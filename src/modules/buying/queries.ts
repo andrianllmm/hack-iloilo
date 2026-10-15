@@ -165,7 +165,10 @@ export async function acceptedOffersBetween(
  * voucher added later. Texts the farmer when the saved price details change.
  * Custom batches are never passed here.
  */
-export async function createPurchase(batchId: string): Promise<Purchase> {
+export async function createPurchase(
+  batchId: string,
+  options: { notify?: boolean } = {},
+): Promise<Purchase> {
   const { data: batch, error } = await db()
     .from("batches")
     .select(
@@ -215,7 +218,7 @@ export async function createPurchase(batchId: string): Promise<Purchase> {
     .select()
     .single();
   if (upsertError) throw new Error(`Purchase: ${upsertError.message}`);
-  if (purchasePriceChanged(previous, data)) {
+  if (options.notify !== false && purchasePriceChanged(previous, data)) {
     try {
       const { data: client, error: clientError } = await db()
         .from("clients")

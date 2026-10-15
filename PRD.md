@@ -198,6 +198,8 @@ The input end for IRPC-owned palay. Private mills win on fast, clear quotes, and
   - **Drying:** dryer, start and end, MC out, dried kg. Skipped for dry palay.
   - **Milling:** start and end, kg in, rice kg, by-products. Recovery is computed.
   - **Dispatch:** buyer, kg, price, receipt number. The buyer is texted the receipt and batch numbers. A batch can have several dispatches.
+- **Pickup alerts:** custom clients and their original booker are texted when milling finishes, or when staff mark drying complete and ready for pickup. IRPC-owned batches receive no pickup alert.
+- **Weight confirmation:** text the owner at receiving and after drying. YES confirms; NO flags a dispute for re-weighing. Staff can record in-person agreement. Processing continues regardless of confirmation.
 - **Trace:** a batch page showing the trail from gate to buyers.
 
 ### M7. Pricing and Cost
@@ -270,7 +272,7 @@ Computed from M9. The manager accepts or dismisses each.
 ## Out of scope
 
 - **Other facilities, crops, regions:** IRPC, rice and Iloilo only. The pitch covers replication.
-- **Hiligaynon:** English only for now.
+- **Hiligaynon:** gate receipt, weight-confirmation and pickup texts use concise Hiligaynon/English; other flows retain their existing wording.
 - **Money:** paying farmers, issuing receipts, accounting.
 - **Integrations:** RSBSA, MAO records, MoRProGRes.
 - **Hardware:** meters, sensors or new plant equipment.
