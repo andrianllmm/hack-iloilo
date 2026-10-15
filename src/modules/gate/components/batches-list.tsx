@@ -1,21 +1,12 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { cn } from "cn";
 import { todayManila } from "@/lib/dates";
-import { formatKg } from "@/lib/format";
 import { requireRole } from "@/modules/accounts/auth";
 import { buyerTypeLabels, buyerTypes } from "@/modules/accounts/logic";
-import { dispatchPeriod, serviceLabels, stageLabels } from "../logic";
+import { dispatchPeriod, stageLabels } from "../logic";
 import { listBatches } from "../queries";
-import type { Batch, BatchListRow } from "../types";
+import type { Batch } from "../types";
+import { BatchesDataTable } from "./batches-data-table";
 import { DispatchSummary } from "./dispatch-summary";
 
 const stages: Batch["stage"][] = [
@@ -27,11 +18,6 @@ const stages: Batch["stage"][] = [
   "dispatched",
 ];
 
-const day = new Intl.DateTimeFormat("en-PH", {
-  dateStyle: "medium",
-  timeZone: "Asia/Manila",
-});
-
 /** `/batches` with the given filters, leaving out empty ones. */
 function batchesHref(params: Record<string, string | undefined>): string {
   const query = new URLSearchParams(
@@ -40,12 +26,6 @@ function batchesHref(params: Record<string, string | undefined>): string {
     ),
   ).toString();
   return query ? `/batches?${query}` : "/batches";
-}
-
-/** The weight to show for a batch: the latest one it has recorded. */
-function weight(batch: BatchListRow): string {
-  const kg = batch.rice_kg ?? batch.dried_kg ?? batch.net_kg;
-  return kg ? formatKg(kg) : "—";
 }
 
 export async function BatchesList({
@@ -120,56 +100,7 @@ export async function BatchesList({
           {stage || buyerType ? "No batches match." : "No batches yet."}
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Batch</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Line</TableHead>
-                <TableHead>Ownership</TableHead>
-                <TableHead>Stage</TableHead>
-                <TableHead className="text-right">Weight</TableHead>
-                <TableHead>Opened</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {batches.map((batch) => (
-                <TableRow key={batch.id}>
-                  <TableCell className="font-medium">
-                    <Link
-                      href={`/batches/${batch.id}`}
-                      className="underline-offset-4 hover:underline"
-                    >
-                      {batch.batch_no}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{batch.client.name}</TableCell>
-                  <TableCell>
-                    {batch.entry ? serviceLabels[batch.entry.service] : "—"}
-                  </TableCell>
-                  <TableCell>
-                    {batch.ownership === "irpc" ? "IRPC" : "Custom"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      {stageLabels[batch.stage]}
-                    </Badge>
-                    {batch.confirmations.some(
-                      (c) => c.status === "disputed",
-                    ) ? (
-                      <Badge variant="destructive">Weight disputed</Badge>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="text-right">{weight(batch)}</TableCell>
-                  <TableCell>
-                    {day.format(new Date(batch.created_at))}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <BatchesDataTable batches={batches} />
       )}
     </section>
   );
