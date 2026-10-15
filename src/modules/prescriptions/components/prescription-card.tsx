@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useTransition } from "react";
 import { toast } from "sonner";
+import { InfoIcon } from "@/components/hint-icons";
 import { ServiceIcon } from "@/components/service-icon";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,18 @@ const kindIcons: Record<Prescription["kind"], React.ReactNode> = {
   store_mill_later: <ServiceIcon kind="storage" />,
 };
 
+/** What accepting each kind does, for its hint. */
+const kindInfo: Record<Prescription["kind"], string> = {
+  move_bookings:
+    "Texts clients with flexible bookings to come on a quieter day, so the full day fits.",
+  fill_idle:
+    "Texts clients with no booking today's prices, to bring palay on quiet days.",
+  mill_full_loads:
+    "Mills on fewer, fuller days. The plant's base power, paid on every running day, is paid on fewer days.",
+  store_mill_later:
+    "Keeps dried palay in storage and mills it on quiet mill days.",
+};
+
 /** Recipients listed by name before "+N". */
 const SHOWN_RECIPIENTS = 3;
 
@@ -72,10 +85,13 @@ export function PrescriptionCard({
   return (
     <Card className="h-full">
       <CardHeader className="gap-2">
-        <Badge variant="secondary">
-          {kindIcons[p.kind]}
-          {kindLabels[p.kind]}
-        </Badge>
+        <div className="flex items-center gap-1.5">
+          <Badge variant="secondary">
+            {kindIcons[p.kind]}
+            {kindLabels[p.kind]}
+          </Badge>
+          <InfoIcon text={kindInfo[p.kind]} />
+        </div>
         <CardTitle className="text-lg leading-snug">{p.title}</CardTitle>
         <CardDescription className="text-pretty">
           {templateNote(p)}
