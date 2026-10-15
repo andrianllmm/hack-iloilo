@@ -6,6 +6,7 @@ import {
   Package,
   Settings,
   Tags,
+  TrendingUp,
   Users,
   CalendarDays,
   type LucideIcon,
@@ -22,6 +23,7 @@ export type NavItem = {
 
 export const nav: NavItem[] = [
   { title: "Capacity", href: "/", icon: Gauge },
+  { title: "Forecast", href: "/forecast", icon: TrendingUp },
   { title: "Bookings", href: "/bookings", icon: CalendarDays },
   { title: "Buying", href: "/buying", icon: HandCoins },
   { title: "Queue", href: "/queue", icon: ClipboardList },
