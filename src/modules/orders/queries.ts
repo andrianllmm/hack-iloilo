@@ -6,6 +6,7 @@ import { formatDate, formatKg } from "@/lib/format";
 import { newRef } from "@/lib/ref";
 import { db } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
+import { riceStock } from "@/modules/gate/queries";
 import { send } from "@/modules/sms/queries";
 import { currentFacility } from "@/modules/setup/queries";
 import { canCancel, orderSms, type OrderStatus } from "./logic";
@@ -123,6 +124,24 @@ export async function cancelOrder(order: Order): Promise<Order | null> {
   );
   if (cancelled) await notifyOrder(cancelled, "cancelled");
   return cancelled;
+}
+
+/** IRPC rice on hand and kg already promised to accepted requests. */
+export async function orderStock(): Promise<{
+  onHandKg: number;
+  acceptedKg: number;
+}> {
+  const facility = await currentFacility();
+  const [onHandKg, { data, error }] = await Promise.all([
+    riceStock(),
+    db()
+      .from("rice_orders")
+      .select("kg")
+      .eq("facility_id", facility.id)
+      .eq("status", "accepted"),
+  ]);
+  if (error) throw new Error(`Accepted rice orders: ${error.message}`);
+  return { onHandKg, acceptedKg: data.reduce((sum, o) => sum + o.kg, 0) };
 }
 
 /** Orders by pickup date, optionally one status. */

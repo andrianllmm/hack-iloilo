@@ -19,10 +19,17 @@ import { priceOn } from "@/modules/pricing/queries";
 import {
   canCancel,
   estimateMinor,
+  exceedsFree,
+  freeKg,
   orderStatusLabels,
   orderStatusTones,
 } from "../logic";
-import { listOrders, type OrderListItem, type OrderStatus } from "../queries";
+import {
+  listOrders,
+  orderStock,
+  type OrderListItem,
+  type OrderStatus,
+} from "../queries";
 import { OrderActions } from "./order-actions";
 
 const FILTERS: { label: string; value: OrderStatus | undefined }[] = [
@@ -51,15 +58,43 @@ export async function OrdersView({
   await connection();
   const { status: rawStatus } = await searchParams;
   const status = asStatus(rawStatus);
-  const [staff, orders, prices] = await Promise.all([
+  const [staff, orders, prices, stock] = await Promise.all([
     getStaff(),
     listOrders(status),
     priceOn(todayManila()).catch(() => null),
+    orderStock(),
   ]);
   const isManager = staff?.role === "manager";
+  const free = freeKg(stock.onHandKg, stock.acceptedKg);
 
   return (
     <div className="flex flex-col gap-3">
+      <dl className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+        <div className="flex gap-1.5">
+          <dt className="text-muted-foreground">Rice on hand</dt>
+          <dd className="font-semibold tabular-nums">
+            {formatKg(stock.onHandKg)}
+          </dd>
+        </div>
+        <div className="flex gap-1.5">
+          <dt className="text-muted-foreground">Accepted, not picked up</dt>
+          <dd className="font-semibold tabular-nums">
+            {formatKg(stock.acceptedKg)}
+          </dd>
+        </div>
+        <div className="flex gap-1.5">
+          <dt className="text-muted-foreground">Free</dt>
+          <dd
+            className={cn(
+              "font-semibold tabular-nums",
+              free < 0 && "text-destructive",
+            )}
+          >
+            {free < 0 ? `Over by ${formatKg(-free)}` : formatKg(free)}
+          </dd>
+        </div>
+      </dl>
+
       <nav className="flex flex-wrap gap-2">
         {FILTERS.map((f) => {
           const active = f.value === status;
@@ -102,6 +137,7 @@ export async function OrdersView({
                   order={order}
                   isManager={isManager}
                   riceMinorPerKg={prices?.rice_minor_per_kg ?? null}
+                  overFree={exceedsFree(order, free)}
                 />
               ))}
             </TableBody>
@@ -116,10 +152,13 @@ function OrderRow({
   order,
   isManager,
   riceMinorPerKg,
+  overFree,
 }: {
   order: OrderListItem;
   isManager: boolean;
   riceMinorPerKg: number | null;
+  /** Accepting would promise more rice than is free. */
+  overFree: boolean;
 }) {
   const type = order.client?.buyer_type;
   return (
@@ -135,7 +174,14 @@ function OrderRow({
           ) : null}
         </div>
       </TableCell>
-      <TableCell className="text-right">{formatKg(order.kg)}</TableCell>
+      <TableCell className="text-right">
+        <div className="flex flex-col items-end">
+          <span>{formatKg(order.kg)}</span>
+          {overFree ? (
+            <span className="text-xs text-warning">More than free stock</span>
+          ) : null}
+        </div>
+      </TableCell>
       <TableCell>{formatDate(order.pickup_date)}</TableCell>
       <TableCell className="text-right tabular-nums">
         {riceMinorPerKg !== null

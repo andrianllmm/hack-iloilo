@@ -31,6 +31,22 @@ export function estimateMinor(kg: number, riceMinorPerKg: number): number {
   return kg * riceMinorPerKg;
 }
 
+/**
+ * Rice not yet promised: on hand minus accepted requests still to be picked up.
+ * Negative when accepted requests already exceed what's on hand.
+ */
+export function freeKg(onHandKg: number, acceptedKg: number): number {
+  return onHandKg - acceptedKg;
+}
+
+/** An open request asks for more than the free rice, so accepting it over-promises. */
+export function exceedsFree(
+  order: { kg: number; status: OrderStatus },
+  free: number,
+): boolean {
+  return order.status === "requested" && order.kg > free;
+}
+
 export const orderSms = {
   recorded:
     "IRPC: Nalista na ang request mo. Code {ref}: {kg} bugas, kuha sa {date}. I-text ka namon kon may desisyon na.",
