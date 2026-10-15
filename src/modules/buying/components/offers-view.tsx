@@ -9,10 +9,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatKg } from "@/lib/format";
+import { formatDate, formatKg } from "@/lib/format";
 import { getStaff } from "@/modules/accounts/auth";
 import { listOffers, type OfferListItem, type OfferStatus } from "../queries";
-import { DecideButtons, WithdrawButton } from "./offer-actions";
+import { OfferActions } from "./offer-actions";
 
 const FILTERS: { label: string; value: OfferStatus | undefined }[] = [
   { label: "All", value: undefined },
@@ -78,11 +78,12 @@ export async function OffersView({
             <TableRow>
               <TableHead>Ref</TableHead>
               <TableHead>Client</TableHead>
-              <TableHead>Variety</TableHead>
               <TableHead className="text-right">Est. kg</TableHead>
               <TableHead>Harvest</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -107,20 +108,25 @@ function OfferRow({
   return (
     <TableRow>
       <TableCell className="font-mono">{offer.ref}</TableCell>
-      <TableCell>{offer.client?.name ?? "—"}</TableCell>
-      <TableCell>{offer.variety?.code ?? "—"}</TableCell>
-      <TableCell className="text-right">{formatKg(offer.est_kg)}</TableCell>
-      <TableCell>{offer.harvest_date}</TableCell>
       <TableCell>
-        <Badge variant={STATUS_VARIANT[offer.status]}>{offer.status}</Badge>
+        <div className="flex flex-col">
+          <span>{offer.client?.name ?? "—"}</span>
+          {offer.variety ? (
+            <span className="text-xs text-muted-foreground">
+              {offer.variety.code}
+            </span>
+          ) : null}
+        </div>
+      </TableCell>
+      <TableCell className="text-right">{formatKg(offer.est_kg)}</TableCell>
+      <TableCell>{formatDate(offer.harvest_date)}</TableCell>
+      <TableCell>
+        <Badge variant={STATUS_VARIANT[offer.status]} className="capitalize">
+          {offer.status}
+        </Badge>
       </TableCell>
       <TableCell>
-        {decidable && (
-          <div className="flex items-center justify-end gap-2">
-            {isManager && <DecideButtons id={offer.id} />}
-            <WithdrawButton id={offer.id} />
-          </div>
-        )}
+        {decidable && <OfferActions id={offer.id} isManager={isManager} />}
       </TableCell>
     </TableRow>
   );
