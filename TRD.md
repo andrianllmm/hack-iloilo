@@ -7,24 +7,24 @@ How we build the [PRD](PRD.md). Module numbers (M1–M10) match.
 - One Next.js app on Vercel, with Supabase for the database and auth. All free tiers.
 - One folder per module.
 - Clients use SMS through SMS Gateway for Android (SMSGate) on its cloud server, with a simulator for the demo.
-- AI (Gemini) reads free-text SMS. It never computes numbers.
+- AI (Gemini, with optional OpenRouter fallback) reads free-text SMS. It never computes numbers.
 - The forecast is trained offline in Python. The app imports its output.
 - Single facility (IRPC) and crop (rice). Operations tables keep a `facility_id` for later.
 
 ## Stack
 
-| Part              | Choice                                                        |
-| ----------------- | ------------------------------------------------------------- |
-| App               | Next.js (App Router), strict TypeScript, server actions       |
-| UI                | Tailwind, shadcn/ui, shadcn charts                            |
-| Database, auth    | Supabase: Postgres, Auth                                      |
-| Data access       | supabase-js, `supabase gen types`, Supabase CLI migrations    |
-| Validation        | Zod, for forms, SMS commands and AI results                   |
-| SMS               | SMSGate cloud, a webhook relay, plus a web simulator          |
-| AI                | Vercel AI SDK with `@ai-sdk/google` (Gemini Flash, free tier) |
-| Hosting           | Vercel Hobby, Supabase `ap-southeast-1`                       |
-| Forecast training | Python (pandas, openpyxl, SciPy), offline                     |
-| Tooling           | pnpm, Vitest, ESLint, Prettier, commitlint                    |
+| Part              | Choice                                                                |
+| ----------------- | --------------------------------------------------------------------- |
+| App               | Next.js (App Router), strict TypeScript, server actions               |
+| UI                | Tailwind, shadcn/ui, shadcn charts                                    |
+| Database, auth    | Supabase: Postgres, Auth                                              |
+| Data access       | supabase-js, `supabase gen types`, Supabase CLI migrations            |
+| Validation        | Zod, for forms, SMS commands and AI results                           |
+| SMS               | SMSGate cloud, a webhook relay, plus a web simulator                  |
+| AI                | Vercel AI SDK with `@ai-sdk/google` and `@openrouter/ai-sdk-provider` |
+| Hosting           | Vercel Hobby, Supabase `ap-southeast-1`                               |
+| Forecast training | Python (pandas, openpyxl, SciPy), offline                             |
+| Tooling           | pnpm, Vitest, ESLint, Prettier, commitlint                            |
 
 ## System context
 
@@ -103,7 +103,10 @@ interface SmsGateway {
 - `extract(schema, text)` turns free-text SMS into data matching a command's Zod schema (P1).
 - On failure, fall back to the help text or an empty form.
 - A comma-separated `GOOGLE_GENERATIVE_AI_API_KEYS` pool overrides the legacy single key. Per-instance counters skip a key at 90% of configurable minute/day budgets (the local day is Asia/Manila); cold starts reset the counters. These are local estimates, not Google's remaining quota, and keys in the same Google project share limits.
-- A `429`/`RESOURCE_EXHAUSTED` response cools that key until its `retryDelay`, or the next minute/day window when absent. Retry once with another available key inside the same 8-second total budget; otherwise return `null`. Log switches by index only and omit raw provider errors.
+- A `429`/`RESOURCE_EXHAUSTED` response cools that Gemini key until its `retryDelay`, or the next minute/day window when absent.
+- Provider order: eligible Gemini key → OpenRouter (if configured) → another eligible Gemini key. OpenRouter also works without Gemini keys. Quota, server, timeout, billing and retryable network failures advance to the next option; schema and validation failures return `null` immediately. If all attempts fail, callers retain keyword help.
+- Inside the 8-second total budget, the first attempt reserves half for fallback. OpenRouter keeps up to one second for the final Gemini key; the final attempt gets all remaining time. With three timeouts and negligible overhead, this is 4 s + 3 s + 1 s. Log provider outcomes as `[ai:provider]` with safe failure categories, and key switches by index only; omit raw provider errors.
+- `OPENROUTER_MODEL` defaults to `openai/gpt-5.4-nano`, listed with structured-output support in OpenRouter's model catalog. This is a paid model; set a supported model matching the account's budget. Require compatible parameters when routing so the JSON schema is honored. Cap OpenRouter output at 1,024 tokens for these short command objects so the provider does not reserve credits for its much larger default maximum.
 
 ## Data model
 
@@ -366,6 +369,8 @@ No tables. **Export:** `capacityByDay(from, to)` returns per day and pool (`drye
 | `GOOGLE_GENERATIVE_AI_API_KEYS`                                    | Gemini key pool; overrides the single key                            |
 | `GOOGLE_GENERATIVE_AI_RPM_LIMIT`, `GOOGLE_GENERATIVE_AI_RPD_LIMIT` | Local per-key request budgets (10/minute, 250/Manila day by default) |
 | `GOOGLE_GENERATIVE_AI_QUOTA_THRESHOLD`                             | Fraction of either budget at which to switch keys (default `0.9`)    |
+| `OPENROUTER_API_KEY`                                               | Optional OpenRouter fallback, or sole AI provider                    |
+| `OPENROUTER_MODEL`                                                 | Structured-output model (default: `openai/gpt-5.4-nano`)             |
 
 ## Costs and limits
 

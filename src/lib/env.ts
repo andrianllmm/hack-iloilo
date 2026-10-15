@@ -43,6 +43,8 @@ const schema = z
       .gt(0)
       .max(1)
       .default(0.9),
+    OPENROUTER_API_KEY: z.string().trim().min(1).optional(),
+    OPENROUTER_MODEL: z.string().trim().min(1).default("openai/gpt-5.4-nano"),
   })
   .refine(
     (env) =>

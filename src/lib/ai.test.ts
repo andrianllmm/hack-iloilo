@@ -6,9 +6,15 @@ const sdk = vi.hoisted(() => ({
   createGoogle: vi.fn(({ apiKey }: { apiKey: string }) =>
     vi.fn(() => ({ testKey: apiKey })),
   ),
+  createOpenRouter: vi.fn(({ apiKey }: { apiKey: string }) => ({
+    chat: vi.fn((model: string) => ({ testKey: apiKey, testModel: model })),
+  })),
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@ai-sdk/google", () => ({ createGoogle: sdk.createGoogle }));
+vi.mock("@openrouter/ai-sdk-provider", () => ({
+  createOpenRouter: sdk.createOpenRouter,
+}));
 vi.mock("ai", () => ({
   generateText: sdk.generateText,
   Output: { object: (value: unknown) => value },
@@ -41,8 +47,11 @@ beforeEach(() => {
   vi.stubEnv("GOOGLE_GENERATIVE_AI_RPM_LIMIT", "10");
   vi.stubEnv("GOOGLE_GENERATIVE_AI_RPD_LIMIT", "250");
   vi.stubEnv("GOOGLE_GENERATIVE_AI_QUOTA_THRESHOLD", "0.9");
+  vi.stubEnv("OPENROUTER_API_KEY", "");
+  vi.stubEnv("OPENROUTER_MODEL", "");
   vi.spyOn(console, "info").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -51,6 +60,171 @@ afterEach(() => {
 });
 
 describe("AI extraction key failover", () => {
+  it("works with only OpenRouter and uses its configured structured-output model", async () => {
+    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEYS", "");
+    vi.stubEnv("OPENROUTER_API_KEY", "router-test-key");
+    vi.stubEnv("OPENROUTER_MODEL", "openai/custom-model");
+    const { extract, aiEnabled } = await import("./ai");
+    expect(aiEnabled()).toBe(true);
+    expect(await extract(schema, "price")).toEqual(output);
+    expect(sdk.createGoogle).not.toHaveBeenCalled();
+    expect(sdk.createOpenRouter).toHaveBeenCalledWith({
+      apiKey: "router-test-key",
+    });
+    expect(
+      sdk.createOpenRouter.mock.results[0].value.chat,
+    ).toHaveBeenCalledWith("openai/custom-model", {
+      provider: { require_parameters: true },
+    });
+    expect(sdk.generateText).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        model: { testKey: "router-test-key", testModel: "openai/custom-model" },
+        timeout: 8000,
+        maxOutputTokens: 1024,
+      }),
+    );
+    expect(console.info).toHaveBeenCalledWith(
+      "[ai:provider]",
+      "openrouter",
+      "answered",
+    );
+  });
+
+  it.each([
+    ["quota", exhausted],
+    ["server", { statusCode: 503 }],
+    ["server", { statusCode: 500 }],
+    ["timeout", { name: "TimeoutError" }],
+    ["network", { name: "AI_APICallError", isRetryable: true }],
+  ])("falls from Gemini to OpenRouter after %s", async (kind, error) => {
+    vi.stubEnv("OPENROUTER_API_KEY", "router-test-key");
+    sdk.generateText.mockRejectedValueOnce(error);
+    const { extract } = await import("./ai");
+    expect(await extract(schema, "farmer request")).toEqual(output);
+    const calls = sdk.generateText.mock.calls.map(([args]) => args);
+    expect(calls.map((args) => args.model.testKey)).toEqual([
+      "test-key-a",
+      "router-test-key",
+    ]);
+    expect(calls[1]).toMatchObject({
+      prompt: calls[0].prompt,
+      system: calls[0].system,
+      output: calls[0].output,
+      maxRetries: 0,
+    });
+    expect(console.warn).toHaveBeenCalledWith(
+      "[ai:provider]",
+      "gemini",
+      "failed",
+      kind,
+    );
+  });
+
+  it.each([503, 402])(
+    "tries another Gemini key third when OpenRouter returns %s",
+    async (statusCode) => {
+      vi.stubEnv("OPENROUTER_API_KEY", "router-test-key");
+      sdk.generateText
+        .mockRejectedValueOnce({ statusCode: 503 })
+        .mockRejectedValueOnce({ statusCode });
+      const { extract } = await import("./ai");
+      expect(await extract(schema, "price")).toEqual(output);
+      expect(
+        sdk.generateText.mock.calls.map(([args]) => args.model.testKey),
+      ).toEqual(["test-key-a", "router-test-key", "test-key-b"]);
+    },
+  );
+
+  it("keeps a successful Gemini request on Gemini", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "router-test-key");
+    const { extract } = await import("./ai");
+    expect(await extract(schema, "price")).toEqual(output);
+    expect(sdk.generateText).toHaveBeenCalledTimes(1);
+    expect(sdk.generateText.mock.calls[0][0].model.testKey).toBe("test-key-a");
+  });
+
+  it("gives OpenRouter the full budget when all Gemini keys are cooling down", async () => {
+    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEYS", "test-key-a,test-key-b");
+    vi.stubEnv("OPENROUTER_API_KEY", "router-test-key");
+    sdk.generateText
+      .mockRejectedValueOnce(exhausted)
+      .mockResolvedValueOnce({ output })
+      .mockRejectedValueOnce(exhausted);
+    const { extract } = await import("./ai");
+    await extract(schema, "price");
+    await extract(schema, "price");
+    expect(await extract(schema, "price")).toEqual(output);
+    expect(sdk.generateText).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        model: expect.objectContaining({ testKey: "router-test-key" }),
+        timeout: 8000,
+      }),
+    );
+  });
+
+  it("returns null within eight seconds when every provider times out", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "router-test-key");
+    const start = Date.now();
+    sdk.generateText.mockImplementation(async ({ timeout }) => {
+      vi.setSystemTime(Date.now() + timeout);
+      throw { name: "TimeoutError" };
+    });
+    const { extract } = await import("./ai");
+    expect(await extract(schema, "price")).toBeNull();
+    expect(Date.now() - start).toBe(8000);
+    expect(sdk.generateText.mock.calls.map(([args]) => args.timeout)).toEqual([
+      4000, 3000, 1000,
+    ]);
+    expect(
+      sdk.generateText.mock.calls.map(([args]) => args.model.testKey),
+    ).toEqual(["test-key-a", "router-test-key", "test-key-b"]);
+  });
+
+  it.each([
+    "AI_NoObjectGeneratedError",
+    "AI_TypeValidationError",
+    "AI_JSONParseError",
+    "ZodError",
+  ])("does not fall back after %s", async (name) => {
+    vi.stubEnv("OPENROUTER_API_KEY", "router-test-key");
+    sdk.generateText.mockRejectedValueOnce({ name });
+    const { extract } = await import("./ai");
+    expect(await extract(schema, "price")).toBeNull();
+    expect(sdk.generateText).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not fall from OpenRouter to Gemini after a schema failure", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "router-test-key");
+    sdk.generateText
+      .mockRejectedValueOnce({ statusCode: 503 })
+      .mockRejectedValueOnce({ name: "AI_NoObjectGeneratedError" });
+    const { extract } = await import("./ai");
+    expect(await extract(schema, "price")).toBeNull();
+    expect(sdk.generateText).toHaveBeenCalledTimes(2);
+  });
+
+  it("never logs OpenRouter credentials or response text when every provider fails", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "router-test-key");
+    sdk.generateText.mockRejectedValue({
+      statusCode: 503,
+      message: "router-test-key test-key-a private farmer text",
+    });
+    const { extract } = await import("./ai");
+    expect(await extract(schema, "private farmer text")).toBeNull();
+    expect(sdk.generateText).toHaveBeenCalledTimes(3);
+    const logs = JSON.stringify([
+      vi.mocked(console.info).mock.calls,
+      vi.mocked(console.warn).mock.calls,
+      vi.mocked(console.error).mock.calls,
+    ]);
+    for (const value of [
+      "router-test-key",
+      "test-key-a",
+      "private farmer text",
+    ])
+      expect(logs).not.toContain(value);
+  });
+
   it("supports the legacy single key", async () => {
     vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEYS", "");
     vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", "test-legacy");
@@ -82,7 +256,12 @@ describe("AI extraction key failover", () => {
       "Presyo sang palay?",
       "Presyo sang palay?",
     ]);
-    expect(console.info).toHaveBeenCalledExactlyOnceWith("[ai:key]", 1);
+    expect(console.info).toHaveBeenCalledWith("[ai:key]", 1);
+    expect(console.info).toHaveBeenCalledWith(
+      "[ai:provider]",
+      "gemini",
+      "answered",
+    );
     expect(sdk.generateText).toHaveBeenLastCalledWith(
       expect.objectContaining({ maxRetries: 0 }),
     );
@@ -135,7 +314,7 @@ describe("AI extraction key failover", () => {
     const { extract } = await import("./ai");
     expect(await extract(schema, "price")).toEqual(output);
     expect(sdk.generateText.mock.calls.map(([args]) => args.timeout)).toEqual([
-      8000, 5000,
+      4000, 5000,
     ]);
   });
 
@@ -180,6 +359,7 @@ describe("AI extraction key failover", () => {
     const logs = JSON.stringify([
       vi.mocked(console.info).mock.calls,
       vi.mocked(console.error).mock.calls,
+      vi.mocked(console.warn).mock.calls,
     ]);
     for (const secret of [
       "test-key-a",

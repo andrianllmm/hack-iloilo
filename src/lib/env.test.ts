@@ -22,12 +22,28 @@ beforeEach(() => {
     "GOOGLE_GENERATIVE_AI_RPM_LIMIT",
     "GOOGLE_GENERATIVE_AI_RPD_LIMIT",
     "GOOGLE_GENERATIVE_AI_QUOTA_THRESHOLD",
+    "OPENROUTER_API_KEY",
+    "OPENROUTER_MODEL",
   ])
     vi.stubEnv(key, "");
 });
 afterEach(() => vi.unstubAllEnvs());
 
 describe("env", () => {
+  it("defaults the OpenRouter model and leaves it disabled without a key", async () => {
+    const { env } = await import("./env");
+    expect(env().OPENROUTER_API_KEY).toBeUndefined();
+    expect(env().OPENROUTER_MODEL).toBe("openai/gpt-5.4-nano");
+  });
+
+  it("accepts an OpenRouter key and model override", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", " router-key ");
+    vi.stubEnv("OPENROUTER_MODEL", "openai/custom-model");
+    const { env } = await import("./env");
+    expect(env().OPENROUTER_API_KEY).toBe("router-key");
+    expect(env().OPENROUTER_MODEL).toBe("openai/custom-model");
+  });
+
   it("defaults to no AI keys and configurable local quota budgets", async () => {
     const { env } = await import("./env");
     expect(env()).toMatchObject({
