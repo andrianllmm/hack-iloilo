@@ -4,9 +4,11 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
-  // The palay page was renamed Buying → Selling; keep old links working.
+  // Rice Buying was renamed Buying; keep old links working.
   async redirects() {
-    return [{ source: "/buying", destination: "/selling", permanent: false }];
+    return [
+      { source: "/rice-buying", destination: "/buying", permanent: false },
+    ];
   },
   turbopack: {
     rules: {
