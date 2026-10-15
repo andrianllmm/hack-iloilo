@@ -59,6 +59,29 @@ export async function findOfferByRef(ref: string): Promise<Offer | null> {
   return data;
 }
 
+/** Marks an `accepted` offer `arrived` at the gate. Null if it is no longer accepted. */
+export async function markOfferArrived(offerId: string): Promise<Offer | null> {
+  const { data, error } = await db()
+    .from("sell_offers")
+    .update({ status: "arrived" })
+    .eq("id", offerId)
+    .eq("status", "accepted")
+    .select()
+    .maybeSingle();
+  if (error) throw new Error(`Offer arrived: ${error.message}`);
+  return data;
+}
+
+/** Undoes `markOfferArrived` when the check-in that caused it fails. */
+export async function unmarkOfferArrived(offerId: string): Promise<void> {
+  const { error } = await db()
+    .from("sell_offers")
+    .update({ status: "accepted" })
+    .eq("id", offerId)
+    .eq("status", "arrived");
+  if (error) throw new Error(`Offer arrived: ${error.message}`);
+}
+
 /**
  * Accepted offers with a harvest date in `[from, to]`, by harvest date.
  * Used by capacity (#33) as expected arrivals.
