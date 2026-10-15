@@ -1,0 +1,260 @@
+"use client";
+
+import { Pencil, Plus } from "lucide-react";
+import { useActionState, useState, useTransition } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { Switch } from "@/components/ui/switch";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { formatTonnes } from "@/lib/format";
+import {
+  type SettingsFormState,
+  saveMachine,
+  setMachineActive,
+} from "../actions";
+import type { Machine } from "../queries";
+import { NumberField } from "./facility-form";
+import { UnconfirmedIcon } from "./hint-icons";
+
+const t = (kg: number | null) => (kg == null ? "" : String(kg / 1000));
+
+export function MachinesTable({ machines }: { machines: Machine[] }) {
+  // null: adding; a machine: editing it. Kept while closing so the dialog
+  // doesn't change content mid-animation.
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Machine | null>(null);
+  // Bumped on each open so the form starts fresh.
+  const [session, setSession] = useState(0);
+  const openFor = (m: Machine | null) => {
+    setEditing(m);
+    setSession((n) => n + 1);
+    setOpen(true);
+  };
+  const [toggle, setToggle] = useState<SettingsFormState>();
+  const [pending, startTransition] = useTransition();
+
+  function onToggle(m: Machine, active: boolean) {
+    startTransition(async () =>
+      setToggle(await setMachineActive(m.id, active)),
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Code</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead className="text-right">
+              <span className="inline-flex items-center gap-1">
+                Load / throughput <UnconfirmedIcon />
+              </span>
+            </TableHead>
+            <TableHead className="text-right">
+              <span className="inline-flex items-center gap-1">
+                Cycle <UnconfirmedIcon />
+              </span>
+            </TableHead>
+            <TableHead className="text-right">
+              <span className="inline-flex items-center gap-1">
+                kW <UnconfirmedIcon />
+              </span>
+            </TableHead>
+            <TableHead>Active</TableHead>
+            <TableHead />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {machines.map((m) => (
+            <TableRow
+              key={m.id}
+              className={m.active ? undefined : "text-muted-foreground"}
+            >
+              <TableCell className="font-medium">
+                <span className="flex items-center gap-2">
+                  {m.code}
+                  {!m.active && <Badge variant="secondary">Inactive</Badge>}
+                </span>
+              </TableCell>
+              <TableCell className="capitalize">{m.type}</TableCell>
+              <TableCell className="text-right">
+                {m.type === "dryer"
+                  ? `${formatTonnes(m.capacity_kg ?? 0)}/load`
+                  : `${formatTonnes(m.kg_per_hour ?? 0)}/h`}
+              </TableCell>
+              <TableCell className="text-right">
+                {m.cycle_hours == null ? "—" : `${m.cycle_hours} h`}
+              </TableCell>
+              <TableCell className="text-right">{m.rated_kw}</TableCell>
+              <TableCell>
+                <Switch
+                  checked={m.active}
+                  disabled={pending}
+                  onCheckedChange={(active) => onToggle(m, active)}
+                  aria-label={`${m.code} active`}
+                />
+              </TableCell>
+              <TableCell className="text-right">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Edit ${m.code}`}
+                  title={`Edit ${m.code}`}
+                  onClick={() => openFor(m)}
+                >
+                  <Pencil />
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      {toggle && !toggle.ok && <FieldError>{toggle.error}</FieldError>}
+
+      <Button className="self-end" onClick={() => openFor(null)}>
+        <Plus data-icon="inline-start" />
+        Add machine
+      </Button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {editing ? `Edit ${editing.code}` : "Add machine"}
+            </DialogTitle>
+            <DialogDescription>
+              Dryers take a load size and cycle; mills take throughput.
+            </DialogDescription>
+          </DialogHeader>
+          <MachineForm
+            key={session}
+            machine={editing}
+            onSaved={() => setOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function MachineForm({
+  machine,
+  onSaved,
+}: {
+  machine: Machine | null;
+  onSaved: () => void;
+}) {
+  const [type, setType] = useState(machine?.type ?? "dryer");
+  const [state, action, pending] = useActionState(
+    async (prev: SettingsFormState, formData: FormData) => {
+      const result = await saveMachine(prev, formData);
+      if (result?.ok) onSaved();
+      return result;
+    },
+    undefined,
+  );
+
+  return (
+    <form action={action}>
+      {machine && <input type="hidden" name="id" value={machine.id} />}
+      <FieldGroup>
+        <div className="grid grid-cols-2 gap-3">
+          <Field>
+            <FieldLabel htmlFor="type">Type</FieldLabel>
+            <NativeSelect
+              id="type"
+              name="type"
+              className="w-full"
+              value={type}
+              onChange={(e) => setType(e.target.value as Machine["type"])}
+            >
+              <NativeSelectOption value="dryer">Dryer</NativeSelectOption>
+              <NativeSelectOption value="mill">Mill</NativeSelectOption>
+            </NativeSelect>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="code">Code</FieldLabel>
+            <Input
+              id="code"
+              name="code"
+              required
+              maxLength={10}
+              defaultValue={machine?.code}
+              placeholder={type === "dryer" ? "D7" : "M2"}
+            />
+          </Field>
+        </div>
+
+        {type === "dryer" ? (
+          <div className="grid grid-cols-2 gap-3">
+            <NumberField
+              id="loadT"
+              label="Load (t)"
+              defaultValue={t(machine?.capacity_kg ?? null)}
+              step={0.001}
+              unconfirmed
+            />
+            <NumberField
+              id="cycleHours"
+              label="Cycle hours"
+              defaultValue={machine?.cycle_hours?.toString() ?? ""}
+              step={0.1}
+              unconfirmed
+            />
+          </div>
+        ) : (
+          <NumberField
+            id="millTph"
+            label="Throughput (t/hour)"
+            defaultValue={t(machine?.kg_per_hour ?? null)}
+            step={0.001}
+            unconfirmed
+          />
+        )}
+
+        <NumberField
+          id="ratedKw"
+          label="Rated kW"
+          defaultValue={machine?.rated_kw.toString() ?? "0"}
+          step={0.01}
+          unconfirmed
+        />
+
+        {state && !state.ok && <FieldError>{state.error}</FieldError>}
+        {state?.ok && <FieldDescription>{state.message}</FieldDescription>}
+
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : "Save machine"}
+        </Button>
+      </FieldGroup>
+    </form>
+  );
+}
