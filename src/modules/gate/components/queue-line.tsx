@@ -127,7 +127,7 @@ export function QueueLine({
               className="pointer-events-none absolute inset-0 size-full overflow-visible"
             >
               <rect
-                strokeWidth={2}
+                strokeWidth={1}
                 strokeDasharray="8 4"
                 className="h-full w-full fill-none stroke-primary [rx:var(--radius-lg)] motion-safe:animate-dash-march"
               />
