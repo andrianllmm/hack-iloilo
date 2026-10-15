@@ -46,10 +46,10 @@ export function AppSidebar({ staff }: { staff: Staff }) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<Link href="/capacity" />}>
-              <div className="flex size-8 items-center justify-center text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center text-primary">
                 <Logo className="size-8" />
               </div>
-              <div className="grid text-left leading-tight">
+              <div className="grid text-left leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="font-medium">SACKTO</span>
                 <span className="text-xs text-muted-foreground">
                   IRPC Capacity Planning
@@ -87,18 +87,18 @@ export function AppSidebar({ staff }: { staff: Staff }) {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger render={<SidebarMenuButton size="lg" />}>
-                <Avatar className="size-8 rounded-lg">
+                <Avatar className="size-8 shrink-0 rounded-lg">
                   <AvatarFallback className="rounded-lg bg-primary/10 font-semibold text-primary">
                     {initials(staff.name)}
                   </AvatarFallback>
                 </Avatar>
-                <div className="grid flex-1 text-left leading-tight">
+                <div className="grid flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
                   <span className="truncate font-medium">{staff.name}</span>
                   <span className="truncate text-xs text-muted-foreground capitalize">
                     {staff.role}
                   </span>
                 </div>
-                <ChevronsUpDown className="ml-auto size-4" />
+                <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start">
                 <DropdownMenuItem onClick={() => signOut()}>
