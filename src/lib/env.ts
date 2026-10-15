@@ -7,12 +7,16 @@ const schema = z
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
     SMS_GATEWAY: z.enum(["simulator", "smsgate"]).default("simulator"),
-    SMS_GATEWAY_URL: z.url().optional(),
+    // 3rdparty API base. Private server: https://<host>/api/3rdparty/v1
+    SMS_GATEWAY_URL: z.url().default("https://api.sms-gate.app/3rdparty/v1"),
     SMS_GATEWAY_USERNAME: z.string().min(1).optional(),
     SMS_GATEWAY_PASSWORD: z.string().min(1).optional(),
     SMS_GATEWAY_DEVICE_ID: z.string().min(1).optional(),
     SMS_GATEWAY_SIM_NUMBER: z.coerce.number().int().positive().optional(),
+    // Used by the webhook relay (services/sms-webhook), not this app.
     SMS_GATEWAY_WEBHOOK_SIGNING_KEY: z.string().min(1).optional(),
+    // Shared with the webhook relay; authenticates POST /api/sms/process.
+    SMS_RELAY_SECRET: z.string().min(16).optional(),
     SMS_GATEWAY_WEBHOOK_PORT: z.coerce
       .number()
       .int()
@@ -25,13 +29,12 @@ const schema = z
   .refine(
     (env) =>
       env.SMS_GATEWAY !== "smsgate" ||
-      (env.SMS_GATEWAY_URL &&
-        env.SMS_GATEWAY_USERNAME &&
+      (env.SMS_GATEWAY_USERNAME &&
         env.SMS_GATEWAY_PASSWORD &&
-        env.SMS_GATEWAY_WEBHOOK_SIGNING_KEY),
+        env.SMS_RELAY_SECRET),
     {
       message:
-        "SMS_GATEWAY_URL, SMS_GATEWAY_USERNAME, SMS_GATEWAY_PASSWORD and SMS_GATEWAY_WEBHOOK_SIGNING_KEY are required when SMS_GATEWAY=smsgate",
+        "SMS_GATEWAY_USERNAME, SMS_GATEWAY_PASSWORD and SMS_RELAY_SECRET are required when SMS_GATEWAY=smsgate",
     },
   )
   // Keep existing gateway consumers working with the renamed environment inputs.

@@ -16,6 +16,7 @@ beforeEach(() => {
     "SMS_GATEWAY_SIM_NUMBER",
     "SMS_GATEWAY_WEBHOOK_SIGNING_KEY",
     "SMS_GATEWAY_WEBHOOK_PORT",
+    "SMS_RELAY_SECRET",
   ])
     vi.stubEnv(key, "");
 });
@@ -28,12 +29,18 @@ describe("env", () => {
     expect(env().SMS_GATEWAY_SIM_NUMBER).toBeUndefined();
   });
 
+  it("defaults to the SMSGate cloud API", async () => {
+    const { env } = await import("./env");
+    expect(env().SMS_GATEWAY_URL).toBe("https://api.sms-gate.app/3rdparty/v1");
+  });
+
   it("reads the renamed credentials and maps them for existing SMS consumers", async () => {
     vi.stubEnv("SMS_GATEWAY", "smsgate");
     vi.stubEnv("SMS_GATEWAY_URL", "https://gateway.example.com");
     vi.stubEnv("SMS_GATEWAY_USERNAME", "test-user");
     vi.stubEnv("SMS_GATEWAY_PASSWORD", "test-password");
     vi.stubEnv("SMS_GATEWAY_WEBHOOK_SIGNING_KEY", "test-signing-key");
+    vi.stubEnv("SMS_RELAY_SECRET", "test-relay-secret-123");
     vi.stubEnv("SMS_GATEWAY_DEVICE_ID", "test-device");
     vi.stubEnv("SMS_GATEWAY_SIM_NUMBER", "2");
     vi.stubEnv("SMS_GATEWAY_WEBHOOK_PORT", "4000");
@@ -43,6 +50,7 @@ describe("env", () => {
       SMSGATE_USERNAME: "test-user",
       SMSGATE_PASSWORD: "test-password",
       SMSGATE_SIGNING_KEY: "test-signing-key",
+      SMS_RELAY_SECRET: "test-relay-secret-123",
       SMS_GATEWAY_DEVICE_ID: "test-device",
       SMS_GATEWAY_SIM_NUMBER: 2,
       SMS_GATEWAY_WEBHOOK_PORT: 4000,
@@ -53,6 +61,14 @@ describe("env", () => {
     vi.stubEnv("SMS_GATEWAY", "smsgate");
     const { env } = await import("./env");
     expect(() => env()).toThrow(/SMS_GATEWAY_USERNAME/);
+  });
+
+  it("requires the relay secret in smsgate mode", async () => {
+    vi.stubEnv("SMS_GATEWAY", "smsgate");
+    vi.stubEnv("SMS_GATEWAY_USERNAME", "test-user");
+    vi.stubEnv("SMS_GATEWAY_PASSWORD", "test-password");
+    const { env } = await import("./env");
+    expect(() => env()).toThrow(/SMS_RELAY_SECRET/);
   });
 
   it.each([
