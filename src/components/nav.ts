@@ -7,6 +7,7 @@ import {
   DoorOpen,
   Lightbulb,
   Settings2,
+  ShoppingBasket,
   Users,
   Wheat,
   type LucideIcon,
@@ -47,6 +48,7 @@ export const nav: NavGroup[] = [
       { title: "Batches", href: "/batches", icon: Boxes },
       { title: "Bookings", href: "/bookings", icon: ClipboardList },
       { title: "Selling", href: "/selling", icon: Wheat },
+      { title: "Rice Buying", href: "/rice-buying", icon: ShoppingBasket },
     ],
   },
   {
