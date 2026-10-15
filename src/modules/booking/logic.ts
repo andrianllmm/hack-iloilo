@@ -140,7 +140,18 @@ export function formatShortDate(date: string): string {
   return shortFormat.format(utc(date));
 }
 
-/** `Oct 15 – 31`, `Oct 25 – Nov 10` */
+/**
+ * `Oct 15 – 31`, `Oct 25 – Nov 10`, `Dec 25, 2026 – Jan 10, 2027`. Built by hand
+ * because `Intl` range output (e.g. thin spaces) differs between Node and
+ * browsers, which breaks hydration.
+ */
 export function formatRange(from: string, to: string): string {
-  return shortFormat.formatRange(utc(from), utc(to));
+  if (from === to) return formatShortDate(from);
+  const [fromYear, fromMonth] = from.split("-");
+  const [toYear, toMonth] = to.split("-");
+  if (fromYear !== toYear)
+    return `${formatShortDate(from)}, ${fromYear} – ${formatShortDate(to)}, ${toYear}`;
+  const end =
+    fromMonth === toMonth ? String(utc(to).getUTCDate()) : formatShortDate(to);
+  return `${formatShortDate(from)} – ${end}`;
 }

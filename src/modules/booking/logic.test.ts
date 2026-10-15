@@ -148,6 +148,11 @@ describe("date labels", () => {
   it("formats days and ranges", () => {
     expect(formatDay("2026-10-20")).toBe("Tue, Oct 20");
     expect(formatShortDate("2026-10-20")).toBe("Oct 20");
-    expect(formatRange("2026-10-15", "2026-10-31")).toMatch(/^Oct 15\s–\s31$/);
+    expect(formatRange("2026-10-15", "2026-10-31")).toBe("Oct 15 – 31");
+    expect(formatRange("2026-10-25", "2026-11-10")).toBe("Oct 25 – Nov 10");
+    expect(formatRange("2026-10-25", "2026-10-25")).toBe("Oct 25");
+    expect(formatRange("2026-12-25", "2027-01-10")).toBe(
+      "Dec 25, 2026 – Jan 10, 2027",
+    );
   });
 });
