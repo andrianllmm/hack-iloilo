@@ -1,0 +1,694 @@
+year,period,section,line_item,amount_php
+2024,Aug 2024,INCOME,Rice,521580.0
+2024,Sep 2024,INCOME,Rice,1468848.0
+2024,Oct 2024,INCOME,Rice,700304.0
+2024,Nov 2024,INCOME,Rice,536166.0
+2024,Dec 2024,INCOME,Rice,1140261.0
+2024,TOTAL,INCOME,Rice,4367159.0
+2024,Aug 2024,INCOME,By-Products,11536.0
+2024,Sep 2024,INCOME,By-Products,78184.0
+2024,Oct 2024,INCOME,By-Products,42290.0
+2024,Nov 2024,INCOME,By-Products,12000.0
+2024,Dec 2024,INCOME,By-Products,40850.0
+2024,TOTAL,INCOME,By-Products,184860.0
+2024,Sep 2024,INCOME,Custom Milling,182190.0
+2024,Oct 2024,INCOME,Custom Milling,950166.39
+2024,Nov 2024,INCOME,Custom Milling,863850.28
+2024,Dec 2024,INCOME,Custom Milling,402664.34
+2024,TOTAL,INCOME,Custom Milling,2398871.01
+2024,Aug 2024,INCOME,Total Income,533116.0
+2024,Sep 2024,INCOME,Total Income,1729222.0
+2024,Oct 2024,INCOME,Total Income,1692760.39
+2024,Nov 2024,INCOME,Total Income,1412016.28
+2024,Dec 2024,INCOME,Total Income,1583775.34
+2024,TOTAL,INCOME,Total Income,6950890.01
+2024,Aug 2024,LESS: DIRECTLY RELATED COSTS,Raw Materials (Rice Paddy),443430.44
+2024,Sep 2024,LESS: DIRECTLY RELATED COSTS,Raw Materials (Rice Paddy),1216213.16
+2024,Oct 2024,LESS: DIRECTLY RELATED COSTS,Raw Materials (Rice Paddy),574594.36
+2024,Nov 2024,LESS: DIRECTLY RELATED COSTS,Raw Materials (Rice Paddy),447163.72
+2024,Dec 2024,LESS: DIRECTLY RELATED COSTS,Raw Materials (Rice Paddy),947485.47
+2024,TOTAL,LESS: DIRECTLY RELATED COSTS,Raw Materials (Rice Paddy),3628887.15
+2024,Sep 2024,LESS: DIRECTLY RELATED COSTS,Freight In,668.1
+2024,Oct 2024,LESS: DIRECTLY RELATED COSTS,Freight In,1415.62
+2024,TOTAL,LESS: DIRECTLY RELATED COSTS,Freight In,2083.72
+2024,Aug 2024,LESS: DIRECTLY RELATED COSTS,Direct Labor (Pakyaw),8485.0
+2024,Sep 2024,LESS: DIRECTLY RELATED COSTS,Direct Labor (Pakyaw),26411.0
+2024,Oct 2024,LESS: DIRECTLY RELATED COSTS,Direct Labor (Pakyaw),100121.34
+2024,Nov 2024,LESS: DIRECTLY RELATED COSTS,Direct Labor (Pakyaw),55376.0
+2024,Dec 2024,LESS: DIRECTLY RELATED COSTS,Direct Labor (Pakyaw),41773.0
+2024,TOTAL,LESS: DIRECTLY RELATED COSTS,Direct Labor (Pakyaw),232166.34
+2024,Aug 2024,LESS: DIRECTLY RELATED COSTS,Electricity,205092.98
+2024,Sep 2024,LESS: DIRECTLY RELATED COSTS,Electricity,366844.82
+2024,Oct 2024,LESS: DIRECTLY RELATED COSTS,Electricity,643171.07
+2024,Nov 2024,LESS: DIRECTLY RELATED COSTS,Electricity,464843.43
+2024,Dec 2024,LESS: DIRECTLY RELATED COSTS,Electricity,239941.59
+2024,TOTAL,LESS: DIRECTLY RELATED COSTS,Electricity,1919893.89
+2024,Sep 2024,LESS: DIRECTLY RELATED COSTS,Indirect Labor,39903.0
+2024,Oct 2024,LESS: DIRECTLY RELATED COSTS,Indirect Labor,73182.0
+2024,Nov 2024,LESS: DIRECTLY RELATED COSTS,Indirect Labor,34513.0
+2024,Dec 2024,LESS: DIRECTLY RELATED COSTS,Indirect Labor,17760.0
+2024,TOTAL,LESS: DIRECTLY RELATED COSTS,Indirect Labor,165358.0
+2024,Sep 2024,LESS: DIRECTLY RELATED COSTS,Plant Supplies-Diesel,17898.0
+2024,Oct 2024,LESS: DIRECTLY RELATED COSTS,Plant Supplies-Diesel,10000.0
+2024,TOTAL,LESS: DIRECTLY RELATED COSTS,Plant Supplies-Diesel,27898.0
+2024,Aug 2024,LESS: DIRECTLY RELATED COSTS,Plant Supplies,36293.33
+2024,Sep 2024,LESS: DIRECTLY RELATED COSTS,Plant Supplies,27966.67
+2024,Oct 2024,LESS: DIRECTLY RELATED COSTS,Plant Supplies,41428.0
+2024,Nov 2024,LESS: DIRECTLY RELATED COSTS,Plant Supplies,49393.31
+2024,Dec 2024,LESS: DIRECTLY RELATED COSTS,Plant Supplies,23530.0
+2024,TOTAL,LESS: DIRECTLY RELATED COSTS,Plant Supplies,178611.31
+2024,Aug 2024,LESS: DIRECTLY RELATED COSTS,Total Directly Related Costs,693301.75
+2024,Sep 2024,LESS: DIRECTLY RELATED COSTS,Total Directly Related Costs,1695904.75
+2024,Oct 2024,LESS: DIRECTLY RELATED COSTS,Total Directly Related Costs,1443912.39
+2024,Nov 2024,LESS: DIRECTLY RELATED COSTS,Total Directly Related Costs,1051289.46
+2024,Dec 2024,LESS: DIRECTLY RELATED COSTS,Total Directly Related Costs,1270490.06
+2024,TOTAL,LESS: DIRECTLY RELATED COSTS,Total Directly Related Costs,6154898.41
+2024,Aug 2024,LESS: DIRECTLY RELATED COSTS,GROSS PROFIT,-160185.75
+2024,Sep 2024,LESS: DIRECTLY RELATED COSTS,GROSS PROFIT,33317.25
+2024,Oct 2024,LESS: DIRECTLY RELATED COSTS,GROSS PROFIT,248848.0
+2024,Nov 2024,LESS: DIRECTLY RELATED COSTS,GROSS PROFIT,360726.82
+2024,Dec 2024,LESS: DIRECTLY RELATED COSTS,GROSS PROFIT,313285.28
+2024,TOTAL,LESS: DIRECTLY RELATED COSTS,GROSS PROFIT,795991.6
+2024,Aug 2024,ADMINISTRATIVE EXPENSES,Depreciation Expense,61071.11
+2024,Sep 2024,ADMINISTRATIVE EXPENSES,Depreciation Expense,58643.65
+2024,Oct 2024,ADMINISTRATIVE EXPENSES,Depreciation Expense,56977.61
+2024,Nov 2024,ADMINISTRATIVE EXPENSES,Depreciation Expense,57612.99
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,Depreciation Expense,56974.19
+2024,TOTAL,ADMINISTRATIVE EXPENSES,Depreciation Expense,291279.55
+2024,Sep 2024,ADMINISTRATIVE EXPENSES,Food and Non Food (Representation),4679.3
+2024,Oct 2024,ADMINISTRATIVE EXPENSES,Food and Non Food (Representation),967.0
+2024,Nov 2024,ADMINISTRATIVE EXPENSES,Food and Non Food (Representation),255.0
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,Food and Non Food (Representation),2514.6
+2024,TOTAL,ADMINISTRATIVE EXPENSES,Food and Non Food (Representation),8415.9
+2024,Aug 2024,ADMINISTRATIVE EXPENSES,Freight Out,275.0
+2024,Sep 2024,ADMINISTRATIVE EXPENSES,Freight Out,1255.0
+2024,Oct 2024,ADMINISTRATIVE EXPENSES,Freight Out,741.0
+2024,Nov 2024,ADMINISTRATIVE EXPENSES,Freight Out,420.0
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,Freight Out,825.0
+2024,TOTAL,ADMINISTRATIVE EXPENSES,Freight Out,3516.0
+2024,Aug 2024,ADMINISTRATIVE EXPENSES,"Gasoline, Oil and Lubricants",5400.0
+2024,Sep 2024,ADMINISTRATIVE EXPENSES,"Gasoline, Oil and Lubricants",8721.8
+2024,Oct 2024,ADMINISTRATIVE EXPENSES,"Gasoline, Oil and Lubricants",18350.0
+2024,Nov 2024,ADMINISTRATIVE EXPENSES,"Gasoline, Oil and Lubricants",8000.0
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,"Gasoline, Oil and Lubricants",7000.0
+2024,TOTAL,ADMINISTRATIVE EXPENSES,"Gasoline, Oil and Lubricants",47471.8
+2024,Aug 2024,ADMINISTRATIVE EXPENSES,Insurance,6229.88
+2024,Sep 2024,ADMINISTRATIVE EXPENSES,Insurance,6229.87
+2024,Oct 2024,ADMINISTRATIVE EXPENSES,Insurance,2239.73
+2024,Nov 2024,ADMINISTRATIVE EXPENSES,Insurance,2239.73
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,Insurance,2239.73
+2024,TOTAL,ADMINISTRATIVE EXPENSES,Insurance,19178.94
+2024,Sep 2024,ADMINISTRATIVE EXPENSES,Miscellaneous Expense,25.0
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,Miscellaneous Expense,3775.5
+2024,TOTAL,ADMINISTRATIVE EXPENSES,Miscellaneous Expense,3800.5
+2024,Aug 2024,ADMINISTRATIVE EXPENSES,Office Supplies Expenses,405.0
+2024,Sep 2024,ADMINISTRATIVE EXPENSES,Office Supplies Expenses,4125.0
+2024,Oct 2024,ADMINISTRATIVE EXPENSES,Office Supplies Expenses,1417.0
+2024,Nov 2024,ADMINISTRATIVE EXPENSES,Office Supplies Expenses,251.0
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,Office Supplies Expenses,887.0
+2024,TOTAL,ADMINISTRATIVE EXPENSES,Office Supplies Expenses,7085.0
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,Other Bon. & Allow. - Cash Gift,50000.0
+2024,TOTAL,ADMINISTRATIVE EXPENSES,Other Bon. & Allow. - Cash Gift,50000.0
+2024,Aug 2024,ADMINISTRATIVE EXPENSES,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2024,Sep 2024,ADMINISTRATIVE EXPENSES,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2024,Oct 2024,ADMINISTRATIVE EXPENSES,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2024,Nov 2024,ADMINISTRATIVE EXPENSES,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2024,TOTAL,ADMINISTRATIVE EXPENSES,Other Bon. & Allow. - 13th Month Alloc.,35622.5
+2024,Aug 2024,ADMINISTRATIVE EXPENSES,"SSS, HDMF, PhilHealth",1500.0
+2024,Sep 2024,ADMINISTRATIVE EXPENSES,"SSS, HDMF, PhilHealth",9622.5
+2024,Oct 2024,ADMINISTRATIVE EXPENSES,"SSS, HDMF, PhilHealth",12027.5
+2024,Nov 2024,ADMINISTRATIVE EXPENSES,"SSS, HDMF, PhilHealth",9527.5
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,"SSS, HDMF, PhilHealth",9527.5
+2024,TOTAL,ADMINISTRATIVE EXPENSES,"SSS, HDMF, PhilHealth",42205.0
+2024,Aug 2024,ADMINISTRATIVE EXPENSES,Repairs & Maintenance Expenses,250.0
+2024,Sep 2024,ADMINISTRATIVE EXPENSES,Repairs & Maintenance Expenses,75151.0
+2024,Oct 2024,ADMINISTRATIVE EXPENSES,Repairs & Maintenance Expenses,18088.45
+2024,Nov 2024,ADMINISTRATIVE EXPENSES,Repairs & Maintenance Expenses,139478.0
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,Repairs & Maintenance Expenses,10241.0
+2024,TOTAL,ADMINISTRATIVE EXPENSES,Repairs & Maintenance Expenses,243208.45
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,Representation and Entertainment,15000.0
+2024,TOTAL,ADMINISTRATIVE EXPENSES,Representation and Entertainment,15000.0
+2024,Aug 2024,ADMINISTRATIVE EXPENSES,Salaries Expense,42290.59
+2024,Sep 2024,ADMINISTRATIVE EXPENSES,Salaries Expense,95304.96
+2024,Oct 2024,ADMINISTRATIVE EXPENSES,Salaries Expense,87422.07
+2024,Nov 2024,ADMINISTRATIVE EXPENSES,Salaries Expense,85154.13
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,Salaries Expense,84531.31
+2024,TOTAL,ADMINISTRATIVE EXPENSES,Salaries Expense,394703.06
+2024,Oct 2024,ADMINISTRATIVE EXPENSES,"Taxes, Duties & Licenses",14467.0
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,"Taxes, Duties & Licenses",5340.0
+2024,TOTAL,ADMINISTRATIVE EXPENSES,"Taxes, Duties & Licenses",19807.0
+2024,Aug 2024,ADMINISTRATIVE EXPENSES,Travel Expense,885.0
+2024,Oct 2024,ADMINISTRATIVE EXPENSES,Travel Expense,275.0
+2024,Nov 2024,ADMINISTRATIVE EXPENSES,Travel Expense,186.0
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,Travel Expense,1248.0
+2024,TOTAL,ADMINISTRATIVE EXPENSES,Travel Expense,2594.0
+2024,Aug 2024,ADMINISTRATIVE EXPENSES,Water,400.0
+2024,Sep 2024,ADMINISTRATIVE EXPENSES,Water,1765.0
+2024,Oct 2024,ADMINISTRATIVE EXPENSES,Water,1775.0
+2024,Nov 2024,ADMINISTRATIVE EXPENSES,Water,1420.0
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,Water,1700.0
+2024,TOTAL,ADMINISTRATIVE EXPENSES,Water,7060.0
+2024,Aug 2024,ADMINISTRATIVE EXPENSES,Total Fixed Expenses,125831.08
+2024,Sep 2024,ADMINISTRATIVE EXPENSES,Total Fixed Expenses,272647.58
+2024,Oct 2024,ADMINISTRATIVE EXPENSES,Total Fixed Expenses,221871.86
+2024,Nov 2024,ADMINISTRATIVE EXPENSES,Total Fixed Expenses,311668.85
+2024,Dec 2024,ADMINISTRATIVE EXPENSES,Total Fixed Expenses,258928.33
+2024,TOTAL,ADMINISTRATIVE EXPENSES,Total Fixed Expenses,1190947.7
+2024,Aug 2024,Net / Summary,NET OPERATING INCOME,-286016.83
+2024,Sep 2024,Net / Summary,NET OPERATING INCOME,-239330.33
+2024,Oct 2024,Net / Summary,NET OPERATING INCOME,26976.14
+2024,Nov 2024,Net / Summary,NET OPERATING INCOME,49057.97
+2024,Dec 2024,Net / Summary,NET OPERATING INCOME,54356.95
+2024,TOTAL,Net / Summary,NET OPERATING INCOME,-394956.1
+2024,Aug 2024,Net / Summary,NET SURPLUS (LOSS),-286016.83
+2024,Sep 2024,Net / Summary,NET SURPLUS (LOSS),-239330.33
+2024,Oct 2024,Net / Summary,NET SURPLUS (LOSS),26976.14
+2024,Nov 2024,Net / Summary,NET SURPLUS (LOSS),49057.97
+2024,Dec 2024,Net / Summary,NET SURPLUS (LOSS),54356.95
+2024,TOTAL,Net / Summary,NET SURPLUS (LOSS),-394956.1
+2025,Jan,Income,Rice,514668.0
+2025,Feb,Income,Rice,500853.0
+2025,Mar,Income,Rice,557221.0
+2025,Apr,Income,Rice,394375.0
+2025,May,Income,Rice,402705.0
+2025,Jun,Income,Rice,599257.0
+2025,Jul,Income,Rice,541913.0
+2025,Aug,Income,Rice,1254430.0
+2025,Sep,Income,Rice,300408.0
+2025,Oct,Income,Rice,336886.0
+2025,Nov,Income,Rice,1385454.0
+2025,Dec,Income,Rice,1425215.0
+2025,TOTAL,Income,Rice,8213385.0
+2025,Jan,Income,By-Products,24850.0
+2025,Feb,Income,By-Products,14120.0
+2025,Mar,Income,By-Products,1800.0
+2025,Apr,Income,By-Products,3270.0
+2025,May,Income,By-Products,43730.0
+2025,Jun,Income,By-Products,26710.0
+2025,Jul,Income,By-Products,7228.0
+2025,Aug,Income,By-Products,9774.0
+2025,Sep,Income,By-Products,9699.0
+2025,Oct,Income,By-Products,25136.0
+2025,Nov,Income,By-Products,41200.0
+2025,Dec,Income,By-Products,63400.0
+2025,TOTAL,Income,By-Products,270917.0
+2025,Jan,Income,Custom Milling,321230.8
+2025,Feb,Income,Custom Milling,198089.0
+2025,Mar,Income,Custom Milling,171357.0
+2025,Apr,Income,Custom Milling,81670.0
+2025,May,Income,Custom Milling,187870.0
+2025,Jun,Income,Custom Milling,89420.8
+2025,Jul,Income,Custom Milling,179285.0
+2025,Aug,Income,Custom Milling,267681.0
+2025,Sep,Income,Custom Milling,372513.0
+2025,Oct,Income,Custom Milling,387054.0
+2025,Nov,Income,Custom Milling,455843.0
+2025,Dec,Income,Custom Milling,545057.2
+2025,TOTAL,Income,Custom Milling,3257070.8
+2025,Jan,Income,Custom Drying,58942.75
+2025,Feb,Income,Custom Drying,102204.76
+2025,Mar,Income,Custom Drying,30638.75
+2025,Apr,Income,Custom Drying,23619.75
+2025,May,Income,Custom Drying,16268.75
+2025,Jun,Income,Custom Drying,5510.75
+2025,Aug,Income,Custom Drying,20370.0
+2025,Sep,Income,Custom Drying,398390.75
+2025,Oct,Income,Custom Drying,535445.41
+2025,Nov,Income,Custom Drying,66447.25
+2025,Dec,Income,Custom Drying,17636.25
+2025,TOTAL,Income,Custom Drying,1275475.17
+2025,Jan,Income,Trucking,0.0
+2025,Feb,Income,Trucking,3950.0
+2025,Mar,Income,Trucking,3111.2
+2025,Apr,Income,Trucking,11580.0
+2025,May,Income,Trucking,3420.0
+2025,Jun,Income,Trucking,940.0
+2025,Jul,Income,Trucking,10050.0
+2025,Aug,Income,Trucking,27135.0
+2025,Sep,Income,Trucking,64667.0
+2025,Oct,Income,Trucking,35887.5
+2025,Nov,Income,Trucking,27735.0
+2025,Dec,Income,Trucking,8775.0
+2025,TOTAL,Income,Trucking,197250.7
+2025,Mar,Income,Warehousing/Labor,1362.0
+2025,Jun,Income,Warehousing/Labor,780.0
+2025,Sep,Income,Warehousing/Labor,8732.0
+2025,Oct,Income,Warehousing/Labor,18955.0
+2025,Nov,Income,Warehousing/Labor,9131.5
+2025,Dec,Income,Warehousing/Labor,16518.5
+2025,TOTAL,Income,Warehousing/Labor,55479.0
+2025,Jan,Income,Total Income,919691.55
+2025,Feb,Income,Total Income,819216.76
+2025,Mar,Income,Total Income,765489.95
+2025,Apr,Income,Total Income,514514.75
+2025,May,Income,Total Income,653993.75
+2025,Jun,Income,Total Income,722618.55
+2025,Jul,Income,Total Income,738476.0
+2025,Aug,Income,Total Income,1579390.0
+2025,Sep,Income,Total Income,1154409.75
+2025,Oct,Income,Total Income,1339363.91
+2025,Nov,Income,Total Income,1985810.75
+2025,Dec,Income,Total Income,2076601.95
+2025,TOTAL,Income,Total Income,13269577.67
+2025,Jan,Directly Related Costs,Raw Materials (Palay),424987.51
+2025,Feb,Directly Related Costs,Raw Materials (Palay),420283.0
+2025,Mar,Directly Related Costs,Raw Materials (Palay),449760.2
+2025,Apr,Directly Related Costs,Raw Materials (Palay),327949.82
+2025,May,Directly Related Costs,Raw Materials (Palay),329372.07
+2025,Jun,Directly Related Costs,Raw Materials (Palay),526593.71
+2025,Jul,Directly Related Costs,Raw Materials (Palay),455123.14
+2025,Aug,Directly Related Costs,Raw Materials (Palay),1064633.51
+2025,Sep,Directly Related Costs,Raw Materials (Palay),229675.33
+2025,Oct,Directly Related Costs,Raw Materials (Palay),242395.66
+2025,Nov,Directly Related Costs,Raw Materials (Palay),1195518.82
+2025,Dec,Directly Related Costs,Raw Materials (Palay),1264123.36
+2025,TOTAL,Directly Related Costs,Raw Materials (Palay),6930416.13
+2025,Oct,Directly Related Costs,Freight In,456.8
+2025,TOTAL,Directly Related Costs,Freight In,456.8
+2025,Jan,Directly Related Costs,Direct Labor (Pakyaw),38417.0
+2025,Feb,Directly Related Costs,Direct Labor (Pakyaw),43342.0
+2025,Mar,Directly Related Costs,Direct Labor (Pakyaw),26730.0
+2025,Apr,Directly Related Costs,Direct Labor (Pakyaw),15364.0
+2025,May,Directly Related Costs,Direct Labor (Pakyaw),11717.0
+2025,Jun,Directly Related Costs,Direct Labor (Pakyaw),8687.0
+2025,Aug,Directly Related Costs,Direct Labor (Pakyaw),39515.5
+2025,Sep,Directly Related Costs,Direct Labor (Pakyaw),82917.5
+2025,Oct,Directly Related Costs,Direct Labor (Pakyaw),160496.0
+2025,Nov,Directly Related Costs,Direct Labor (Pakyaw),85884.0
+2025,Dec,Directly Related Costs,Direct Labor (Pakyaw),94072.0
+2025,TOTAL,Directly Related Costs,Direct Labor (Pakyaw),607142.0
+2025,Jan,Directly Related Costs,Electricity,314210.39
+2025,Feb,Directly Related Costs,Electricity,414441.83
+2025,Mar,Directly Related Costs,Electricity,62609.6
+2025,Apr,Directly Related Costs,Electricity,218426.92
+2025,May,Directly Related Costs,Electricity,203932.38
+2025,Jun,Directly Related Costs,Electricity,205870.64
+2025,Jul,Directly Related Costs,Electricity,178678.43
+2025,Aug,Directly Related Costs,Electricity,206153.8
+2025,Sep,Directly Related Costs,Electricity,465824.51
+2025,Oct,Directly Related Costs,Electricity,535383.46
+2025,Nov,Directly Related Costs,Electricity,317174.37
+2025,Dec,Directly Related Costs,Electricity,338074.85
+2025,TOTAL,Directly Related Costs,Electricity,3460781.18
+2025,Jan,Directly Related Costs,Indirect Labor,30575.0
+2025,Feb,Directly Related Costs,Indirect Labor,16320.0
+2025,Mar,Directly Related Costs,Indirect Labor,28400.0
+2025,Apr,Directly Related Costs,Indirect Labor,21696.0
+2025,May,Directly Related Costs,Indirect Labor,21180.0
+2025,Jun,Directly Related Costs,Indirect Labor,20880.0
+2025,Jul,Directly Related Costs,Indirect Labor,24600.0
+2025,Aug,Directly Related Costs,Indirect Labor,36576.0
+2025,Sep,Directly Related Costs,Indirect Labor,99533.0
+2025,Oct,Directly Related Costs,Indirect Labor,61920.0
+2025,Nov,Directly Related Costs,Indirect Labor,22860.0
+2025,Dec,Directly Related Costs,Indirect Labor,13730.0
+2025,TOTAL,Directly Related Costs,Indirect Labor,398270.0
+2025,Jan,Directly Related Costs,Plant Supplies,14648.67
+2025,Feb,Directly Related Costs,Plant Supplies,4368.34
+2025,Mar,Directly Related Costs,Plant Supplies,2570.67
+2025,Apr,Directly Related Costs,Plant Supplies,2586.67
+2025,May,Directly Related Costs,Plant Supplies,4306.66
+2025,Jun,Directly Related Costs,Plant Supplies,3003.33
+2025,Jul,Directly Related Costs,Plant Supplies,4887.33
+2025,Aug,Directly Related Costs,Plant Supplies,9821.67
+2025,Sep,Directly Related Costs,Plant Supplies,9800.0
+2025,Oct,Directly Related Costs,Plant Supplies,8233.01
+2025,Nov,Directly Related Costs,Plant Supplies,30722.99
+2025,Dec,Directly Related Costs,Plant Supplies,29916.33
+2025,TOTAL,Directly Related Costs,Plant Supplies,124865.67
+2025,Jan,Directly Related Costs,Total Directly Related Costs,822838.57
+2025,Feb,Directly Related Costs,Total Directly Related Costs,898755.17
+2025,Mar,Directly Related Costs,Total Directly Related Costs,570070.47
+2025,Apr,Directly Related Costs,Total Directly Related Costs,586023.41
+2025,May,Directly Related Costs,Total Directly Related Costs,570508.11
+2025,Jun,Directly Related Costs,Total Directly Related Costs,765034.68
+2025,Jul,Directly Related Costs,Total Directly Related Costs,663288.9
+2025,Aug,Directly Related Costs,Total Directly Related Costs,1356700.48
+2025,Sep,Directly Related Costs,Total Directly Related Costs,887750.34
+2025,Oct,Directly Related Costs,Total Directly Related Costs,1008884.93
+2025,Nov,Directly Related Costs,Total Directly Related Costs,1652160.18
+2025,Dec,Directly Related Costs,Total Directly Related Costs,1739916.54
+2025,TOTAL,Directly Related Costs,Total Directly Related Costs,11521931.78
+2025,Jan,Directly Related Costs,GROSS PROFIT,96852.98
+2025,Feb,Directly Related Costs,GROSS PROFIT,-79538.41
+2025,Mar,Directly Related Costs,GROSS PROFIT,195419.48
+2025,Apr,Directly Related Costs,GROSS PROFIT,-71508.66
+2025,May,Directly Related Costs,GROSS PROFIT,83485.64
+2025,Jun,Directly Related Costs,GROSS PROFIT,-42416.13
+2025,Jul,Directly Related Costs,GROSS PROFIT,75187.1
+2025,Aug,Directly Related Costs,GROSS PROFIT,222689.52
+2025,Sep,Directly Related Costs,GROSS PROFIT,266659.41
+2025,Oct,Directly Related Costs,GROSS PROFIT,330478.98
+2025,Nov,Directly Related Costs,GROSS PROFIT,333650.57
+2025,Dec,Directly Related Costs,GROSS PROFIT,336685.41
+2025,TOTAL,Directly Related Costs,GROSS PROFIT,1747645.89
+2025,Apr,Administrative / Fixed Expenses,Communications Expense,1706.0
+2025,May,Administrative / Fixed Expenses,Communications Expense,1699.0
+2025,Jun,Administrative / Fixed Expenses,Communications Expense,1753.81
+2025,Jul,Administrative / Fixed Expenses,Communications Expense,1741.0
+2025,Aug,Administrative / Fixed Expenses,Communications Expense,1727.0
+2025,Oct,Administrative / Fixed Expenses,Communications Expense,1748.0
+2025,Nov,Administrative / Fixed Expenses,Communications Expense,1706.0
+2025,Dec,Administrative / Fixed Expenses,Communications Expense,1706.0
+2025,TOTAL,Administrative / Fixed Expenses,Communications Expense,13786.81
+2025,Dec,Administrative / Fixed Expenses,Clothing Expense,12090.0
+2025,TOTAL,Administrative / Fixed Expenses,Clothing Expense,12090.0
+2025,Jan,Administrative / Fixed Expenses,Depreciation Expense,54550.53
+2025,Feb,Administrative / Fixed Expenses,Depreciation Expense,54550.61
+2025,Mar,Administrative / Fixed Expenses,Depreciation Expense,51488.03
+2025,Apr,Administrative / Fixed Expenses,Depreciation Expense,51488.03
+2025,May,Administrative / Fixed Expenses,Depreciation Expense,48309.03
+2025,Jun,Administrative / Fixed Expenses,Depreciation Expense,48049.03
+2025,Jul,Administrative / Fixed Expenses,Depreciation Expense,48048.91
+2025,Aug,Administrative / Fixed Expenses,Depreciation Expense,48944.86
+2025,Sep,Administrative / Fixed Expenses,Depreciation Expense,48924.92
+2025,Oct,Administrative / Fixed Expenses,Depreciation Expense,38478.75
+2025,Nov,Administrative / Fixed Expenses,Depreciation Expense,38662.04
+2025,Dec,Administrative / Fixed Expenses,Depreciation Expense,37340.84
+2025,TOTAL,Administrative / Fixed Expenses,Depreciation Expense,568835.58
+2025,Jan,Administrative / Fixed Expenses,Food and Non Food,1876.7
+2025,Feb,Administrative / Fixed Expenses,Food and Non Food,5857.0
+2025,Mar,Administrative / Fixed Expenses,Food and Non Food,895.0
+2025,Apr,Administrative / Fixed Expenses,Food and Non Food,1098.0
+2025,May,Administrative / Fixed Expenses,Food and Non Food,2151.85
+2025,Jun,Administrative / Fixed Expenses,Food and Non Food,732.0
+2025,Aug,Administrative / Fixed Expenses,Food and Non Food,7421.7
+2025,Sep,Administrative / Fixed Expenses,Food and Non Food,904.5
+2025,Oct,Administrative / Fixed Expenses,Food and Non Food,499.4
+2025,Dec,Administrative / Fixed Expenses,Food and Non Food,360.0
+2025,TOTAL,Administrative / Fixed Expenses,Food and Non Food,21796.15
+2025,Jan,Administrative / Fixed Expenses,Freight Out,1475.0
+2025,Feb,Administrative / Fixed Expenses,Freight Out,355.0
+2025,Mar,Administrative / Fixed Expenses,Freight Out,480.0
+2025,Apr,Administrative / Fixed Expenses,Freight Out,1484.0
+2025,May,Administrative / Fixed Expenses,Freight Out,610.0
+2025,Jun,Administrative / Fixed Expenses,Freight Out,400.0
+2025,Jul,Administrative / Fixed Expenses,Freight Out,565.0
+2025,Sep,Administrative / Fixed Expenses,Freight Out,400.0
+2025,Nov,Administrative / Fixed Expenses,Freight Out,1260.0
+2025,Dec,Administrative / Fixed Expenses,Freight Out,405.0
+2025,TOTAL,Administrative / Fixed Expenses,Freight Out,7434.0
+2025,Jan,Administrative / Fixed Expenses,"Gasoline, Oil and Lubricants",10519.0
+2025,Feb,Administrative / Fixed Expenses,"Gasoline, Oil and Lubricants",8732.0
+2025,Mar,Administrative / Fixed Expenses,"Gasoline, Oil and Lubricants",8880.0
+2025,Apr,Administrative / Fixed Expenses,"Gasoline, Oil and Lubricants",5585.26
+2025,May,Administrative / Fixed Expenses,"Gasoline, Oil and Lubricants",4600.0
+2025,Jun,Administrative / Fixed Expenses,"Gasoline, Oil and Lubricants",11150.0
+2025,Jul,Administrative / Fixed Expenses,"Gasoline, Oil and Lubricants",19127.0
+2025,Aug,Administrative / Fixed Expenses,"Gasoline, Oil and Lubricants",17070.0
+2025,Sep,Administrative / Fixed Expenses,"Gasoline, Oil and Lubricants",17670.94
+2025,Oct,Administrative / Fixed Expenses,"Gasoline, Oil and Lubricants",16170.0
+2025,Nov,Administrative / Fixed Expenses,"Gasoline, Oil and Lubricants",15431.0
+2025,Dec,Administrative / Fixed Expenses,"Gasoline, Oil and Lubricants",10140.91
+2025,TOTAL,Administrative / Fixed Expenses,"Gasoline, Oil and Lubricants",145076.11
+2025,Jan,Administrative / Fixed Expenses,Insurance,2239.73
+2025,Feb,Administrative / Fixed Expenses,Insurance,2239.73
+2025,Mar,Administrative / Fixed Expenses,Insurance,2239.73
+2025,Apr,Administrative / Fixed Expenses,Insurance,2239.73
+2025,May,Administrative / Fixed Expenses,Insurance,2239.67
+2025,Jul,Administrative / Fixed Expenses,Insurance,3920.61
+2025,Aug,Administrative / Fixed Expenses,Insurance,6056.39
+2025,Sep,Administrative / Fixed Expenses,Insurance,6056.39
+2025,Oct,Administrative / Fixed Expenses,Insurance,6056.39
+2025,Nov,Administrative / Fixed Expenses,Insurance,6056.39
+2025,Dec,Administrative / Fixed Expenses,Insurance,6056.39
+2025,TOTAL,Administrative / Fixed Expenses,Insurance,45401.15
+2025,Jul,Administrative / Fixed Expenses,Indemnities,198000.0
+2025,TOTAL,Administrative / Fixed Expenses,Indemnities,198000.0
+2025,Feb,Administrative / Fixed Expenses,Miscellaneous Expense,1045.0
+2025,May,Administrative / Fixed Expenses,Miscellaneous Expense,300.0
+2025,Jul,Administrative / Fixed Expenses,Miscellaneous Expense,5510.0
+2025,Sep,Administrative / Fixed Expenses,Miscellaneous Expense,360.0
+2025,Oct,Administrative / Fixed Expenses,Miscellaneous Expense,820.0
+2025,Dec,Administrative / Fixed Expenses,Miscellaneous Expense,2750.0
+2025,TOTAL,Administrative / Fixed Expenses,Miscellaneous Expense,10785.0
+2025,Jan,Administrative / Fixed Expenses,Office Supplies Expenses,1718.0
+2025,Feb,Administrative / Fixed Expenses,Office Supplies Expenses,2558.0
+2025,Mar,Administrative / Fixed Expenses,Office Supplies Expenses,752.0
+2025,Apr,Administrative / Fixed Expenses,Office Supplies Expenses,520.0
+2025,May,Administrative / Fixed Expenses,Office Supplies Expenses,1080.75
+2025,Jun,Administrative / Fixed Expenses,Office Supplies Expenses,110.0
+2025,Jul,Administrative / Fixed Expenses,Office Supplies Expenses,2093.0
+2025,Aug,Administrative / Fixed Expenses,Office Supplies Expenses,5245.0
+2025,Sep,Administrative / Fixed Expenses,Office Supplies Expenses,2028.0
+2025,Oct,Administrative / Fixed Expenses,Office Supplies Expenses,509.0
+2025,Nov,Administrative / Fixed Expenses,Office Supplies Expenses,398.0
+2025,Dec,Administrative / Fixed Expenses,Office Supplies Expenses,1245.0
+2025,TOTAL,Administrative / Fixed Expenses,Office Supplies Expenses,18256.75
+2025,Jan,Administrative / Fixed Expenses,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2025,Feb,Administrative / Fixed Expenses,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2025,Mar,Administrative / Fixed Expenses,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2025,Apr,Administrative / Fixed Expenses,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2025,May,Administrative / Fixed Expenses,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2025,Jun,Administrative / Fixed Expenses,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2025,Jul,Administrative / Fixed Expenses,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2025,Aug,Administrative / Fixed Expenses,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2025,Sep,Administrative / Fixed Expenses,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2025,Oct,Administrative / Fixed Expenses,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2025,Nov,Administrative / Fixed Expenses,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2025,Dec,Administrative / Fixed Expenses,Other Bon. & Allow. - 13th Month Alloc.,7124.5
+2025,TOTAL,Administrative / Fixed Expenses,Other Bon. & Allow. - 13th Month Alloc.,85494.0
+2025,Jan,Administrative / Fixed Expenses,"SSS, HDMF, PhilHealth",13277.5
+2025,Feb,Administrative / Fixed Expenses,"SSS, HDMF, PhilHealth",9950.0
+2025,Mar,Administrative / Fixed Expenses,"SSS, HDMF, PhilHealth",9950.0
+2025,Apr,Administrative / Fixed Expenses,"SSS, HDMF, PhilHealth",13700.0
+2025,May,Administrative / Fixed Expenses,"SSS, HDMF, PhilHealth",9950.0
+2025,Jun,Administrative / Fixed Expenses,"SSS, HDMF, PhilHealth",9950.0
+2025,Jul,Administrative / Fixed Expenses,"SSS, HDMF, PhilHealth",13700.0
+2025,Aug,Administrative / Fixed Expenses,"SSS, HDMF, PhilHealth",9950.0
+2025,Sep,Administrative / Fixed Expenses,"SSS, HDMF, PhilHealth",9950.0
+2025,Oct,Administrative / Fixed Expenses,"SSS, HDMF, PhilHealth",13700.0
+2025,Nov,Administrative / Fixed Expenses,"SSS, HDMF, PhilHealth",9950.0
+2025,Dec,Administrative / Fixed Expenses,"SSS, HDMF, PhilHealth",9950.0
+2025,TOTAL,Administrative / Fixed Expenses,"SSS, HDMF, PhilHealth",133977.5
+2025,Jan,Administrative / Fixed Expenses,Professional Fees,34000.0
+2025,TOTAL,Administrative / Fixed Expenses,Professional Fees,34000.0
+2025,Jan,Administrative / Fixed Expenses,Repairs & Maintenance Expenses,16392.93
+2025,Feb,Administrative / Fixed Expenses,Repairs & Maintenance Expenses,6668.0
+2025,Mar,Administrative / Fixed Expenses,Repairs & Maintenance Expenses,2033.0
+2025,Apr,Administrative / Fixed Expenses,Repairs & Maintenance Expenses,370.0
+2025,May,Administrative / Fixed Expenses,Repairs & Maintenance Expenses,3900.0
+2025,Jun,Administrative / Fixed Expenses,Repairs & Maintenance Expenses,1100.0
+2025,Jul,Administrative / Fixed Expenses,Repairs & Maintenance Expenses,53575.0
+2025,Aug,Administrative / Fixed Expenses,Repairs & Maintenance Expenses,5921.0
+2025,Sep,Administrative / Fixed Expenses,Repairs & Maintenance Expenses,21561.0
+2025,Oct,Administrative / Fixed Expenses,Repairs & Maintenance Expenses,50840.0
+2025,Nov,Administrative / Fixed Expenses,Repairs & Maintenance Expenses,13309.0
+2025,Dec,Administrative / Fixed Expenses,Repairs & Maintenance Expenses,53882.0
+2025,TOTAL,Administrative / Fixed Expenses,Repairs & Maintenance Expenses,229551.93
+2025,Sep,Administrative / Fixed Expenses,Seminars and Training,18900.0
+2025,Dec,Administrative / Fixed Expenses,Seminars and Training,10000.0
+2025,TOTAL,Administrative / Fixed Expenses,Seminars and Training,28900.0
+2025,Jan,Administrative / Fixed Expenses,Salaries Expense,84943.16
+2025,Feb,Administrative / Fixed Expenses,Salaries Expense,85163.64
+2025,Mar,Administrative / Fixed Expenses,Salaries Expense,86791.2
+2025,Apr,Administrative / Fixed Expenses,Salaries Expense,87264.39
+2025,May,Administrative / Fixed Expenses,Salaries Expense,85494.0
+2025,Jun,Administrative / Fixed Expenses,Salaries Expense,85494.0
+2025,Jul,Administrative / Fixed Expenses,Salaries Expense,86618.89
+2025,Aug,Administrative / Fixed Expenses,Salaries Expense,90410.68
+2025,Sep,Administrative / Fixed Expenses,Salaries Expense,96086.62
+2025,Oct,Administrative / Fixed Expenses,Salaries Expense,90192.86
+2025,Nov,Administrative / Fixed Expenses,Salaries Expense,86488.6
+2025,Dec,Administrative / Fixed Expenses,Salaries Expense,86159.68
+2025,TOTAL,Administrative / Fixed Expenses,Salaries Expense,1051107.72
+2025,Jan,Administrative / Fixed Expenses,"Taxes, Duties & Licenses",9385.0
+2025,Feb,Administrative / Fixed Expenses,"Taxes, Duties & Licenses",3991.0
+2025,Jun,Administrative / Fixed Expenses,"Taxes, Duties & Licenses",10865.0
+2025,Dec,Administrative / Fixed Expenses,"Taxes, Duties & Licenses",4040.0
+2025,TOTAL,Administrative / Fixed Expenses,"Taxes, Duties & Licenses",28281.0
+2025,Jan,Administrative / Fixed Expenses,Travel Expense,1935.0
+2025,Feb,Administrative / Fixed Expenses,Travel Expense,794.0
+2025,Mar,Administrative / Fixed Expenses,Travel Expense,2078.0
+2025,Jun,Administrative / Fixed Expenses,Travel Expense,897.0
+2025,Aug,Administrative / Fixed Expenses,Travel Expense,298.0
+2025,Sep,Administrative / Fixed Expenses,Travel Expense,280.0
+2025,Dec,Administrative / Fixed Expenses,Travel Expense,940.0
+2025,TOTAL,Administrative / Fixed Expenses,Travel Expense,7222.0
+2025,Jan,Administrative / Fixed Expenses,Water,1375.0
+2025,Feb,Administrative / Fixed Expenses,Water,800.0
+2025,Mar,Administrative / Fixed Expenses,Water,1325.0
+2025,Apr,Administrative / Fixed Expenses,Water,1075.0
+2025,May,Administrative / Fixed Expenses,Water,1305.0
+2025,Jun,Administrative / Fixed Expenses,Water,925.0
+2025,Jul,Administrative / Fixed Expenses,Water,1050.0
+2025,Aug,Administrative / Fixed Expenses,Water,1500.0
+2025,Sep,Administrative / Fixed Expenses,Water,1225.0
+2025,Oct,Administrative / Fixed Expenses,Water,2250.0
+2025,Nov,Administrative / Fixed Expenses,Water,3420.0
+2025,Dec,Administrative / Fixed Expenses,Water,3095.0
+2025,TOTAL,Administrative / Fixed Expenses,Water,19345.0
+2025,Jan,Administrative / Fixed Expenses,Total Fixed Expenses,240812.05
+2025,Feb,Administrative / Fixed Expenses,Total Fixed Expenses,189828.48
+2025,Mar,Administrative / Fixed Expenses,Total Fixed Expenses,174036.46
+2025,Apr,Administrative / Fixed Expenses,Total Fixed Expenses,173654.91
+2025,May,Administrative / Fixed Expenses,Total Fixed Expenses,168763.8
+2025,Jun,Administrative / Fixed Expenses,Total Fixed Expenses,178550.34
+2025,Jul,Administrative / Fixed Expenses,Total Fixed Expenses,441073.91
+2025,Aug,Administrative / Fixed Expenses,Total Fixed Expenses,220569.13
+2025,Sep,Administrative / Fixed Expenses,Total Fixed Expenses,212571.87
+2025,Oct,Administrative / Fixed Expenses,Total Fixed Expenses,228388.9
+2025,Nov,Administrative / Fixed Expenses,Total Fixed Expenses,183805.53
+2025,Dec,Administrative / Fixed Expenses,Total Fixed Expenses,247285.32
+2025,TOTAL,Administrative / Fixed Expenses,Total Fixed Expenses,2659340.7
+2025,Jan,Net / Summary,NET OPERATING INCOME,-143959.07
+2025,Feb,Net / Summary,NET OPERATING INCOME,-269366.89
+2025,Mar,Net / Summary,NET OPERATING INCOME,21383.02
+2025,Apr,Net / Summary,NET OPERATING INCOME,-245163.57
+2025,May,Net / Summary,NET OPERATING INCOME,-85278.16
+2025,Jun,Net / Summary,NET OPERATING INCOME,-220966.47
+2025,Jul,Net / Summary,NET OPERATING INCOME,-365886.81
+2025,Aug,Net / Summary,NET OPERATING INCOME,2120.39
+2025,Sep,Net / Summary,NET OPERATING INCOME,54087.54
+2025,Oct,Net / Summary,NET OPERATING INCOME,102090.08
+2025,Nov,Net / Summary,NET OPERATING INCOME,149845.04
+2025,Dec,Net / Summary,NET OPERATING INCOME,89400.09
+2025,TOTAL,Net / Summary,NET OPERATING INCOME,-911694.81
+2025,Mar,Net / Summary,OTHER INCOME,2634.0
+2025,TOTAL,Net / Summary,OTHER INCOME,2634.0
+2025,Jan,Net / Summary,NET SURPLUS (LOSS),-143959.07
+2025,Feb,Net / Summary,NET SURPLUS (LOSS),-269366.89
+2025,Mar,Net / Summary,NET SURPLUS (LOSS),24017.02
+2025,Apr,Net / Summary,NET SURPLUS (LOSS),-245163.57
+2025,May,Net / Summary,NET SURPLUS (LOSS),-85278.16
+2025,Jun,Net / Summary,NET SURPLUS (LOSS),-220966.47
+2025,Jul,Net / Summary,NET SURPLUS (LOSS),-365886.81
+2025,Aug,Net / Summary,NET SURPLUS (LOSS),2120.39
+2025,Sep,Net / Summary,NET SURPLUS (LOSS),54087.54
+2025,Oct,Net / Summary,NET SURPLUS (LOSS),102090.08
+2025,Nov,Net / Summary,NET SURPLUS (LOSS),149845.04
+2025,Dec,Net / Summary,NET SURPLUS (LOSS),89400.09
+2025,TOTAL,Net / Summary,NET SURPLUS (LOSS),-909060.81
+2026,Jan 2026,INCOME,Rice,345234.0
+2026,Feb 2026,INCOME,Rice,716552.0
+2026,Mar 2026,INCOME,Rice,1155121.0
+2026,TOTAL,INCOME,Rice,2216907.0
+2026,Jan 2026,INCOME,By-Products,14300.0
+2026,Feb 2026,INCOME,By-Products,5200.0
+2026,Mar 2026,INCOME,By-Products,40130.0
+2026,TOTAL,INCOME,By-Products,59630.0
+2026,Jan 2026,INCOME,Custom Milling,281193.2
+2026,Feb 2026,INCOME,Custom Milling,389607.0
+2026,Mar 2026,INCOME,Custom Milling,375422.0
+2026,TOTAL,INCOME,Custom Milling,1046222.2
+2026,Jan 2026,INCOME,Custom Drying,30831.25
+2026,Feb 2026,INCOME,Custom Drying,289840.21
+2026,Mar 2026,INCOME,Custom Drying,65120.38
+2026,TOTAL,INCOME,Custom Drying,385791.84
+2026,Jan 2026,INCOME,Trucking,58150.0
+2026,Feb 2026,INCOME,Trucking,28225.0
+2026,Mar 2026,INCOME,Trucking,5057.0
+2026,TOTAL,INCOME,Trucking,91432.0
+2026,Jan 2026,INCOME,Warehousing/Labor,35617.0
+2026,Feb 2026,INCOME,Warehousing/Labor,7124.0
+2026,Mar 2026,INCOME,Warehousing/Labor,744.0
+2026,TOTAL,INCOME,Warehousing/Labor,43485.0
+2026,Jan 2026,INCOME,Total Income,765325.45
+2026,Feb 2026,INCOME,Total Income,1436548.21
+2026,Mar 2026,INCOME,Total Income,1641594.38
+2026,TOTAL,INCOME,Total Income,3843468.04
+2026,Jan 2026,LESS: DIRECTLY RELATED COSTS,Plant Supplies,27923.34
+2026,Feb 2026,LESS: DIRECTLY RELATED COSTS,Plant Supplies,26226.0
+2026,Mar 2026,LESS: DIRECTLY RELATED COSTS,Plant Supplies,490.0
+2026,TOTAL,LESS: DIRECTLY RELATED COSTS,Plant Supplies,54639.34
+2026,Jan 2026,LESS: DIRECTLY RELATED COSTS,Raw Materials (Palay),288538.54
+2026,Feb 2026,LESS: DIRECTLY RELATED COSTS,Raw Materials (Palay),576509.09
+2026,Mar 2026,LESS: DIRECTLY RELATED COSTS,Raw Materials (Palay),949422.44
+2026,TOTAL,LESS: DIRECTLY RELATED COSTS,Raw Materials (Palay),1814470.07
+2026,Jan 2026,LESS: DIRECTLY RELATED COSTS,Total Directly Related Costs,316461.88
+2026,Feb 2026,LESS: DIRECTLY RELATED COSTS,Total Directly Related Costs,602735.09
+2026,Mar 2026,LESS: DIRECTLY RELATED COSTS,Total Directly Related Costs,949912.44
+2026,TOTAL,LESS: DIRECTLY RELATED COSTS,Total Directly Related Costs,1869109.41
+2026,Jan 2026,LESS: DIRECTLY RELATED COSTS,GROSS PROFIT,448863.57
+2026,Feb 2026,LESS: DIRECTLY RELATED COSTS,GROSS PROFIT,833813.12
+2026,Mar 2026,LESS: DIRECTLY RELATED COSTS,GROSS PROFIT,691681.94
+2026,TOTAL,LESS: DIRECTLY RELATED COSTS,GROSS PROFIT,1974358.63
+2026,Jan 2026,PERSONAL SERVICES,Other Employee Benefits-HDMF,1500.0
+2026,Feb 2026,PERSONAL SERVICES,Other Employee Benefits-HDMF,1500.0
+2026,Mar 2026,PERSONAL SERVICES,Other Employee Benefits-HDMF,1500.0
+2026,TOTAL,PERSONAL SERVICES,Other Employee Benefits-HDMF,4500.0
+2026,Jan 2026,PERSONAL SERVICES,Other Employee Benefits-Philhealth,3750.0
+2026,TOTAL,PERSONAL SERVICES,Other Employee Benefits-Philhealth,3750.0
+2026,Jan 2026,PERSONAL SERVICES,Other Employment Benefits-13th&14th Month,14249.0
+2026,Feb 2026,PERSONAL SERVICES,Other Employment Benefits-13th&14th Month,14249.0
+2026,Mar 2026,PERSONAL SERVICES,Other Employment Benefits-13th&14th Month,14249.0
+2026,TOTAL,PERSONAL SERVICES,Other Employment Benefits-13th&14th Month,42747.0
+2026,Jan 2026,PERSONAL SERVICES,Other Employment Benefits-SSS,8450.0
+2026,Feb 2026,PERSONAL SERVICES,Other Employment Benefits-SSS,8450.0
+2026,Mar 2026,PERSONAL SERVICES,Other Employment Benefits-SSS,8450.0
+2026,TOTAL,PERSONAL SERVICES,Other Employment Benefits-SSS,25350.0
+2026,Jan 2026,PERSONAL SERVICES,Salaries & Wages - Casual,85494.0
+2026,Feb 2026,PERSONAL SERVICES,Salaries & Wages - Casual,85494.0
+2026,Mar 2026,PERSONAL SERVICES,Salaries & Wages - Casual,85494.0
+2026,TOTAL,PERSONAL SERVICES,Salaries & Wages - Casual,256482.0
+2026,Jan 2026,PERSONAL SERVICES,Total Personal Services,113443.0
+2026,Feb 2026,PERSONAL SERVICES,Total Personal Services,109693.0
+2026,Mar 2026,PERSONAL SERVICES,Total Personal Services,109693.0
+2026,TOTAL,PERSONAL SERVICES,Total Personal Services,332829.0
+2026,Jan 2026,MOE - Maintenance & Other Operating Expenses,Communication Expenses,1706.0
+2026,Feb 2026,MOE - Maintenance & Other Operating Expenses,Communication Expenses,1706.0
+2026,Mar 2026,MOE - Maintenance & Other Operating Expenses,Communication Expenses,2505.0
+2026,TOTAL,MOE - Maintenance & Other Operating Expenses,Communication Expenses,5917.0
+2026,Jan 2026,MOE - Maintenance & Other Operating Expenses,Depreciation Cost,36416.84
+2026,Feb 2026,MOE - Maintenance & Other Operating Expenses,Depreciation Cost,36267.08
+2026,Mar 2026,MOE - Maintenance & Other Operating Expenses,Depreciation Cost,34400.18
+2026,TOTAL,MOE - Maintenance & Other Operating Expenses,Depreciation Cost,107084.1
+2026,Jan 2026,MOE - Maintenance & Other Operating Expenses,"Gasoline, Oil & Lubricants",16000.0
+2026,Feb 2026,MOE - Maintenance & Other Operating Expenses,"Gasoline, Oil & Lubricants",14132.0
+2026,Mar 2026,MOE - Maintenance & Other Operating Expenses,"Gasoline, Oil & Lubricants",25137.0
+2026,TOTAL,MOE - Maintenance & Other Operating Expenses,"Gasoline, Oil & Lubricants",55269.0
+2026,Jan 2026,MOE - Maintenance & Other Operating Expenses,Insurance-Motor Vehicles,6056.39
+2026,Feb 2026,MOE - Maintenance & Other Operating Expenses,Insurance-Motor Vehicles,6056.39
+2026,Mar 2026,MOE - Maintenance & Other Operating Expenses,Insurance-Motor Vehicles,6056.39
+2026,TOTAL,MOE - Maintenance & Other Operating Expenses,Insurance-Motor Vehicles,18169.17
+2026,Jan 2026,MOE - Maintenance & Other Operating Expenses,Office Supplies Expenses,136.0
+2026,Feb 2026,MOE - Maintenance & Other Operating Expenses,Office Supplies Expenses,1110.0
+2026,Mar 2026,MOE - Maintenance & Other Operating Expenses,Office Supplies Expenses,330.0
+2026,TOTAL,MOE - Maintenance & Other Operating Expenses,Office Supplies Expenses,1576.0
+2026,Jan 2026,MOE - Maintenance & Other Operating Expenses,Other General Services-Direct Labor,64027.0
+2026,Feb 2026,MOE - Maintenance & Other Operating Expenses,Other General Services-Direct Labor,111288.0
+2026,Mar 2026,MOE - Maintenance & Other Operating Expenses,Other General Services-Direct Labor,79473.75
+2026,TOTAL,MOE - Maintenance & Other Operating Expenses,Other General Services-Direct Labor,254788.75
+2026,Jan 2026,MOE - Maintenance & Other Operating Expenses,Other General Services-Indirect Labor,26754.5
+2026,Feb 2026,MOE - Maintenance & Other Operating Expenses,Other General Services-Indirect Labor,38156.0
+2026,Mar 2026,MOE - Maintenance & Other Operating Expenses,Other General Services-Indirect Labor,25952.64
+2026,TOTAL,MOE - Maintenance & Other Operating Expenses,Other General Services-Indirect Labor,90863.14
+2026,Jan 2026,MOE - Maintenance & Other Operating Expenses,"Other MOE (Registration, taxes & Misc)",4255.0
+2026,Feb 2026,MOE - Maintenance & Other Operating Expenses,"Other MOE (Registration, taxes & Misc)",4767.15
+2026,TOTAL,MOE - Maintenance & Other Operating Expenses,"Other MOE (Registration, taxes & Misc)",9022.15
+2026,Mar 2026,MOE - Maintenance & Other Operating Expenses,Other Professional Services,33500.0
+2026,TOTAL,MOE - Maintenance & Other Operating Expenses,Other Professional Services,33500.0
+2026,Jan 2026,MOE - Maintenance & Other Operating Expenses,Other Supplies Expenses,1279.0
+2026,Mar 2026,MOE - Maintenance & Other Operating Expenses,Other Supplies Expenses,636.8
+2026,TOTAL,MOE - Maintenance & Other Operating Expenses,Other Supplies Expenses,1915.8
+2026,Jan 2026,MOE - Maintenance & Other Operating Expenses,Repairs & Maintenance-Heavy Equipment,11896.0
+2026,Feb 2026,MOE - Maintenance & Other Operating Expenses,Repairs & Maintenance-Heavy Equipment,1018.0
+2026,Mar 2026,MOE - Maintenance & Other Operating Expenses,Repairs & Maintenance-Heavy Equipment,1440.0
+2026,TOTAL,MOE - Maintenance & Other Operating Expenses,Repairs & Maintenance-Heavy Equipment,14354.0
+2026,Jan 2026,MOE - Maintenance & Other Operating Expenses,Repairs & Maintenance-Transportation,1300.0
+2026,Mar 2026,MOE - Maintenance & Other Operating Expenses,Repairs & Maintenance-Transportation,11465.0
+2026,TOTAL,MOE - Maintenance & Other Operating Expenses,Repairs & Maintenance-Transportation,12765.0
+2026,Feb 2026,MOE - Maintenance & Other Operating Expenses,Representation Expenses,402.0
+2026,Mar 2026,MOE - Maintenance & Other Operating Expenses,Representation Expenses,672.0
+2026,TOTAL,MOE - Maintenance & Other Operating Expenses,Representation Expenses,1074.0
+2026,Jan 2026,MOE - Maintenance & Other Operating Expenses,Travelling Expenses,1650.0
+2026,Feb 2026,MOE - Maintenance & Other Operating Expenses,Travelling Expenses,770.0
+2026,Mar 2026,MOE - Maintenance & Other Operating Expenses,Travelling Expenses,1380.0
+2026,TOTAL,MOE - Maintenance & Other Operating Expenses,Travelling Expenses,3800.0
+2026,Jan 2026,MOE - Maintenance & Other Operating Expenses,"Water, Ilumination, & Power Expenses",199809.98
+2026,Feb 2026,MOE - Maintenance & Other Operating Expenses,"Water, Ilumination, & Power Expenses",263669.25
+2026,Mar 2026,MOE - Maintenance & Other Operating Expenses,"Water, Ilumination, & Power Expenses",345091.73
+2026,TOTAL,MOE - Maintenance & Other Operating Expenses,"Water, Ilumination, & Power Expenses",808570.96
+2026,Jan 2026,MOE - Maintenance & Other Operating Expenses,Total Maintenance & Other Operating Expenses,371286.71
+2026,Feb 2026,MOE - Maintenance & Other Operating Expenses,Total Maintenance & Other Operating Expenses,479341.87
+2026,Mar 2026,MOE - Maintenance & Other Operating Expenses,Total Maintenance & Other Operating Expenses,568040.49
+2026,TOTAL,MOE - Maintenance & Other Operating Expenses,Total Maintenance & Other Operating Expenses,1418669.07
+2026,Jan 2026,Net / Summary,NET OPERATING INCOME,-35866.14
+2026,Feb 2026,Net / Summary,NET OPERATING INCOME,244778.25
+2026,Mar 2026,Net / Summary,NET OPERATING INCOME,13948.45
+2026,TOTAL,Net / Summary,NET OPERATING INCOME,222860.56
+2026,Jan 2026,Net / Summary,NET SURPLUS (LOSS),-35866.14
+2026,Feb 2026,Net / Summary,NET SURPLUS (LOSS),244778.25
+2026,Mar 2026,Net / Summary,NET SURPLUS (LOSS),13948.45
+2026,TOTAL,Net / Summary,NET SURPLUS (LOSS),222860.56
