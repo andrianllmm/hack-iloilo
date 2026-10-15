@@ -198,14 +198,15 @@ A short yes or no ("oo sige", "indi", "ok po") answers the sender's latest open 
 - A booking made `FOR <phone>` texts the client.
 - `YES`, `NO`, `MOVE` and `CANCEL` only work from the client's phone or `booked_by_phone`. Others get the help reply.
 - `MOVE` keeps the ref, service and kg, confirms the new date right away, and drops a pending M10 proposal.
+- Staff **Reschedule** on the booking list runs the same move (no ownership check) and texts the client and, if different, `booked_by_phone`.
 
 ```mermaid
 stateDiagram-v2
   [*] --> confirmed
   confirmed --> reschedule_proposed: M10 accepted
   reschedule_proposed --> confirmed: YES (new date) or NO (keeps date)
-  reschedule_proposed --> confirmed: MOVE (client's date)
-  confirmed --> confirmed: MOVE
+  reschedule_proposed --> confirmed: MOVE or staff reschedule
+  confirmed --> confirmed: MOVE or staff reschedule
   confirmed --> arrived: check-in
   confirmed --> cancelled
   confirmed --> no_show

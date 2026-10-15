@@ -168,7 +168,7 @@ export function BookingsView({
           </Button>
         </Empty>
       ) : groups.length ? (
-        <BookingsTable groups={groups} clients={clients} />
+        <BookingsTable groups={groups} clients={clients} today={today} />
       ) : filtered ? (
         <Empty className="border">
           <EmptyHeader>

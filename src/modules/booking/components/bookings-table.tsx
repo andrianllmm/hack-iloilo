@@ -33,6 +33,7 @@ import {
   type BookingGroup,
 } from "../logic";
 import type { BookingClient, BookingRow, BookingStatus } from "../types";
+import { RescheduleDialog } from "./reschedule-dialog";
 
 /** Rows shown per day before `+ N more`. */
 const GROUP_PREVIEW = 6;
@@ -52,12 +53,15 @@ const statusVariants: Record<
 export function BookingsTable({
   groups,
   clients,
+  today,
 }: {
   groups: BookingGroup[];
   clients: BookingClient[];
+  today: string;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [cancelling, setCancelling] = useState<BookingRow | null>(null);
+  const [rescheduling, setRescheduling] = useState<BookingRow | null>(null);
   const [pending, startTransition] = useTransition();
   const namesByPhone = useMemo(
     () => new Map(clients.map((client) => [client.phone, client.name])),
@@ -128,17 +132,30 @@ export function BookingsTable({
                           {statusLabels[row.status]}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
-                        {row.status === "confirmed" ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={`Cancel booking ${row.ref}`}
-                            onClick={() => setCancelling(row)}
-                          >
-                            Cancel
-                          </Button>
-                        ) : null}
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          {row.status === "confirmed" ||
+                          row.status === "reschedule_proposed" ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Reschedule booking ${row.ref}`}
+                              onClick={() => setRescheduling(row)}
+                            >
+                              Reschedule
+                            </Button>
+                          ) : null}
+                          {row.status === "confirmed" ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Cancel booking ${row.ref}`}
+                              onClick={() => setCancelling(row)}
+                            >
+                              Cancel
+                            </Button>
+                          ) : null}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -215,6 +232,11 @@ export function BookingsTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <RescheduleDialog
+        booking={rescheduling}
+        today={today}
+        onClose={() => setRescheduling(null)}
+      />
     </>
   );
 }

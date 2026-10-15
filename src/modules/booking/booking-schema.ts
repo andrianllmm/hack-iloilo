@@ -51,3 +51,10 @@ export const moveSmsSchema = cancelSmsSchema.extend({
   flexDays: bookingSchema.shape.flexDays.optional(),
 });
 export type MoveSmsInput = z.infer<typeof moveSmsSchema>;
+
+/** Staff reschedule form. Past dates are checked on the server against Manila today. */
+export const rescheduleSchema = cancelSmsSchema.extend({
+  date: z.iso.date("Choose a new date."),
+  flexDays: bookingSchema.shape.flexDays,
+});
+export type RescheduleInput = z.infer<typeof rescheduleSchema>;

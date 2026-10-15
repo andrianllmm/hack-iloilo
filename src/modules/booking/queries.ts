@@ -376,6 +376,30 @@ export async function notifyBookingConfirmation(
   }
 }
 
+function movedText(booking: Booking): string {
+  return fillTemplate(BOOKING_MOVED, {
+    ref: booking.ref,
+    date: formatDay(booking.scheduled_date),
+    service: serviceLabels[booking.service],
+    kg: booking.est_kg,
+  });
+}
+
+/** Texts a staff move to the client and, when someone else booked, the booker. */
+export async function notifyBookingMoved(
+  booking: Booking,
+  clientPhone: string,
+): Promise<void> {
+  const text = movedText(booking);
+  for (const phone of new Set([clientPhone, booking.booked_by_phone])) {
+    try {
+      await send(phone, text);
+    } catch (error) {
+      console.error("Unable to send booking move", error);
+    }
+  }
+}
+
 /** Trusted SMS router entrypoint, not a public staff server action. */
 export async function bookBySms(
   input: BookingSmsInput,
@@ -437,12 +461,7 @@ export async function moveBySms(
       return `IRPC: Booking ${ref} cannot be moved. Only upcoming bookings can be moved.`;
   }
   const { booking, clientPhone } = result;
-  const reply = fillTemplate(BOOKING_MOVED, {
-    ref: booking.ref,
-    date: formatDay(booking.scheduled_date),
-    service: serviceLabels[booking.service],
-    kg: booking.est_kg,
-  });
+  const reply = movedText(booking);
   // The booker moved it for the client: let the client know too.
   if (clientPhone !== ctx.phone) {
     try {

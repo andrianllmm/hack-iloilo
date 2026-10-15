@@ -11,15 +11,19 @@ import { normalizePhone } from "@/modules/accounts/logic";
 import { findOrRegisterByPhone } from "@/modules/accounts/queries";
 import {
   bookingSchema,
+  rescheduleSchema,
   webBookingSchema,
   type BookingInput,
+  type RescheduleInput,
   type WebBookingInput,
 } from "./booking-schema";
 import {
   bookingClient,
   cancelBooking,
   createBooking,
+  moveBooking,
   notifyBookingConfirmation,
+  notifyBookingMoved,
 } from "./queries";
 import type { Booking } from "./types";
 
@@ -153,6 +157,55 @@ export async function cancelBookingByStaff(
     return {
       status: "error",
       message: "Unable to cancel the booking. Please try again.",
+    };
+  }
+}
+
+export type RescheduleResult =
+  | { status: "moved"; booking: Booking }
+  | {
+      status: "error";
+      message?: string;
+      fieldErrors?: Partial<Record<keyof RescheduleInput, string>>;
+    };
+
+/**
+ * Staff reschedule for a walk-in or phone call: same move as SMS `MOVE`, minus
+ * the ownership check. Texts the client and, if different, the booker.
+ */
+export async function rescheduleBookingByStaff(
+  input: unknown,
+): Promise<RescheduleResult> {
+  await requireRole();
+  const parsed = rescheduleSchema.safeParse(input);
+  if (!parsed.success)
+    return { status: "error", fieldErrors: fieldErrors(parsed.error) };
+  const { ref, date, flexDays } = parsed.data;
+  if (date < todayManila())
+    return {
+      status: "error",
+      fieldErrors: { date: "Choose today or a later date." },
+    };
+  try {
+    const result = await moveBooking(ref, date, flexDays);
+    if (result.status !== "moved")
+      return {
+        status: "error",
+        message:
+          result.status === "not_found"
+            ? "This booking no longer exists. Refresh the list."
+            : "Only confirmed bookings or ones awaiting a reschedule answer can be moved. Refresh the list.",
+      };
+    await notifyBookingMoved(result.booking, result.clientPhone);
+    revalidatePath("/bookings");
+    revalidatePath("/");
+    revalidatePath("/suggestions");
+    return { status: "moved", booking: result.booking };
+  } catch (error) {
+    console.error("Unable to reschedule booking", error);
+    return {
+      status: "error",
+      message: "Unable to move the booking. Please try again.",
     };
   }
 }

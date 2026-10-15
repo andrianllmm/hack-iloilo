@@ -19,7 +19,7 @@ import { db } from "@/lib/supabase/admin";
 import { findClientByPhone } from "@/modules/accounts/queries";
 import { isGsm7, SMS_MAX_CHARS } from "@/modules/sms/logic";
 import * as sms from "@/modules/sms/queries";
-import { bookForClient } from "./actions";
+import { bookForClient, rescheduleBookingByStaff } from "./actions";
 import { findByRef, proposeReschedule } from "./queries";
 
 // Opt in with an existing local Supabase environment; no database reset required.
@@ -315,6 +315,41 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
       if (error) throw error;
       expect(prompts.map((p) => p.status)).toEqual(["expired"]);
       // A late answer to the old question no longer moves the booking.
+      await inbound(`YES ${booking.ref}`, beneficiary);
+      expect((await findByRef(booking.ref))!.scheduled_date).toBe(to);
+    });
+
+    it("lets staff reschedule a proposed booking and texts client and booker", async () => {
+      const booking = await book(`BOOK DRY 600 20/10 ±3 FOR ${beneficiary}`);
+      await proposeReschedule(
+        booking.id,
+        dates.addDays(booking.scheduled_date, 1),
+      );
+      const to = dates.addDays(booking.scheduled_date, 5);
+      expect(
+        await rescheduleBookingByStaff({
+          ref: booking.ref,
+          date: to,
+          flexDays: 1,
+        }),
+      ).toMatchObject({ status: "moved" });
+      expect(await findByRef(booking.ref)).toMatchObject({
+        id: booking.id,
+        status: "confirmed",
+        est_kg: 600,
+        scheduled_date: to,
+        flex_days: 1,
+        proposed_date: null,
+      });
+      const text = (await lastReply(beneficiary)).body;
+      expect(text).toContain(`${booking.ref} moved to`);
+      expect((await lastReply()).body).toBe(text);
+      const { data: prompts, error } = await db()
+        .from("sms_prompts")
+        .select("status")
+        .eq("ref", booking.ref);
+      if (error) throw error;
+      expect(prompts.map((p) => p.status)).toEqual(["expired"]);
       await inbound(`YES ${booking.ref}`, beneficiary);
       expect((await findByRef(booking.ref))!.scheduled_date).toBe(to);
     });

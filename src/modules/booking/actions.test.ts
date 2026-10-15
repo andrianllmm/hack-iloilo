@@ -10,15 +10,20 @@ vi.mock("./queries", () => ({
   bookingClient: vi.fn(),
   createBooking: vi.fn(),
   cancelBooking: vi.fn(),
+  moveBooking: vi.fn(),
   notifyBookingConfirmation: vi.fn(),
+  notifyBookingMoved: vi.fn(),
 }));
 import { requireRole } from "@/modules/accounts/auth";
 import { findOrRegisterByPhone } from "@/modules/accounts/queries";
-import { bookForClient, bookOnline } from "./actions";
+import { bookForClient, bookOnline, rescheduleBookingByStaff } from "./actions";
+import { MAX_FLEX_DAYS } from "./logic";
 import {
   bookingClient,
   createBooking,
+  moveBooking,
   notifyBookingConfirmation,
+  notifyBookingMoved,
 } from "./queries";
 
 beforeEach(() => vi.resetAllMocks());
@@ -124,4 +129,64 @@ it("rejects a blank name, an invalid phone or a past date online without saving"
   });
   expect(findOrRegisterByPhone).not.toHaveBeenCalled();
   expect(createBooking).not.toHaveBeenCalled();
+});
+
+const moveInput = { ref: "K7P2QX", date: "2026-10-25", flexDays: 1 };
+it("authenticates staff, moves without an ownership check and texts the client", async () => {
+  const booking = { ref: "K7P2QX", scheduled_date: "2026-10-25" } as Awaited<
+    ReturnType<typeof createBooking>
+  >;
+  vi.mocked(moveBooking).mockResolvedValue({
+    status: "moved",
+    booking,
+    clientPhone: "+639171234567",
+  });
+  expect(await rescheduleBookingByStaff(moveInput)).toEqual({
+    status: "moved",
+    booking,
+  });
+  expect(vi.mocked(requireRole).mock.invocationCallOrder[0]).toBeLessThan(
+    vi.mocked(moveBooking).mock.invocationCallOrder[0],
+  );
+  expect(moveBooking).toHaveBeenCalledWith("K7P2QX", "2026-10-25", 1);
+  expect(notifyBookingMoved).toHaveBeenCalledWith(booking, "+639171234567");
+});
+it("rejects a past date or flex over the max without moving", async () => {
+  expect(
+    await rescheduleBookingByStaff({ ...moveInput, date: "2026-10-14" }),
+  ).toMatchObject({
+    status: "error",
+    fieldErrors: { date: "Choose today or a later date." },
+  });
+  expect(
+    await rescheduleBookingByStaff({
+      ...moveInput,
+      flexDays: MAX_FLEX_DAYS + 1,
+    }),
+  ).toMatchObject({
+    status: "error",
+    fieldErrors: { flexDays: `Flex days can be at most ${MAX_FLEX_DAYS}.` },
+  });
+  expect(moveBooking).not.toHaveBeenCalled();
+});
+it("reports bookings that are gone or no longer open without texting", async () => {
+  vi.mocked(moveBooking).mockResolvedValue({ status: "not_movable" });
+  expect(await rescheduleBookingByStaff(moveInput)).toMatchObject({
+    status: "error",
+    message: expect.stringContaining("Only confirmed bookings"),
+  });
+  vi.mocked(moveBooking).mockResolvedValue({ status: "not_found" });
+  expect(await rescheduleBookingByStaff(moveInput)).toMatchObject({
+    status: "error",
+    message: expect.stringContaining("no longer exists"),
+  });
+  expect(notifyBookingMoved).not.toHaveBeenCalled();
+});
+it("does not move or text when staff authentication fails", async () => {
+  vi.mocked(requireRole).mockRejectedValue(new Error("Unauthorized"));
+  await expect(rescheduleBookingByStaff(moveInput)).rejects.toThrow(
+    "Unauthorized",
+  );
+  expect(moveBooking).not.toHaveBeenCalled();
+  expect(notifyBookingMoved).not.toHaveBeenCalled();
 });
