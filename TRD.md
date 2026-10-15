@@ -198,6 +198,7 @@ A short yes or no ("oo sige", "indi", "ok po") answers the sender's latest open 
 - A booking made `FOR <phone>` texts the client.
 - `YES`, `NO`, `MOVE` and `CANCEL` only work from the client's phone or `booked_by_phone`. Others get the help reply.
 - `MOVE` keeps the ref, service and kg, confirms the new date right away, and drops a pending M10 proposal.
+- Staff use **Reschedule** on an open booking's list row to choose a date and flex days. The shared move operation rejects dates before Manila today and flex outside 0–7, updates both preferred and scheduled dates, and expires the old YES/NO prompt. Staff moves text the client and the original booker once each when their phones differ.
 
 ```mermaid
 stateDiagram-v2

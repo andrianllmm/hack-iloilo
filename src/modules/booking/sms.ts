@@ -56,6 +56,7 @@ registerCommand({
 
 registerCommand({
   keywords: ["MOVE"],
+  usage: "MOVE <ref> <dd/mm> [+days]",
   schema: moveSmsSchema,
   parse: parseMoveArgs,
   handle: moveBySms,

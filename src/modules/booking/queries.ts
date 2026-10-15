@@ -2,6 +2,7 @@
 // Server-side reads. May call other modules' queries.
 
 import "server-only";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase/admin";
 import { newRef } from "@/lib/ref";
 import {
@@ -32,6 +33,7 @@ import {
   formatDay,
   rescheduleAnswer,
   serviceLabels,
+  validateMove,
 } from "./logic";
 import type {
   Booking,
@@ -253,6 +255,7 @@ export async function cancelBooking(
 
 export type MoveResult =
   | { status: "moved"; booking: Booking; clientPhone: string }
+  | { status: "invalid"; message: string }
   | { status: "not_found" | "forbidden" | "not_movable" };
 
 /**
@@ -277,6 +280,12 @@ export async function moveBooking(
   if (!found) return { status: "not_found" };
   const check = canMove(found, found.client.phone, byPhone);
   if (check !== "ok") return { status: check };
+  const message = validateMove(
+    date,
+    flexDays ?? found.flex_days,
+    todayManila(),
+  );
+  if (message) return { status: "invalid", message };
   const { data, error } = await db()
     .from("bookings")
     .update({
@@ -292,7 +301,10 @@ export async function moveBooking(
     .maybeSingle();
   if (error) throw error;
   if (!data) return { status: "not_movable" };
-  if (found.status === "reschedule_proposed") await expirePrompt(found.ref);
+  await expirePrompt(found.ref);
+  revalidatePath("/bookings");
+  revalidatePath("/");
+  revalidatePath("/suggestions");
   return { status: "moved", booking: data, clientPhone: found.client.phone };
 }
 
@@ -425,31 +437,47 @@ export async function moveBySms(
   ctx: CommandContext,
 ): Promise<string> {
   const date = parseDayMonth(dayMonth, todayManila());
-  if (!date) return helpText(commandUsages());
+  if (!date) return "IRPC: Choose a valid date in day/month format.";
   // FOR never grants authority: always authorize the actual sender.
   const result = await moveBooking(ref, date, flexDays, ctx.phone);
   switch (result.status) {
     case "forbidden":
-      return helpText(commandUsages());
     case "not_found":
-      return `IRPC: No booking with ref ${ref}.`;
+      return helpText(commandUsages());
+    case "invalid":
+      return `IRPC: ${result.message}`;
     case "not_movable":
       return `IRPC: Booking ${ref} cannot be moved. Only upcoming bookings can be moved.`;
   }
   const { booking, clientPhone } = result;
-  const reply = fillTemplate(BOOKING_MOVED, {
+  const reply = movedConfirmation(booking);
+  // M3 sends the returned reply to the sender exactly once.
+  await notifyBookingMoved(
+    booking,
+    [clientPhone].filter((phone) => phone !== ctx.phone),
+  );
+  return reply;
+}
+
+function movedConfirmation(booking: Booking): string {
+  return fillTemplate(BOOKING_MOVED, {
     ref: booking.ref,
     date: formatDay(booking.scheduled_date),
     service: serviceLabels[booking.service],
     kg: booking.est_kg,
   });
-  // The booker moved it for the client: let the client know too.
-  if (clientPhone !== ctx.phone) {
+}
+
+/** Send each recipient one confirmation; a gateway failure does not undo a saved move. */
+export async function notifyBookingMoved(
+  booking: Booking,
+  phones: string[],
+): Promise<void> {
+  for (const phone of new Set(phones)) {
     try {
-      await send(clientPhone, reply);
+      await send(phone, movedConfirmation(booking));
     } catch (error) {
-      console.error("Unable to send booking move to the client", error);
+      console.error("Unable to send booking move confirmation", error);
     }
   }
-  return reply;
 }

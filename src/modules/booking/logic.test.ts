@@ -11,9 +11,33 @@ import {
   groupBookings,
   parseMoveArgs,
   rescheduleAnswer,
+  validateMove,
   type BookingFilters,
 } from "./logic";
 import type { BookingRow } from "./types";
+
+describe("move date and flex validation", () => {
+  it("accepts today, future dates, and both flex boundaries", () => {
+    expect(validateMove("2026-10-15", 0, "2026-10-15")).toBeNull();
+    expect(validateMove("2027-01-01", 7, "2026-10-15")).toBeNull();
+  });
+  it("rejects past dates against Manila today", () => {
+    expect(validateMove("2026-10-14", 0, "2026-10-15")).toBe(
+      "Choose today or a later date.",
+    );
+  });
+  it.each(["2026-02-30", "invalid", "25/10", "2026-13-01"])(
+    "rejects invalid dates: %s",
+    (date) => {
+      expect(validateMove(date, 0, "2026-10-15")).toBe("Choose a valid date.");
+    },
+  );
+  it.each([-1, 8, 1.5, NaN, Infinity])("rejects invalid flex: %s", (flex) => {
+    expect(validateMove("2026-10-25", flex, "2026-10-15")).toBe(
+      "Flex days must be a whole number from 0 to 7.",
+    );
+  });
+});
 
 const row = (overrides: Partial<BookingRow> = {}): BookingRow => ({
   id: "b1",

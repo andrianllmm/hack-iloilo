@@ -48,6 +48,13 @@ export const cancelSmsSchema = z.object({
 
 export const moveSmsSchema = cancelSmsSchema.extend({
   dayMonth: bookingSmsSchema.shape.dayMonth,
-  flexDays: bookingSchema.shape.flexDays.optional(),
+  // The shared move action returns a clear message for out-of-range flex.
+  flexDays: z.number().int().optional(),
 });
 export type MoveSmsInput = z.infer<typeof moveSmsSchema>;
+
+export const moveBookingSchema = cancelSmsSchema.extend({
+  date: bookingSchema.shape.preferredDate,
+  flexDays: bookingSchema.shape.flexDays,
+});
+export type MoveBookingInput = z.infer<typeof moveBookingSchema>;

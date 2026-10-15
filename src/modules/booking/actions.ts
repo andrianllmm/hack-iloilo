@@ -11,6 +11,7 @@ import { normalizePhone } from "@/modules/accounts/logic";
 import { findOrRegisterByPhone } from "@/modules/accounts/queries";
 import {
   bookingSchema,
+  moveBookingSchema,
   webBookingSchema,
   type BookingInput,
   type WebBookingInput,
@@ -19,9 +20,49 @@ import {
   bookingClient,
   cancelBooking,
   createBooking,
+  moveBooking,
+  notifyBookingMoved,
   notifyBookingConfirmation,
 } from "./queries";
 import type { Booking } from "./types";
+
+export type MoveBookingByStaffResult =
+  { status: "moved" } | { status: "error"; message: string };
+
+/** Staff and SMS use the same ownership-independent move rules and update. */
+export async function moveBookingByStaff(
+  input: unknown,
+): Promise<MoveBookingByStaffResult> {
+  await requireRole();
+  const parsed = moveBookingSchema.safeParse(input);
+  if (!parsed.success)
+    return { status: "error", message: parsed.error.issues[0].message };
+  try {
+    const { ref, date, flexDays } = parsed.data;
+    const result = await moveBooking(ref, date, flexDays);
+    if (result.status !== "moved")
+      return {
+        status: "error",
+        message:
+          result.status === "invalid"
+            ? result.message
+            : result.status === "not_found"
+              ? "This booking no longer exists. Refresh the list."
+              : "Only confirmed bookings or bookings with a reschedule proposal can be moved.",
+      };
+    await notifyBookingMoved(result.booking, [
+      result.clientPhone,
+      result.booking.booked_by_phone,
+    ]);
+    return { status: "moved" };
+  } catch (error) {
+    console.error("Unable to move booking", error);
+    return {
+      status: "error",
+      message: "Unable to move the booking. Please try again.",
+    };
+  }
+}
 
 export type BookForClientResult =
   | { status: "created"; booking: Booking }
