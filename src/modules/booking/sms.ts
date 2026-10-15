@@ -4,11 +4,13 @@ import { todayManila } from "@/lib/dates";
 import { parseDayMonth } from "@/modules/sms/logic";
 import { onPromptAnswer, registerCommand } from "@/modules/sms/registry";
 import {
+  bookingAiSchema,
   bookingSmsSchema,
   cancelSmsSchema,
   moveSmsSchema,
 } from "./booking-schema";
 import {
+  bookingFromAi,
   describeBookingRequest,
   parseBookingArgs,
   parseMoveArgs,
@@ -24,6 +26,7 @@ registerCommand({
   ai: {
     description:
       "Book a drying or milling slot. flexDays: how many days earlier or later the client can come (0 if not stated).",
+    input: { schema: bookingAiSchema, toArgs: bookingFromAi },
     summary: (cmd) =>
       describeBookingRequest({
         ...cmd,

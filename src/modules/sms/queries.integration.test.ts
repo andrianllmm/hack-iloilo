@@ -168,6 +168,32 @@ describe.skipIf(process.env.RUN_SMS_DB_TESTS !== "1")(
       expect((await lastReply())?.body).toBe("peeked");
     });
 
+    it("maps an AI input reading to the command's args in code", async () => {
+      registerCommand({
+        keywords: ["SACKTEST"],
+        schema: z.object({ kg: z.number().int() }),
+        parse: () => null,
+        handle: async ({ kg }) => `kg=${kg}`,
+        ai: {
+          description: "Weigh sacks.",
+          input: {
+            schema: z.object({ sacks: z.number() }),
+            toArgs: ({ sacks }) => ({ kg: sacks * 50 }),
+          },
+        },
+      });
+      extract.mockResolvedValueOnce({
+        intent: { command: "SACKTEST", args: { sacks: 20 } },
+      });
+      await handleInbound({ phone, body: "20 ka sako" });
+      expect((await lastReply())?.body).toBe("kg=1000");
+      extract.mockResolvedValueOnce({
+        intent: { command: "SACKTEST", args: { kg: 1000 } },
+      });
+      await handleInbound({ phone, body: "1000 kg" });
+      expect((await lastReply())?.body).toMatch(/wala namon naintiendihan/);
+    });
+
     it("falls back to the keyword formats when AI fails", async () => {
       extract.mockResolvedValueOnce(null);
       await handleInbound({ phone, body: "pa dry 20 sako" });

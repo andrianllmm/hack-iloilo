@@ -218,6 +218,14 @@ async function runKeyword(
   return command.handle(result.data, { ...ctx, forPhone });
 }
 
+/** An AI reading in the command's own args shape; code does any conversion. */
+function fromAi(command: Command<unknown>, args: unknown): unknown {
+  const input = command.ai?.input;
+  if (!input) return args;
+  const read = input.schema.safeParse(args);
+  return read.success ? input.toArgs(read.data) : null;
+}
+
 /**
  * Reads free text as a command with AI. Commands with a summary ask first and
  * run on a yes; AI failure gets the help reply.
@@ -231,7 +239,10 @@ async function interpret(
 
   const options = commands.map(({ keyword, command }) =>
     z
-      .object({ command: z.literal(keyword), args: command.schema })
+      .object({
+        command: z.literal(keyword),
+        args: command.ai!.input?.schema ?? command.schema,
+      })
       .describe(command.ai!.description),
   );
   const none = z
@@ -250,8 +261,9 @@ async function interpret(
     args: unknown;
   };
   const command = findCommand(keyword);
-  const valid = command?.schema.safeParse(args);
-  if (!command?.ai || !valid?.success) return { reply: help(true) };
+  if (!command?.ai) return { reply: help(true) };
+  const valid = command.schema.safeParse(fromAi(command, args));
+  if (!valid.success) return { reply: help(true) };
 
   const { summary } = command.ai;
   if (!summary)
