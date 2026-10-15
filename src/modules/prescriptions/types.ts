@@ -60,7 +60,20 @@ export type FillIdlePrescription = Base & {
   message: string;
 };
 
-export type Prescription = MoveBookingsPrescription | FillIdlePrescription;
+export type MillFullLoadsPrescription = Base & {
+  kind: "mill_full_loads";
+  /** IRPC palay the mill is planned to take over the window, kg. */
+  kg: number;
+  /** Days the plan mills it on now (partial loads), and the full-load days. */
+  spreadDates: string[];
+  fullDates: string[];
+  /** Electricity per kg, base load included (M7 `electricityPerKg`), centavos. */
+  spreadMinorPerKg: number;
+  fullMinorPerKg: number;
+};
+
+export type Prescription =
+  MoveBookingsPrescription | FillIdlePrescription | MillFullLoadsPrescription;
 
 /** A prescription as the rules compute it, before any decision is read. */
 export type Suggestion = Prescription extends infer P

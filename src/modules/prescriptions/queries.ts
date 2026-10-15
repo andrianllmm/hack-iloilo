@@ -9,9 +9,12 @@ import { bookingList, bookingsBetween } from "@/modules/booking/queries";
 import { idleStretches, poolDays, WINDOW_DAYS } from "@/modules/capacity/logic";
 import { capacityByDay, type DayPool } from "@/modules/capacity/queries";
 import { receivedKgByClient } from "@/modules/gate/queries";
+import { electricityPerKg } from "@/modules/pricing/logic";
 import { priceOn } from "@/modules/pricing/queries";
+import { capacitySettings } from "@/modules/setup/queries";
 import {
   fillIdle,
+  millFullLoads,
   moveBookings,
   type Candidate,
   type OpenBooking,
@@ -62,7 +65,21 @@ export async function prescriptions(
     bookings,
     today,
   });
-  suggested.push(...(await idleSuggestions(days, today)));
+  const milling = new Map<string, number>();
+  for (const b of rows)
+    if (
+      b.service === "milling" &&
+      (b.status === "confirmed" || b.status === "reschedule_proposed")
+    )
+      milling.set(
+        b.scheduled_date,
+        (milling.get(b.scheduled_date) ?? 0) + b.est_kg,
+      );
+  const [idle, mill] = await Promise.all([
+    idleSuggestions(days, today),
+    millSuggestions(days, milling),
+  ]);
+  suggested.push(...idle, ...mill);
   const decisions = await decisionsByKey(suggested.map((s) => s.key));
   return suggested.map((s) => ({
     ...s,
@@ -104,6 +121,43 @@ async function idleSuggestions(days: DayPool[], today: string) {
       buyReferenceMc: Number(prices.buy_reference_mc),
     },
     today,
+  });
+}
+
+/**
+ * Full-load milling against the plan's partial days, both priced with M7
+ * `electricityPerKg`. IRPC palay on a mill day is its firm load less milling
+ * bookings.
+ */
+async function millSuggestions(
+  days: DayPool[],
+  millingKg: Map<string, number>,
+) {
+  const { facility, machines, millKgPerDay } = await capacitySettings();
+  const hoursPerDay = facility.operating_hours_per_day;
+  const millKw = machines
+    .filter((m) => m.active && m.type === "mill")
+    .reduce((sum, m) => sum + m.rated_kw, 0);
+  if (millKgPerDay <= 0) return [];
+  return millFullLoads({
+    days: poolDays(days, "mill").map((d) => {
+      const bookedKg = millingKg.get(d.date) ?? 0;
+      return {
+        date: d.date,
+        capacityKg: d.capacityKg,
+        bookedKg,
+        irpcKg: Math.max(d.load.confirmed.mid + d.load.offer.mid - bookedKg, 0),
+      };
+    }),
+    perKg: ({ kg, daysRun }) =>
+      electricityPerKg({
+        machineKwh: (millKw * hoursPerDay * kg) / millKgPerDay,
+        kg,
+        daysRun,
+        baseLoadKw: facility.base_load_kw,
+        hoursPerDay,
+        tariffMinorPerKwh: facility.tariff_minor_per_kwh,
+      }),
   });
 }
 

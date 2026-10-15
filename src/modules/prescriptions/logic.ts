@@ -2,9 +2,10 @@
 // Pure functions only: no I/O and no imports from other modules. Unit-test here.
 
 import { addDays, daysBetween } from "@/lib/dates";
-import { formatMoneySms, formatTonnes } from "@/lib/format";
+import { formatMoney, formatMoneySms, formatTonnes } from "@/lib/format";
 import type {
   FillIdlePrescription,
+  MillFullLoadsPrescription,
   Move,
   MoveBookingsPrescription,
   Recipient,
@@ -52,6 +53,17 @@ export function daySpan(dates: string[], dash = "–"): string {
   const [m1] = shortDay(first).split(" ");
   const [m2, d2] = shortDay(last).split(" ");
   return `${shortDay(first)}${dash}${m1 === m2 ? d2 : `${m2} ${d2}`}`;
+}
+
+/** `Oct 19, Oct 21–23`: runs of consecutive days as spans. */
+export function dayList(dates: string[]): string {
+  const runs: string[][] = [];
+  for (const date of [...new Set(dates)].sort()) {
+    const run = runs.at(-1);
+    if (run && addDays(run.at(-1)!, 1) === date) run.push(date);
+    else runs.push([date]);
+  }
+  return runs.map((run) => daySpan(run)).join(", ");
 }
 
 /** Dryer capacity and firm load (confirmed + offer) on one day. */
@@ -295,6 +307,99 @@ export function municipalitySummary(recipients: Recipient[], top = 3): string {
   return more > 0 ? `${shown.join(", ")}, ${more} more` : shown.join(", ");
 }
 
+/** One mill day: capacity, milling bookings and IRPC palay planned on it, kg. */
+export type MillDay = {
+  date: string;
+  capacityKg: number;
+  bookedKg: number;
+  irpcKg: number;
+};
+
+/**
+ * Compares milling IRPC's stored palay on the days the plan spreads it over
+ * against full loads (about ⌈kg ÷ daily capacity⌉ days). Palay can't be
+ * milled before the plan has it in storage, so stock builds up and the mill
+ * runs once a full day's room (after milling bookings) is waiting, clearing
+ * the rest on the plan's last day. `perKg` prices a run of `daysRun` days
+ * with M7 `electricityPerKg`. A card only when it saves.
+ */
+export function millFullLoads(input: {
+  days: MillDay[];
+  perKg: (run: { kg: number; daysRun: number }) => number;
+}): Omit<MillFullLoadsPrescription, "decision">[] {
+  const days = [...input.days].sort((a, b) => a.date.localeCompare(b.date));
+  const spread = days.filter((d) => d.irpcKg > 0);
+  const kg = spread.reduce((sum, d) => sum + d.irpcKg, 0);
+  if (spread.length < 2) return [];
+
+  const last = spread.at(-1)!.date;
+  const fullDates: string[] = [];
+  let waiting = 0;
+  for (const d of days) {
+    if (d.date > last) break;
+    waiting += d.irpcKg;
+    const room = d.capacityKg - d.bookedKg;
+    if (room <= 0 || waiting <= 0) continue;
+    if (waiting < room && d.date < last) continue;
+    waiting -= Math.min(room, waiting);
+    fullDates.push(d.date);
+  }
+  if (waiting > 0 || fullDates.length >= spread.length) return [];
+
+  const spreadDates = spread.map((d) => d.date);
+  const spreadMinorPerKg = input.perKg({ kg, daysRun: spreadDates.length });
+  const fullMinorPerKg = input.perKg({ kg, daysRun: fullDates.length });
+  const saving = spreadMinorPerKg - fullMinorPerKg;
+  if (saving <= 0) return [];
+
+  return [
+    {
+      kind: "mill_full_loads",
+      key: hashKey([
+        "mill_full_loads",
+        kg,
+        spreadDates,
+        fullDates,
+        spreadMinorPerKg,
+        fullMinorPerKg,
+      ]),
+      title: `Mill ${formatTonnes(kg)} in ${fullDates.length} full ${fullDates.length === 1 ? "day" : "days"}, not ${spreadDates.length}`,
+      facts: {
+        stock: formatTonnes(kg),
+        full_days: fullDates.length,
+        full_dates: dayList(fullDates),
+        full_per_kg: formatMoney(fullMinorPerKg),
+        spread_days: spreadDates.length,
+        spread_dates: dayList(spreadDates),
+        spread_per_kg: formatMoney(spreadMinorPerKg),
+        saving_per_kg: formatMoney(saving),
+      },
+      kg,
+      spreadDates,
+      fullDates,
+      spreadMinorPerKg,
+      fullMinorPerKg,
+    },
+  ];
+}
+
+/**
+ * Days whose capacity day panel shows the card: the overloaded day, every day
+ * of an idle stretch, or the full-load milling days.
+ */
+export function cardDates(p: Suggestion): string[] {
+  switch (p.kind) {
+    case "move_bookings":
+      return [p.date];
+    case "fill_idle":
+      return Array.from({ length: daysBetween(p.from, p.to) + 1 }, (_, i) =>
+        addDays(p.from, i),
+      );
+    case "mill_full_loads":
+      return p.fullDates;
+  }
+}
+
 /** The card's plain-language note on why and what it gains, from its facts only. */
 export function templateNote(p: Suggestion): string {
   const f = p.facts;
@@ -305,6 +410,10 @@ export function templateNote(p: Suggestion): string {
       return p.remainderKg === 0
         ? `${f.day} is ${f.overflow} over. ${moving} clears it without turning anyone away.`
         : `${f.day} is ${f.overflow} over. ${moving} leaves ${f.remainder} over.`;
+    }
+    case "mill_full_loads": {
+      const n = Number(f.full_days);
+      return `Milling the ${f.stock} of stored palay in ${n} full ${n === 1 ? "day" : "days"} (${f.full_dates}) instead of ${f.spread_days} partial days cuts electricity from ${f.spread_per_kg}/kg to ${f.full_per_kg}/kg, since base load runs fewer days. That saves ${f.saving_per_kg}/kg.`;
     }
     case "fill_idle": {
       const n = Number(f.recipients);
