@@ -298,6 +298,38 @@ describe.skipIf(process.env.RUN_SMS_DB_TESTS !== "1")(
         expect((await lastReply())?.body).toMatch(/wala namon naintiendihan/);
       });
 
+      it("leaves a plain yes to other prompts", async () => {
+        await askForN();
+        await handleInbound({ phone, body: "yes" });
+        expect((await lastReply())?.body).toMatch(/Wala kami pamangkot/);
+        expect(await fillStatus()).toBe("open");
+        await handleInbound({ phone, body: "5" });
+        expect((await lastReply())?.body).toMatch(/fill x=5/);
+        await handleInbound({ phone, body: "no" });
+      });
+
+      it("supersedes an unanswered AI confirmation", async () => {
+        extract.mockResolvedValueOnce({
+          intent: { command: "ECHOTEST", args: { n: 4 } },
+        });
+        await handleInbound({ phone, body: "echo four" });
+        expect((await lastReply())?.body).toMatch(/Husto bala/);
+        await askForN();
+        await handleInbound({ phone, body: "yes" });
+        expect((await lastReply())?.body).toMatch(/Wala kami pamangkot/);
+        await handleInbound({ phone, body: "no" });
+      });
+
+      it("takes a reply with no missing value as a new request", async () => {
+        await askForN();
+        extract
+          .mockResolvedValueOnce({})
+          .mockResolvedValueOnce({ intent: { command: "NONE" } });
+        await handleInbound({ phone, body: "Pila presyo subong?" });
+        expect((await lastReply())?.body).toMatch(/wala namon naintiendihan/);
+        expect(await fillStatus()).toBe("expired");
+      });
+
       it("is not answered once expired", async () => {
         await askForN();
         await db()

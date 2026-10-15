@@ -190,7 +190,15 @@ async function route(
   ctx: CommandContext,
 ): Promise<{ reply: string; viaAi?: boolean }> {
   const answer = parseAnswer(parsed);
-  if (answer) return { reply: await answerPrompt(answer, ctx) };
+  if (answer) {
+    // A plain NO drops a pending follow-up question; it isn't a yes/no prompt.
+    if (!answer.yes && !answer.ref) {
+      const fill = await latestOpenFill(ctx.phone);
+      if (fill && (await setPromptStatus(fill.id, "open", "declined")))
+        return { reply: smsReplies.aiDeclined };
+    }
+    return { reply: await answerPrompt(answer, ctx) };
+  }
 
   const command = findCommand(parsed.keyword);
   if (!command) {
@@ -201,7 +209,7 @@ async function route(
     return interpret(body, ctx);
   }
   // A keyword starts over, so a pending follow-up question no longer applies.
-  await closeFills(ctx.phone);
+  await closePrompts(ctx.phone, ["ai_fill"]);
   return { reply: await runKeyword(command, parsed, ctx) };
 }
 
@@ -240,20 +248,22 @@ function fromAi(command: Command<unknown>, args: unknown): unknown {
 const aiSchema = (command: Command<unknown>): z.ZodType<unknown> =>
   command.ai?.input?.schema ?? command.schema;
 
-/** `fields` of an object schema as optional, so the AI can leave them out. */
+/**
+ * `fields` of an object schema as optional, so the AI can leave them out;
+ * `only` drops the other fields. Keeps the schema's own settings.
+ */
 function optional(
   schema: z.ZodType<unknown>,
   fields: readonly string[],
   only = false,
 ): z.ZodType<unknown> {
   if (!(schema instanceof z.ZodObject) || !fields.length) return schema;
-  const shape = Object.entries(schema.shape as Record<string, z.ZodType>)
-    .filter(([key]) => !only || fields.includes(key))
-    .map(([key, field]) => [
-      key,
-      fields.includes(key) ? field.optional() : field,
-    ]);
-  return z.object(Object.fromEntries(shape));
+  const object = schema as z.ZodObject<Record<string, z.ZodType>>;
+  // Zod types masks against a literal shape; this one is built at runtime.
+  const mask = Object.fromEntries(
+    fields.filter((f) => f in object.shape).map((f) => [f, true]),
+  ) as Record<never, true>;
+  return only ? object.pick(mask).partial() : object.partial(mask);
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -314,6 +324,9 @@ async function interpret(
     missing,
     asks: 1,
   };
+  // This request supersedes an unanswered confirmation, so a plain YES can't
+  // be meant for it.
+  await closePrompts(ctx.phone, ["ai_confirm"]);
   await openPrompt({
     phone: ctx.phone,
     kind: "ai_fill",
@@ -351,9 +364,10 @@ type FillPayload = {
 };
 
 /**
- * Merges a reply into a pending AI reading: plain values are read by code,
- * anything else by AI. Asks again while values are missing, up to
- * `MAX_FILL_ASKS`, then gives up with the help reply.
+ * Merges a reply into a pending AI reading: code reads plain values, AI the
+ * rest, and code wins where both read one. Asks again while values are
+ * missing, up to `MAX_FILL_ASKS`, then gives up with the help reply. A reply
+ * AI reads no missing value from is taken as a new request.
  */
 async function continueFill(
   prompt: SmsPrompt,
@@ -370,13 +384,20 @@ async function continueFill(
 
   let read = command.ai.readReply?.(body) ?? null;
   let viaAi = false;
-  if (!missing.some((f) => read?.[f] != null) && aiEnabled()) {
+  if (!missing.every((f) => read?.[f] != null) && aiEnabled()) {
     const extracted = await extract(
       optional(aiSchema(command), missing, true),
       `IRPC asked: "${fillQuestion(missing, ask)}"\nFarmer replied: "${body}"`,
     );
-    if (isRecord(extracted)) read = extracted;
     viaAi = true;
+    if (isRecord(extracted)) {
+      read = { ...extracted, ...read };
+      if (!missing.some((f) => read?.[f] != null)) {
+        // Not an answer, e.g. a new question: drop the fill and start over.
+        await setPromptStatus(prompt.id, "open", "expired");
+        return interpret(body, ctx);
+      }
+    }
   }
 
   const merged = mergeFill(args, read, missing);
@@ -419,15 +440,6 @@ onPromptAnswer("ai_confirm", async (prompt, yes, ctx) => {
   const valid = command?.schema.safeParse(args);
   if (!command || !valid?.success) return help();
   return command.handle(valid.data, ctx);
-});
-
-// NO drops a pending follow-up; a yes doesn't answer it, so ask again.
-onPromptAnswer("ai_fill", async (prompt, yes, ctx) => {
-  if (prompt.phone !== ctx.phone) throw new PromptRefusal(help());
-  if (!yes) return smsReplies.aiDeclined;
-  const { keyword, missing } = prompt.payload as FillPayload;
-  const ask = findCommand(keyword)?.ai?.ask ?? {};
-  throw new PromptRefusal(fillQuestion(missing, ask));
 });
 
 async function answerPrompt(
@@ -482,13 +494,14 @@ async function openPromptByRef(ref: string) {
   return data;
 }
 
-/** The phone's newest unexpired open prompt. */
+/** The phone's newest unexpired open yes/no prompt (not a follow-up). */
 async function latestOpenPrompt(phone: string) {
   const { data, error } = await db()
     .from("sms_prompts")
     .select()
     .eq("phone", phone)
     .eq("status", "open")
+    .neq("kind", "ai_fill")
     .gt("expires_at", new Date().toISOString())
     .order("created_at", { ascending: false })
     .limit(1)
@@ -513,13 +526,16 @@ async function latestOpenFill(phone: string) {
   return data;
 }
 
-/** Closes the phone's open follow-up questions. */
-async function closeFills(phone: string): Promise<void> {
+/** Closes the phone's open prompts of `kinds`. */
+async function closePrompts(
+  phone: string,
+  kinds: SmsPromptKind[],
+): Promise<void> {
   const { error } = await db()
     .from("sms_prompts")
     .update({ status: "expired" })
     .eq("phone", phone)
-    .eq("kind", "ai_fill")
+    .in("kind", kinds)
     .eq("status", "open");
   if (error) throw error;
 }
