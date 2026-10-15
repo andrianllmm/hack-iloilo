@@ -52,4 +52,21 @@ The three PSA Open-Data exports are single-figure files (one Palay volume each)
 wrapped in an HTML metadata footer; the annual municipality workbook is a
 multi-level pivot. Values carried into `psa_rice_production.csv` and the
 `municipality_*.csv` files are unchanged from source — only the HTML/metadata was
-dropped and the tables were reshaped to tidy (long) form.
+dropped and the tables were reshaped to tidy (long) form — except for two fixes
+to the harvesting sheet below.
+
+4. **Harvesting — municipality labels shifted on data rows.**
+   In `BY MUNICIPALITY (harvesting)`, the half-month data rows of 18 places carry
+   the previous place's name (Pototan's rows say "Pavia", Alimodian's say "Ajuy").
+   Each place's total row (name, no period) is correctly named and sits right
+   below its 24 data rows.
+   → **Adopted:** data rows take the name of the total row below them; total
+   rows are dropped. Each block sums to its total row, and places sum to the
+   provincial total (894,091 t production).
+
+5. **Harvesting — bad grand-total production for Zarraga, January.**
+   The GRAND TOTAL / TOTAL production cell reads **22,729.2 t** for Jan 16–31
+   against **108.15 t** from the four seed-class cells, and is blank for Jan 1–15
+   (32.53 t). The ILOILO rows for both half-months carry the same error.
+   → **Adopted:** grand-total production = hybrid + certified + good + farmers'
+   home-saved production (TRD appendix).
