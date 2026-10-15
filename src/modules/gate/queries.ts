@@ -642,13 +642,19 @@ export async function dispatch(params: {
   try {
     const { data: details, error: detailsError } = await db()
       .from("dispatches")
-      .select("buyer:clients(phone), batch:batches(batch_no)")
+      .select("buyer:clients(phone), batch:batches(batch_no, ownership)")
       .eq("id", saved.id)
       .single();
     if (detailsError) throw detailsError;
     await send(
       details.buyer.phone,
-      dispatchText(details.batch.batch_no, saved.or_ref),
+      dispatchText({
+        batchNo: details.batch.batch_no,
+        ownership: details.batch.ownership,
+        kg: saved.kg,
+        priceMinorPerKg: saved.price_minor_per_kg,
+        orRef: saved.or_ref,
+      }),
     );
   } catch (error) {
     console.error("Unable to send dispatch receipt text", error);

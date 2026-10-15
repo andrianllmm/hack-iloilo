@@ -267,7 +267,7 @@ Any command accepts `FOR <phone>`.
 - Stages: `received → drying → stored → milling → milled → dispatched`. Dry palay skips drying. Forward only.
 - Recovery = `rice_kg` ÷ `mill_in_kg`. A batch is `dispatched` when dispatched kg reaches `rice_kg`.
 - Saving a dispatch texts the buyer the receipt and batch numbers.
-- Queue texts go to the next `notify_ahead_n` waiting entries in the same facility and service line after a successful start (0 disables them). Purchase texts include saved paid kg, price/kg and total, on first save or when those figures change. Every dispatch texts its recipient, including owner pickups; a missing receipt is labelled "No receipt recorded." Notification failures never undo saved operations. Delivery status is logged by M3; there is no automatic retry.
+- Queue texts go to the next `notify_ahead_n` waiting entries in the same facility and service line after a successful start (0 disables them). Purchase texts include saved paid kg, price/kg and total, on first save or when those figures change. Every dispatch texts its recipient, including owner pickups; sale texts include saved kg, price/kg, total and an optional OR number; pickup texts include only batch number and kg. Notification failures never undo saved operations. Delivery status is logged by M3; there is no automatic retry.
 
 **Tests:** stage transitions, recovery.
 

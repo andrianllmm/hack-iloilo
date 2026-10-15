@@ -270,7 +270,7 @@ Computed from M9. The manager accepts or dismisses each.
 ## Out of scope
 
 - **Other facilities, crops, regions:** IRPC, rice and Iloilo only. The pitch covers replication.
-- **Hiligaynon:** English only for now.
+- **Hiligaynon:** gate receipt, weight-confirmation and pickup texts use concise Hiligaynon/English; other flows retain their existing wording.
 - **Money:** paying farmers, issuing receipts, accounting.
 - **Integrations:** RSBSA, MAO records, MoRProGRes.
 - **Hardware:** meters, sensors or new plant equipment.

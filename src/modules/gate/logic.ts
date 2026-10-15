@@ -1,6 +1,7 @@
 // M6. Gate and Batches: Queue, batch record, dispatch. See TRD.md.
 // Pure functions only: no I/O and no imports from other modules. Unit-test here.
 
+import { formatKg, formatMoneySms } from "@/lib/format";
 import { daysBetween } from "@/lib/dates";
 import type {
   Batch,
@@ -61,10 +62,18 @@ export function nextInLineTexts(
     }));
 }
 
-/** Uses the saved receipt reference, including dispatches that have no receipt. */
-export function dispatchText(batchNo: string, receipt: string | null): string {
-  const ref = receipt?.trim();
-  return `IRPC: Dispatch recorded. Batch ${batchNo}. ${ref ? `Receipt: ${ref}.` : "No receipt recorded."}`;
+/** Receipt notification from persisted values, never an official receipt. */
+export function dispatchText(input: {
+  batchNo: string;
+  ownership: BatchOwnership;
+  kg: number;
+  priceMinorPerKg: number;
+  orRef: string | null;
+}): string {
+  const base = `IRPC: Nabaton / Collected: ${formatKg(input.kg)}. Batch ${input.batchNo}.`;
+  if (input.ownership === "custom") return `${base} Salamat!`;
+  const ref = input.orRef?.trim();
+  return `${base} Presyo / Price: ${formatMoneySms(input.priceMinorPerKg)}/kg. Total: ${formatMoneySms(input.kg * input.priceMinorPerKg)}.${ref ? ` OR ${ref}.` : ""} Salamat!`;
 }
 
 export const stageLabels: Record<Batch["stage"], string> = {

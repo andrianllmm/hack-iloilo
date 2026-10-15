@@ -328,7 +328,7 @@ describe.skipIf(process.env.RUN_GATE_SMS_DB_TESTS !== "1")(
       };
       await dispatch(input);
       expect((await outbound(clients[1].phone))[0].body).toContain(
-        `Batch ${milled.batch_no}. Receipt: OR-123.`,
+        `Batch ${milled.batch_no}.`,
       );
       await expect(dispatch({ ...input, kg: 700 })).rejects.toThrow(
         "Only 600 kg",
@@ -345,7 +345,7 @@ describe.skipIf(process.env.RUN_GATE_SMS_DB_TESTS !== "1")(
       expect(data.stage).toBe("dispatched");
     });
 
-    it("notifies an owner pickup and labels missing receipts", async () => {
+    it("notifies an owner pickup and omits missing receipts", async () => {
       const stored = await batch({
         ownership: "custom",
         stage: "stored",
@@ -359,7 +359,7 @@ describe.skipIf(process.env.RUN_GATE_SMS_DB_TESTS !== "1")(
         orRef: null,
       });
       expect((await outbound(clients[0].phone))[0].body).toContain(
-        `Batch ${stored.batch_no}. No receipt recorded.`,
+        `Batch ${stored.batch_no}.`,
       );
       const milled = await batch({ stage: "milled", rice_kg: 100 });
       await dispatch({
@@ -369,8 +369,8 @@ describe.skipIf(process.env.RUN_GATE_SMS_DB_TESTS !== "1")(
         priceMinorPerKg: 4700,
         orRef: "  ",
       });
-      expect((await outbound(clients[1].phone))[0].body).toContain(
-        "No receipt recorded.",
+      expect((await outbound(clients[1].phone))[0].body).not.toMatch(
+        /OR|receipt/,
       );
     });
 

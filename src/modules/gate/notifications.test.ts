@@ -53,19 +53,35 @@ describe("next-in-line texts", () => {
 });
 
 describe("dispatch texts", () => {
-  it("includes the batch and saved receipt reference", () => {
-    const body = dispatchText("261015-001", " OR-123 ");
-    expect(body).toBe(
-      "IRPC: Dispatch recorded. Batch 261015-001. Receipt: OR-123.",
-    );
+  const sale = {
+    batchNo: "261015-001",
+    ownership: "irpc" as const,
+    kg: 1500,
+    priceMinorPerKg: 4500,
+    orRef: " OR-123 ",
+  };
+  it("includes saved sale values in bilingual text", () => {
+    const body = dispatchText(sale);
+    for (const value of [
+      "Nabaton / Collected",
+      "1,500 kg",
+      "261015-001",
+      "PHP 45.00/kg",
+      "PHP 67,500.00",
+      "OR OR-123.",
+    ])
+      expect(body).toContain(value);
     expect(isGsm7(body)).toBe(true);
     expect(
-      dispatchText("261015-001", "9".repeat(50)).length,
+      dispatchText({ ...sale, orRef: "9".repeat(50) }).length,
     ).toBeLessThanOrEqual(SMS_MAX_CHARS);
   });
-  it.each([null, "", "  "])("labels a missing receipt: %s", (receipt) => {
-    expect(dispatchText("261015-001", receipt)).toBe(
-      "IRPC: Dispatch recorded. Batch 261015-001. No receipt recorded.",
-    );
+  it.each([null, "", "  "])("omits missing OR: %s", (orRef) => {
+    expect(dispatchText({ ...sale, orRef })).not.toMatch(/OR|receipt/i);
+  });
+  it("omits money and OR for owner pickups", () => {
+    const body = dispatchText({ ...sale, ownership: "custom" });
+    expect(body).toContain("1,500 kg");
+    expect(body).not.toMatch(/PHP|OR|Price|Total/);
   });
 });
