@@ -1,6 +1,7 @@
 import {
   ArrowRight,
   CalendarSearch,
+  LogIn,
   MessageSquareText,
   Wheat,
   Wind,
@@ -86,10 +87,8 @@ export default function LandingPage() {
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 p-4 pb-10">
       <header className="flex items-center justify-between gap-4">
         <Wordmark className="h-7 w-auto text-primary" />
-        <Link
-          href="/login"
-          className={buttonVariants({ variant: "ghost", size: "sm" })}
-        >
+        <Link href="/login" className={buttonVariants({ variant: "outline" })}>
+          <LogIn data-icon="inline-start" />
           Staff sign in
         </Link>
       </header>
