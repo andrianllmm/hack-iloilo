@@ -69,7 +69,12 @@ async function OfferFormLoader() {
 export default function SellPage() {
   return (
     <main className="flex flex-1 flex-col items-center justify-start gap-6 p-4">
-      <Wordmark className="h-8 w-auto text-primary" />
+      <div className="flex flex-col items-center gap-1">
+        <Wordmark className="h-8 w-auto text-primary" />
+        <p className="text-sm text-muted-foreground">
+          Iloilo Rice Processing Complex
+        </p>
+      </div>
       {/* Closed by default: most sellers come to offer, the quote is optional. */}
       <Collapsible className="w-full max-w-sm">
         <Card>
@@ -98,8 +103,7 @@ export default function SellPage() {
         <CardHeader>
           <CardTitle>Offer to sell palay</CardTitle>
           <CardDescription>
-            Iloilo Rice Processing Complex. The manager reviews your offer and
-            we text you the decision.
+            The manager reviews your offer and we text you the decision.
           </CardDescription>
         </CardHeader>
         <CardContent>
