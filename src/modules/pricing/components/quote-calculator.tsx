@@ -59,7 +59,7 @@ export function QuoteCalculator({ priceRule }: { priceRule: PriceRule }) {
           value={kgInput}
           onChange={(e) => setKgInput(e.target.value)}
         />
-        <FieldDescription>Optional — for an estimated total.</FieldDescription>
+        <FieldDescription>Optional, for an estimated total.</FieldDescription>
       </Field>
 
       {result && (
