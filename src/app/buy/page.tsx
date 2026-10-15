@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { Wordmark } from "@/components/brand";
@@ -17,6 +18,7 @@ import { env } from "@/lib/env";
 import { formatDate, formatKg, formatMoney } from "@/lib/format";
 import { normalizeBatchNo } from "@/modules/gate/logic";
 import { publicBatchTrail, riceStock } from "@/modules/gate/queries";
+import { WebOrderForm } from "@/modules/orders/components/web-order-form";
 import { priceOn } from "@/modules/pricing/queries";
 
 export const metadata: Metadata = { title: "Buy rice" };
@@ -66,6 +68,18 @@ async function RiceToday() {
         .
       </p>
     </div>
+  );
+}
+
+/** The request form, with today's rice price for its estimate. */
+async function RequestForm() {
+  await connection();
+  const prices = await priceOn(todayManila()).catch(() => null);
+  return (
+    <WebOrderForm
+      today={todayManila()}
+      riceMinorPerKg={prices?.rice_minor_per_kg ?? null}
+    />
   );
 }
 
@@ -144,6 +158,25 @@ export default function BuyPage({ searchParams }: PageProps<"/buy">) {
         <CardContent>
           <Suspense fallback={<Skeleton className="h-40" />}>
             <RiceToday />
+          </Suspense>
+        </CardContent>
+      </Card>
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle>Request rice</CardTitle>
+          <CardDescription>
+            Ask ahead for a pickup day. The manager confirms by text.{" "}
+            <Link
+              href="/buy/track"
+              className="font-semibold text-primary underline"
+            >
+              Track a request
+            </Link>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Suspense fallback={<Skeleton className="h-96" />}>
+            <RequestForm />
           </Suspense>
         </CardContent>
       </Card>
