@@ -259,9 +259,9 @@ Any command accepts `FOR <phone>`.
 
 ### M7. Pricing and Cost
 
-`prices` is one row per `effective_date`: `buy_base_minor_per_kg`, `buy_reference_mc` (25), `buy_rules` (jsonb: `{ damaged: 0.25, immature: 0.10, foreign: 1.0, sack_kg: 0.1, mc_rule }`), `drying_fee_minor_per_kg`, `milling_fee_minor_per_kg`, `rice_minor_per_kg`.
+`prices` logs every save as its own row (History shows each change); `priceOn` reads the newest save on or before a date (`effective_date`, then `created_at`). Each row has: `effective_date`, `buy_base_minor_per_kg`, `buy_reference_mc` (25), `buy_rules` (jsonb: `{ damaged: 0.25, immature: 0.10, foreign: 1.0, sack_kg: 0.1, mc_rule }`), `drying_fee_minor_per_kg`, `milling_fee_minor_per_kg`, `rice_minor_per_kg`.
 
-**Exports:** `priceOn(date)`, `batchCost(batchId)`, `electricityPerKg(kWh, kg, daysRun)`.
+**Exports:** `priceOn(date)`, `batchCost(batchId)`, `electricityPerKg({ machineKwh, kg, daysRun, baseLoadKw, hoursPerDay, tariffMinorPerKwh })`.
 
 **Batch cost:** direct cost only. Electricity = stage hours × machine `rated_kw` × tariff; labor = stage hours × rate. Revenue is drying and milling fees (custom) or dispatches − M5 `purchaseCost` (IRPC-owned).
 
