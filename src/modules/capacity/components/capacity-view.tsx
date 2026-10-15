@@ -27,6 +27,7 @@ import {
   headline,
   idleStretches,
   poolDays,
+  seasonRange,
   shortDay,
   sources,
 } from "../logic";
@@ -44,9 +45,9 @@ import { PlantView } from "./plant-view";
 
 const pools: Pool[] = ["dryer", "storage", "mill"];
 
-/** The plant view, then one tab per pool. */
-type Tab = "plant" | Pool;
-const tabs: Tab[] = ["plant", ...pools];
+/** The plant view, one tab per pool, then the season heatmap. */
+type Tab = "plant" | Pool | "season";
+const tabs: Tab[] = ["plant", ...pools, "season"];
 
 const poolNames: Record<Pool, string> = {
   dryer: "Dryer",
@@ -54,7 +55,11 @@ const poolNames: Record<Pool, string> = {
   mill: "Mill",
 };
 
-const tabNames: Record<Tab, string> = { plant: "Plant", ...poolNames };
+const tabNames: Record<Tab, string> = {
+  plant: "Plant",
+  ...poolNames,
+  season: "Season",
+};
 
 /** Electricity per kg over the window, in centavos. */
 export type Electricity = { minorPerKg: number; daysRun: number };
@@ -95,6 +100,7 @@ export function CapacityView({
   range,
   today,
   suggestions,
+  season,
 }: {
   /** Every pool, as `capacityByDay` returns it. */
   days: DayPool[] | null;
@@ -107,12 +113,14 @@ export function CapacityView({
   today: string;
   /** Suggested actions per date, shown in the day panel (M10). */
   suggestions?: Record<string, React.ReactNode>;
+  /** The season heatmap, loaded on the server (#50). */
+  season?: React.ReactNode;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [tab, setTab] = useState<Tab>("plant");
   const [selected, setSelected] = useState<string | null>(null);
-  const pool = tab === "plant" ? null : tab;
+  const pool = tab === "plant" || tab === "season" ? null : tab;
   const days = allDays && pool && poolDays(allDays, pool);
   const selectedDays = allDays?.filter((d) => d.date === selected) ?? [];
 
@@ -122,7 +130,9 @@ export function CapacityView({
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">Capacity</h1>
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            {span(range.from, range.to)}
+            {tab === "season"
+              ? span(seasonRange(today).from, seasonRange(today).to)
+              : span(range.from, range.to)}
             <Badge>Today, {shortDay(today)}</Badge>
           </p>
         </div>
@@ -137,7 +147,9 @@ export function CapacityView({
         </Tabs>
       </header>
 
-      {allDays === null ? (
+      {tab === "season" ? (
+        season
+      ) : allDays === null ? (
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>Capacity couldn&apos;t load</EmptyTitle>

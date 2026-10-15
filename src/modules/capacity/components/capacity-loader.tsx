@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { addDays, todayManila } from "@/lib/dates";
 import { requireRole } from "@/modules/accounts/auth";
 import { WINDOW_DAYS } from "../logic";
@@ -14,6 +16,7 @@ import {
   type PanelBooking,
   type PanelOffer,
 } from "./capacity-view";
+import { SeasonLoader } from "./season-loader";
 
 export async function CapacityLoader() {
   const staff = await requireRole();
@@ -74,6 +77,11 @@ export async function CapacityLoader() {
       electricity={electricity}
       range={range}
       today={today}
+      season={
+        <Suspense fallback={<Skeleton className="h-96" />}>
+          <SeasonLoader />
+        </Suspense>
+      }
     />
   );
 }

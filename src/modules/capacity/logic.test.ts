@@ -7,11 +7,15 @@ import {
   electricityBasis,
   exact,
   headline,
+  heatLevel,
   idleStretches,
   plantStatus,
   poolDays,
   projectPools,
   type PoolSettings,
+  seasonDays,
+  seasonMonths,
+  seasonRange,
 } from "./logic";
 
 const settings: PoolSettings = {
@@ -366,5 +370,123 @@ describe("plantStatus", () => {
 
   it("is idle below the threshold", () => {
     expect(plantStatus(day({ confirmed: exact(5_000) }))).toBe("idle");
+  });
+});
+
+describe("seasonRange", () => {
+  it("spans whole months, three back and five ahead", () => {
+    expect(seasonRange("2026-10-15")).toEqual({
+      from: "2026-07-01",
+      to: "2027-03-31",
+    });
+  });
+
+  it("crosses the year going back", () => {
+    expect(seasonRange("2026-02-28")).toEqual({
+      from: "2025-11-01",
+      to: "2026-07-31",
+    });
+  });
+});
+
+describe("seasonDays", () => {
+  const planned = [
+    dayPool({
+      date: "2026-10-15",
+      pool: "dryer",
+      load: { confirmed: exact(20_000), forecast: exact(10_000) },
+      capacityKg: 40_000,
+      idleThresholdPct: 25,
+    }),
+  ];
+  const days = seasonDays({
+    from: "2026-10-13",
+    to: "2026-10-16",
+    today: "2026-10-15",
+    records: [{ date: "2026-10-13", kg: 10_000 }],
+    planned,
+    capacityKg: 40_000,
+  });
+
+  it("uses records before today and the plan from today", () => {
+    expect(days.map((d) => [d.date, d.kind, d.kg, d.pct])).toEqual([
+      ["2026-10-13", "record", 10_000, 25],
+      ["2026-10-14", "record", 0, 0],
+      ["2026-10-15", "expected", 30_000, 75],
+      ["2026-10-16", "expected", 0, 0],
+    ]);
+  });
+
+  it("is overloaded by records or firm load, never by forecast alone", () => {
+    const [past, firm, forecastOnly] = seasonDays({
+      from: "2026-10-14",
+      to: "2026-10-16",
+      today: "2026-10-15",
+      records: [{ date: "2026-10-14", kg: 45_000 }],
+      planned: [
+        dayPool({
+          date: "2026-10-15",
+          pool: "dryer",
+          load: { confirmed: exact(45_000) },
+          capacityKg: 40_000,
+          idleThresholdPct: 25,
+        }),
+        dayPool({
+          date: "2026-10-16",
+          pool: "dryer",
+          load: { forecast: exact(60_000) },
+          capacityKg: 40_000,
+          idleThresholdPct: 25,
+        }),
+      ],
+      capacityKg: 40_000,
+    });
+    expect([past, firm, forecastOnly].map((d) => d.overloaded)).toEqual([
+      true,
+      true,
+      false,
+    ]);
+    expect(heatLevel(forecastOnly)).toBe(4);
+  });
+
+  it("has no percent without capacity", () => {
+    const [day] = seasonDays({
+      from: "2026-10-13",
+      to: "2026-10-13",
+      today: "2026-10-15",
+      records: [{ date: "2026-10-13", kg: 10_000 }],
+      planned: [],
+      capacityKg: 0,
+    });
+    expect(day.pct).toBeNull();
+  });
+
+  it("groups by month", () => {
+    const span = seasonDays({
+      from: "2026-10-30",
+      to: "2026-11-02",
+      today: "2026-10-15",
+      records: [],
+      planned: [],
+      capacityKg: 40_000,
+    });
+    expect(seasonMonths(span).map((m) => [m.month, m.days.length])).toEqual([
+      ["2026-10", 2],
+      ["2026-11", 2],
+    ]);
+  });
+});
+
+describe("heatLevel", () => {
+  it("steps at 25%, 50% and near full", () => {
+    expect(
+      [null, 0, 1, 24, 25, 49, 50, 84, 85, 99, 100, 140].map((pct) =>
+        heatLevel({ pct, overloaded: false }),
+      ),
+    ).toEqual([0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 4]);
+  });
+
+  it("is over only when overloaded", () => {
+    expect(heatLevel({ pct: 110, overloaded: true })).toBe("over");
   });
 });

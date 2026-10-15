@@ -371,3 +371,110 @@ export function plantStatus(day: DayPool): PlantStatus {
   }
   return "ok";
 }
+
+/** Months the season heatmap shows before and after the current month. */
+export const SEASON_MONTHS_BACK = 3;
+export const SEASON_MONTHS_AHEAD = 5;
+
+/** `YYYY-MM` moved by `n` months. */
+function addMonths(month: string, n: number): string {
+  const [y, m] = month.split("-").map(Number);
+  const i = y * 12 + (m - 1) + n;
+  return `${Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, "0")}`;
+}
+
+/** Whole months around `today`: first day of the earliest to last day of the latest. */
+export function seasonRange(today: string): { from: string; to: string } {
+  const month = today.slice(0, 7);
+  return {
+    from: `${addMonths(month, -SEASON_MONTHS_BACK)}-01`,
+    to: addDays(`${addMonths(month, SEASON_MONTHS_AHEAD + 1)}-01`, -1),
+  };
+}
+
+/** One dryer day on the season heatmap. */
+export type SeasonDay = {
+  date: string;
+  /** Before today: batch records. Today on: bookings, offers and forecast. */
+  kind: "record" | "expected";
+  kg: number;
+  capacityKg: number;
+  /** Whole percent of capacity, or null with no capacity. */
+  pct: number | null;
+  /** Recorded kg, or firm load from today, above capacity. Forecast alone never counts. */
+  overloaded: boolean;
+};
+
+/**
+ * Dryer days `from` to `to`. Days before `today` use recorded kg (0 when
+ * nothing was dried) against today's capacity; settings aren't versioned.
+ * Today on uses the planned dryer day's mid load.
+ */
+export function seasonDays(input: {
+  from: string;
+  to: string;
+  today: string;
+  records: { date: string; kg: number }[];
+  planned: DayPool[];
+  capacityKg: number;
+}): SeasonDay[] {
+  const recorded = new Map(input.records.map((r) => [r.date, r.kg]));
+  const planned = new Map(input.planned.map((d) => [d.date, d]));
+  const pct = (kg: number, capacityKg: number) =>
+    capacityKg ? Math.round((kg / capacityKg) * 100) : null;
+  return dateRange(input.from, input.to).map((date) => {
+    if (date < input.today) {
+      const kg = recorded.get(date) ?? 0;
+      return {
+        date,
+        kind: "record",
+        kg,
+        capacityKg: input.capacityKg,
+        pct: pct(kg, input.capacityKg),
+        overloaded: kg > input.capacityKg,
+      };
+    }
+    const day = planned.get(date);
+    const kg = day ? expectedKg(day) : 0;
+    const capacityKg = day?.capacityKg ?? input.capacityKg;
+    return {
+      date,
+      kind: "expected",
+      kg,
+      capacityKg,
+      pct: pct(kg, capacityKg),
+      overloaded: day?.overloaded ?? false,
+    };
+  });
+}
+
+/** Heatmap shade: 0 empty, 1–4 rising load, "over" when overloaded. */
+export type HeatLevel = 0 | 1 | 2 | 3 | 4 | "over";
+
+/** Shade for a day. Steps at 25%, 50% and `NEAR_FULL`; full but not overloaded stays 4. */
+export function heatLevel(
+  day: Pick<SeasonDay, "pct" | "overloaded">,
+): HeatLevel {
+  if (day.overloaded) return "over";
+  const { pct } = day;
+  if (!pct || pct <= 0) return 0;
+  if (pct >= 100) return 4;
+  if (pct < 25) return 1;
+  if (pct < 50) return 2;
+  if (pct < NEAR_FULL * 100) return 3;
+  return 4;
+}
+
+/** Season days grouped by calendar month (`YYYY-MM`), in date order. */
+export function seasonMonths(
+  days: SeasonDay[],
+): { month: string; days: SeasonDay[] }[] {
+  const out: { month: string; days: SeasonDay[] }[] = [];
+  for (const d of days) {
+    const month = d.date.slice(0, 7);
+    const last = out.at(-1);
+    if (last?.month === month) last.days.push(d);
+    else out.push({ month, days: [d] });
+  }
+  return out;
+}

@@ -2,6 +2,7 @@
 // Server-side reads. May call other modules' queries.
 
 import "server-only";
+import { addDays } from "@/lib/dates";
 import { bookingList, bookingsBetween } from "@/modules/booking/queries";
 import type { Booking, BookingRow } from "@/modules/booking/types";
 import {
@@ -10,10 +11,17 @@ import {
   type OfferListItem,
 } from "@/modules/buying/queries";
 import { expectedArrivals } from "@/modules/forecast/queries";
-import { storageStockOn } from "@/modules/gate/queries";
+import { driedKgByDay, storageStockOn } from "@/modules/gate/queries";
 import { electricityPerKg } from "@/modules/pricing/logic";
 import { capacitySettings } from "@/modules/setup/queries";
-import { dayInputs, electricityBasis, projectPools } from "./logic";
+import {
+  dayInputs,
+  electricityBasis,
+  poolDays,
+  projectPools,
+  type SeasonDay,
+  seasonDays,
+} from "./logic";
 import type { DayPool } from "./types";
 export type { DayPool, Pool, Range, Source } from "./types";
 
@@ -117,4 +125,25 @@ export async function acceptedOffers(
 ): Promise<OfferListItem[]> {
   const rows = await listOffers("accepted");
   return rows.filter((o) => o.harvest_date >= from && o.harvest_date <= to);
+}
+
+/** Dryer days for the season heatmap: batch records before `today`, the plan from `today`. */
+export async function dryerSeason(
+  from: string,
+  to: string,
+  today: string,
+): Promise<SeasonDay[]> {
+  const [records, plan, settings] = await Promise.all([
+    driedKgByDay(from, addDays(today, -1)),
+    capacityByDay(today, to),
+    capacitySettings(),
+  ]);
+  return seasonDays({
+    from,
+    to,
+    today,
+    records,
+    planned: poolDays(plan, "dryer"),
+    capacityKg: settings.dryerKgPerDay,
+  });
 }
