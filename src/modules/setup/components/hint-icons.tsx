@@ -35,7 +35,7 @@ export function UnconfirmedIcon() {
     <HintIcon
       icon={TriangleAlert}
       text="Unconfirmed by IRPC"
-      className="text-amber-600 dark:text-amber-500"
+      className="text-warning"
     />
   );
 }
