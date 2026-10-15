@@ -9,7 +9,13 @@ import type { Database } from "@/lib/supabase/database.types";
 import { riceStock } from "@/modules/gate/queries";
 import { send } from "@/modules/sms/queries";
 import { currentFacility } from "@/modules/setup/queries";
-import { canCancel, orderSms, type OrderStatus } from "./logic";
+import {
+  canCancel,
+  orderSms,
+  REQUEST_LIMITS,
+  requestLimited,
+  type OrderStatus,
+} from "./logic";
 
 export type Order = Database["public"]["Tables"]["rice_orders"]["Row"];
 export type { OrderStatus } from "./logic";
@@ -54,6 +60,34 @@ export async function createOrder(input: {
       throw new Error(`Create rice order: ${error.message}`);
   }
   throw new Error("Create rice order: could not allocate a unique ref.");
+}
+
+/** Too many /buy requests from this phone or IP in the current window. */
+export async function requestLocked(
+  ip: string,
+  phone: string,
+): Promise<boolean> {
+  const since = new Date(
+    Date.now() - REQUEST_LIMITS.windowMinutes * 60_000,
+  ).toISOString();
+  const count = (column: "ip" | "phone", value: string) =>
+    db()
+      .from("request_attempts")
+      .select("id", { count: "exact", head: true })
+      .eq(column, value)
+      .gte("created_at", since);
+  const [byPhone, byIp] = await Promise.all([
+    count("phone", phone),
+    count("ip", ip),
+  ]);
+  if (byPhone.error) throw byPhone.error;
+  if (byIp.error) throw byIp.error;
+  return requestLimited(byPhone.count ?? 0, byIp.count ?? 0);
+}
+
+export async function recordRequest(ip: string, phone: string): Promise<void> {
+  const { error } = await db().from("request_attempts").insert({ ip, phone });
+  if (error) throw error;
 }
 
 /** Texts the buyer about their order. A failed text never fails the saved change. */

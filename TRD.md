@@ -363,7 +363,7 @@ Code lives in `src/modules/orders`. See [decision 0003](docs/decisions/0003-buye
 
 **Exports:** `createOrder(input)`, `trackedOrder(ref, phone)`, `cancelOrder(order)`, `listOrders(status?)`, `orderStock()`.
 
-**Flow:** `/buy` → `requestRiceOnline` registers or finds the buyer (`kind: buyer`, with their `buyer_type`) and texts the code. The manager accepts or declines on `/rice-buying`; staff mark it picked up or cancel. `/buy/track` (code + phone) shows the status and cancels while `requested` or `accepted`; failed lookups share M4's `track_attempts` lock. Every change texts the buyer.
+**Flow:** `/buy` → `requestRiceOnline` registers or finds the buyer (`kind: buyer`, with their `buyer_type`) and texts the code. The manager accepts or declines on `/rice-buying`; staff mark it picked up or cancel. `/buy/track` (code + phone) shows the status and cancels while `requested` or `accepted`; failed lookups share M4's `track_attempts` lock. Requests are limited to 3 per phone and 10 per IP an hour (`request_attempts`). Every change texts the buyer.
 
 **Price and stock:** the estimate is `kg × rice_minor_per_kg` (M7); the dispatch (M6) sets the real price. No payment and no stock lock: `/rice-buying` shows free kg = M6 `riceStock()` − accepted kg, and flags open requests above it.
 

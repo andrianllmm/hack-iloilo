@@ -369,6 +369,20 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"request_attempts": {
+                  Row: {
+                    "created_at": string,"id": string,"ip": string,"phone": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"ip": string,"phone": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"ip"?: string,"phone"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"rice_orders": {
                   Row: {
                     "booked_by_phone": string,"client_id": string,"created_at": string,"facility_id": string,"id": string,"kg": number,"pickup_date": string,"ref": string,"status": Database["public"]['Enums']["rice_order_status"],"updated_at": string
