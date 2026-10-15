@@ -62,7 +62,9 @@ export function AppSidebar({ staff }: { staff: Staff }) {
       <SidebarContent>
         {groups.map((group) => (
           <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sm">
+              {group.label}
+            </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => (
@@ -71,6 +73,7 @@ export function AppSidebar({ staff }: { staff: Staff }) {
                       tooltip={item.title}
                       isActive={pathname.startsWith(item.href)}
                       render={<Link href={item.href} />}
+                      className="h-9 text-[0.9375rem] [&_svg]:size-[1.125rem]"
                     >
                       <item.icon />
                       <span>{item.title}</span>
