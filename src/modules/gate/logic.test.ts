@@ -3,6 +3,7 @@ import { checkInSchema } from "./checkin-schema";
 import {
   arrivalLabel,
   batchNo,
+  batchNoDate,
   batchOwnership,
   dispatchableKg,
   dispatchedKg,
@@ -15,6 +16,7 @@ import {
   maskPhone,
   nextBatchNo,
   nextStage,
+  normalizeBatchNo,
   normalizeRef,
   NOT_IN_LINE_REPLY,
   queueLines,
@@ -26,6 +28,7 @@ import {
   refLine,
   remainingKg,
   riceStockKg,
+  traceSteps,
   waitMinutes,
 } from "./logic";
 import type { QueueRow } from "./types";
@@ -512,5 +515,51 @@ describe("riceStockKg", () => {
 
   it("never goes below zero", () => {
     expect(riceStockKg([{ ...milled, dispatches: [{ kg: 1200 }] }])).toBe(0);
+  });
+});
+
+describe("normalizeBatchNo", () => {
+  it("adds the dash to digits typed on a keypad", () => {
+    expect(normalizeBatchNo("261015007")).toBe("261015-007");
+  });
+
+  it("drops spaces and keeps a typed dash", () => {
+    expect(normalizeBatchNo(" 261015-007 ")).toBe("261015-007");
+  });
+
+  it("is empty for no digits", () => {
+    expect(normalizeBatchNo("abc")).toBe("");
+  });
+});
+
+describe("batchNoDate", () => {
+  it("reads the receiving day from the batch no.", () => {
+    expect(batchNoDate(batchNo("2026-10-15", 7))).toBe("2026-10-15");
+  });
+});
+
+describe("traceSteps", () => {
+  it("lists each stage with its Manila date", () => {
+    expect(
+      traceSteps({
+        batchNo: "261020-001",
+        dryEnd: "2026-10-22T17:00:00Z",
+        millEnd: "2026-10-25T03:00:00Z",
+      }),
+    ).toEqual([
+      { label: "Received", date: "2026-10-20" },
+      { label: "Dried", date: "2026-10-23" },
+      { label: "Milled", date: "2026-10-25" },
+    ]);
+  });
+
+  it("leaves out drying for dry palay", () => {
+    expect(
+      traceSteps({
+        batchNo: "261020-001",
+        dryEnd: null,
+        millEnd: "2026-10-21T03:00:00Z",
+      }).map((s) => s.label),
+    ).toEqual(["Received", "Milled"]);
   });
 });

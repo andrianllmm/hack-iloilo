@@ -50,6 +50,7 @@ import {
   refKindLabels,
   refLine,
   riceStockKg,
+  traceSteps,
 } from "./logic";
 import type {
   Batch,
@@ -59,6 +60,7 @@ import type {
   BatchTrail,
   BuyerType,
   Dispatch,
+  PublicTrail,
   QueueEntry,
   QueueRow,
   RefKind,
@@ -690,6 +692,31 @@ export async function riceStock(): Promise<number> {
     .not("rice_kg", "is", null);
   if (error) throw error;
   return riceStockKg(data);
+}
+
+/** A batch's origin and dates by batch no., for buyers. Never reads names or phones. */
+export async function publicBatchTrail(
+  batchNo: string,
+): Promise<PublicTrail | null> {
+  const { data, error } = await db()
+    .from("batches")
+    .select(
+      "batch_no, dry_end, mill_end, variety:varieties(name), client:clients(municipality:municipalities(name))",
+    )
+    .eq("batch_no", batchNo)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    batchNo: data.batch_no,
+    municipality: data.client.municipality?.name ?? null,
+    variety: data.variety?.name ?? null,
+    steps: traceSteps({
+      batchNo: data.batch_no,
+      dryEnd: data.dry_end,
+      millEnd: data.mill_end,
+    }),
+  };
 }
 
 /**

@@ -2,7 +2,7 @@
 // Pure functions only: no I/O and no imports from other modules. Unit-test here.
 
 import { formatKg, formatMoneySms } from "@/lib/format";
-import { daysBetween } from "@/lib/dates";
+import { daysBetween, splitManila } from "@/lib/dates";
 import type { StatusTone } from "@/lib/status";
 import type {
   Batch,
@@ -492,4 +492,35 @@ export function riceStockKg(
         sum + remainingKg(dispatchableKg(b), dispatchedKg(b.dispatches)),
       0,
     );
+}
+
+/** `261015007`, ` 261015-007 ` → `261015-007`: batch nos are typed by hand. */
+export function normalizeBatchNo(input: string): string {
+  const digits = input.replace(/\D/g, "");
+  return digits.length > 6
+    ? `${digits.slice(0, 6)}-${digits.slice(6)}`
+    : digits;
+}
+
+/** `261015-007` → `2026-10-15`: the Manila day the batch was opened at receiving. */
+export function batchNoDate(no: string): string {
+  return `20${no.slice(0, 2)}-${no.slice(2, 4)}-${no.slice(4, 6)}`;
+}
+
+/** Stages a batch went through, as Manila dates; stages it skipped are left out. */
+export function traceSteps(batch: {
+  batchNo: string;
+  dryEnd: string | null;
+  millEnd: string | null;
+}): { label: string; date: string }[] {
+  const steps = [
+    { label: "Dried", at: batch.dryEnd },
+    { label: "Milled", at: batch.millEnd },
+  ];
+  return [
+    { label: "Received", date: batchNoDate(batch.batchNo) },
+    ...steps.flatMap(({ label, at }) =>
+      at ? [{ label, date: splitManila(at).date }] : [],
+    ),
+  ];
 }
