@@ -4,42 +4,10 @@
 // Server actions. Check the staff role first with requireRole().
 
 import { revalidatePath } from "next/cache";
-import { newRef } from "@/lib/ref";
 import { db } from "@/lib/supabase/admin";
 import { requireRole } from "@/modules/accounts/auth";
-import { currentFacility } from "@/modules/setup/queries";
-import { parseOfferForm, type CreateOfferInput } from "./logic";
-import type { Offer } from "./queries";
-
-/**
- * Create a sell offer in `offered` status with a fresh ref.
- * Auth-free so the SMS `SELL` command (#41) can reuse it; callers that face a
- * user (the staff form) authorize first. Offers are inert until a manager accepts.
- */
-export async function createOffer(input: CreateOfferInput): Promise<Offer> {
-  const facility = await currentFacility();
-
-  // ref is unique; retry the rare collision with a new one.
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const { data, error } = await db()
-      .from("sell_offers")
-      .insert({
-        facility_id: facility.id,
-        ref: newRef(),
-        client_id: input.clientId,
-        booked_by_phone: input.bookedByPhone,
-        variety_id: input.varietyId,
-        est_kg: input.estKg,
-        harvest_date: input.harvestDate,
-      })
-      .select()
-      .single();
-    if (!error) return data;
-    if (error.code !== "23505")
-      throw new Error(`Create offer: ${error.message}`);
-  }
-  throw new Error("Create offer: could not allocate a unique ref.");
-}
+import { parseOfferForm } from "./logic";
+import { createOffer } from "./queries";
 
 export type OfferFormState =
   { ok: true; ref: string } | { ok: false; error: string } | undefined;
