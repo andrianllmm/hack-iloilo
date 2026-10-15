@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { Wordmark } from "@/components/brand";
 import {
   Card,
   CardContent,
@@ -21,7 +22,8 @@ async function BookingFormLoader() {
 
 export default function BookPage() {
   return (
-    <main className="flex flex-1 items-start justify-center p-4 sm:items-center">
+    <main className="flex flex-1 flex-col items-center justify-start gap-6 p-4 sm:justify-center">
+      <Wordmark className="h-8 w-auto text-primary" />
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Book drying or milling</CardTitle>
