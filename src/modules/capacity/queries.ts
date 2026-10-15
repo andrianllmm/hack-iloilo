@@ -3,27 +3,49 @@
 
 import "server-only";
 import { bookingList, bookingsBetween } from "@/modules/booking/queries";
-import type { BookingRow } from "@/modules/booking/types";
+import type { Booking, BookingRow } from "@/modules/booking/types";
+import { acceptedOffersBetween } from "@/modules/buying/queries";
+import { expectedArrivals } from "@/modules/forecast/queries";
+import { storageStockOn } from "@/modules/gate/queries";
 import { capacitySettings } from "@/modules/setup/queries";
-import { dryerDays } from "./logic";
+import { dayInputs, projectPools } from "./logic";
 import type { DayPool } from "./types";
 export type { DayPool, Pool, Range, Source } from "./types";
 
-/** Load against capacity per day and pool, `from` to `to` inclusive. Recomputed on each call. */
+/** Load against capacity per day and pool, `from` to `to` inclusive. Storage starts from today's stock. Recomputed on each call. */
 export async function capacityByDay(
   from: string,
   to: string,
 ): Promise<DayPool[]> {
-  const [settings, bookings] = await Promise.all([
-    capacitySettings(),
-    bookingsBetween(from, to, "drying"),
-  ]);
-  return dryerDays({
-    from,
-    to,
-    bookings,
-    capacityKg: settings.dryerKgPerDay,
-    idleThresholdPct: settings.facility.idle_threshold_pct,
+  const [settings, bookings, offers, forecast, startStockKg] =
+    await Promise.all([
+      capacitySettings(),
+      bookingsBetween(from, to),
+      acceptedOffersBetween(from, to),
+      expectedArrivals(from, to),
+      storageStockOn(from),
+    ]);
+  const booked = (service: Booking["service"]) =>
+    bookings
+      .filter((b) => b.service === service)
+      .map((b) => ({ date: b.scheduled_date, kg: b.est_kg }));
+  return projectPools({
+    days: dayInputs({
+      from,
+      to,
+      drying: booked("drying"),
+      milling: booked("milling"),
+      offers: offers.map((o) => ({ date: o.harvest_date, kg: o.est_kg })),
+      forecast,
+    }),
+    startStockKg,
+    settings: {
+      dryerKgPerDay: settings.dryerKgPerDay,
+      millKgPerDay: settings.millKgPerDay,
+      storageCapacityKg: settings.facility.storage_capacity_kg,
+      dryYieldPct: settings.facility.dry_yield_pct,
+      idleThresholdPct: settings.facility.idle_threshold_pct,
+    },
   });
 }
 

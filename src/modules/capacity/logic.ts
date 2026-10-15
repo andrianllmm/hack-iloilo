@@ -50,33 +50,210 @@ export function dayPool(input: {
   };
 }
 
-/** Booking fields the dryer pool reads. */
-export type DryingBooking = { scheduled_date: string; est_kg: number };
+/** What arrives or is booked on one day, before projecting the pools. */
+export type DayInput = {
+  date: string;
+  /** Confirmed drying bookings (custom palay), kg. */
+  dryingKg: number;
+  /** Confirmed milling bookings, kg. */
+  millingKg: number;
+  /** Accepted sell offers by harvest date (IRPC-bought), kg. */
+  offerKg: number;
+  /** Forecast arrivals (IRPC-bought), kg. */
+  forecast: Range;
+};
 
-/** Dryer pool per day from confirmed drying bookings. */
-export function dryerDays(input: {
+/** Facility figures the projection reads. */
+export type PoolSettings = {
+  dryerKgPerDay: number;
+  millKgPerDay: number;
+  storageCapacityKg: number;
+  /** Dried kg per wet kg, in percent. */
+  dryYieldPct: number;
+  idleThresholdPct: number;
+};
+
+/** Sums kg per date and lays the sums over every date in `[from, to]`. */
+export function dayInputs(input: {
   from: string;
   to: string;
-  bookings: DryingBooking[];
-  capacityKg: number;
-  idleThresholdPct: number;
-}): DayPool[] {
-  const byDate = new Map<string, number>();
-  for (const b of input.bookings) {
-    byDate.set(
-      b.scheduled_date,
-      (byDate.get(b.scheduled_date) ?? 0) + b.est_kg,
-    );
-  }
-  return dateRange(input.from, input.to).map((date) =>
-    dayPool({
+  drying: { date: string; kg: number }[];
+  milling: { date: string; kg: number }[];
+  offers: { date: string; kg: number }[];
+  forecast: { date: string; kgLow: number; kgMid: number; kgHigh: number }[];
+}): DayInput[] {
+  const sum = (rows: { date: string; kg: number }[]) => {
+    const byDate = new Map<string, number>();
+    for (const r of rows) byDate.set(r.date, (byDate.get(r.date) ?? 0) + r.kg);
+    return byDate;
+  };
+  const drying = sum(input.drying);
+  const milling = sum(input.milling);
+  const offers = sum(input.offers);
+  const forecast = new Map(input.forecast.map((f) => [f.date, f]));
+  return dateRange(input.from, input.to).map((date) => {
+    const f = forecast.get(date);
+    return {
       date,
+      dryingKg: drying.get(date) ?? 0,
+      millingKg: milling.get(date) ?? 0,
+      offerKg: offers.get(date) ?? 0,
+      forecast: f ? { low: f.kgLow, mid: f.kgMid, high: f.kgHigh } : ZERO,
+    };
+  });
+}
+
+type Layer = { source: Source; kg: number };
+type SimDay = {
+  stock: Record<Source, number>;
+  milled: Record<Source, number>;
+};
+
+const bySource = (): Record<Source, number> => ({
+  confirmed: 0,
+  offer: 0,
+  forecast: 0,
+});
+
+/**
+ * Storage and IRPC milling day by day for one forecast scenario (kg per day).
+ * IRPC palay is dried in the dryer room bookings leave, offers before forecast,
+ * then stored at `dryYieldPct`. The mill takes IRPC stock, oldest first, in
+ * the room milling bookings leave, from what was stored by the day before.
+ * Starting stock is labelled `confirmed`: it is already in storage.
+ */
+function simulate(
+  days: DayInput[],
+  startStockKg: number,
+  forecastKg: (d: DayInput) => number,
+  s: PoolSettings,
+): SimDay[] {
+  const layers: Layer[] = startStockKg
+    ? [{ source: "confirmed", kg: startStockKg }]
+    : [];
+  return days.map((d) => {
+    const milled = bySource();
+    let millFree = Math.max(s.millKgPerDay - d.millingKg, 0);
+    while (millFree > 0 && layers.length) {
+      const take = Math.min(layers[0].kg, millFree);
+      milled[layers[0].source] += take;
+      millFree -= take;
+      layers[0].kg -= take;
+      if (layers[0].kg === 0) layers.shift();
+    }
+
+    const dryerFree = Math.max(s.dryerKgPerDay - d.dryingKg, 0);
+    const offerWet = Math.min(d.offerKg, dryerFree);
+    const forecastWet = Math.min(forecastKg(d), dryerFree - offerWet);
+    const dried = (kg: number) => Math.floor((kg * s.dryYieldPct) / 100);
+    for (const [source, kg] of [
+      ["offer", dried(offerWet)],
+      ["forecast", dried(forecastWet)],
+    ] as const) {
+      if (kg > 0) layers.push({ source, kg });
+    }
+
+    const stock = bySource();
+    for (const l of layers) stock[l.source] += l.kg;
+    return { stock, milled };
+  });
+}
+
+const total = (r: Record<Source, number>) => r.confirmed + r.offer + r.forecast;
+
+/**
+ * Dryer, storage and mill per day, in date order and that pool order.
+ * - Dryer: drying bookings, accepted offers and the forecast.
+ * - Storage: starting stock (confirmed), dried offers and dried forecast.
+ * - Mill: milling bookings plus IRPC stock milled, by where the stock came from.
+ * Firm figures come from a run without the forecast, so the forecast only
+ * ever adds its own range on top and never makes a day overloaded.
+ */
+export function projectPools(input: {
+  days: DayInput[];
+  startStockKg: number;
+  settings: PoolSettings;
+}): DayPool[] {
+  const { days, startStockKg, settings: s } = input;
+  const firm = simulate(days, startStockKg, () => 0, s);
+  const runs = {
+    low: simulate(days, startStockKg, (d) => d.forecast.low, s),
+    mid: simulate(days, startStockKg, (d) => d.forecast.mid, s),
+    high: simulate(days, startStockKg, (d) => d.forecast.high, s),
+  };
+  const extra = (i: number, of: (day: SimDay) => number): Range => ({
+    low: of(runs.low[i]) - of(firm[i]),
+    mid: of(runs.mid[i]) - of(firm[i]),
+    high: of(runs.high[i]) - of(firm[i]),
+  });
+  const idleThresholdPct = s.idleThresholdPct;
+
+  return days.flatMap((d, i) => [
+    dayPool({
+      date: d.date,
       pool: "dryer",
-      load: { confirmed: exact(byDate.get(date) ?? 0) },
-      capacityKg: input.capacityKg,
-      idleThresholdPct: input.idleThresholdPct,
+      load: {
+        confirmed: exact(d.dryingKg),
+        offer: exact(d.offerKg),
+        forecast: d.forecast,
+      },
+      capacityKg: s.dryerKgPerDay,
+      idleThresholdPct,
     }),
-  );
+    dayPool({
+      date: d.date,
+      pool: "storage",
+      load: {
+        confirmed: exact(firm[i].stock.confirmed),
+        offer: exact(firm[i].stock.offer),
+        forecast: extra(i, (r) => total(r.stock)),
+      },
+      capacityKg: s.storageCapacityKg,
+      idleThresholdPct,
+    }),
+    dayPool({
+      date: d.date,
+      pool: "mill",
+      load: {
+        confirmed: exact(d.millingKg + firm[i].milled.confirmed),
+        offer: exact(firm[i].milled.offer),
+        forecast: extra(i, (r) => total(r.milled)),
+      },
+      capacityKg: s.millKgPerDay,
+      idleThresholdPct,
+    }),
+  ]);
+}
+
+/**
+ * Inputs for `electricityPerKg` over the window: machine kWh scaled by how full
+ * the dryer and mill run each day, the kg they handle and the days either runs.
+ */
+export function electricityBasis(input: {
+  days: DayPool[];
+  /** Rated kW of active dryers and mills. */
+  dryerKw: number;
+  millKw: number;
+  hoursPerDay: number;
+}): { machineKwh: number; kg: number; daysRun: number } {
+  const kw = { dryer: input.dryerKw, mill: input.millKw } as const;
+  let machineKwh = 0;
+  let kg = 0;
+  const run = new Set<string>();
+  for (const d of input.days) {
+    if (d.pool === "storage" || d.capacityKg <= 0) continue;
+    const handled = Math.min(expectedKg(d), d.capacityKg);
+    if (handled <= 0) continue;
+    machineKwh += kw[d.pool] * input.hoursPerDay * (handled / d.capacityKg);
+    kg += handled;
+    run.add(d.date);
+  }
+  return { machineKwh, kg, daysRun: run.size };
+}
+
+/** Days of one pool, in date order. */
+export function poolDays(days: DayPool[], pool: Pool): DayPool[] {
+  return days.filter((d) => d.pool === pool);
 }
 
 const weekday = new Intl.DateTimeFormat("en-US", {

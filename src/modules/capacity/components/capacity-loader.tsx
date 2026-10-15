@@ -1,6 +1,6 @@
 import { addDays, todayManila } from "@/lib/dates";
 import { requireRole } from "@/modules/accounts/auth";
-import { WINDOW_DAYS } from "../logic";
+import { poolDays, WINDOW_DAYS } from "../logic";
 import { capacityByDay, dryingBookings, idleThresholdPct } from "../queries";
 import { CapacityView, type PanelBooking } from "./capacity-view";
 
@@ -34,7 +34,7 @@ export async function CapacityLoader() {
   }
   return (
     <CapacityView
-      days={data?.[0] ?? null}
+      days={data ? poolDays(data[0], "dryer") : null}
       bookings={bookings}
       idleThresholdPct={data?.[2] ?? 0}
       range={range}

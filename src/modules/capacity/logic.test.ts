@@ -1,12 +1,56 @@
 import { describe, expect, it } from "vitest";
 import {
   dateRange,
+  dayInputs,
   dayPool,
-  dryerDays,
+  electricityBasis,
   exact,
   headline,
   idleStretches,
+  poolDays,
+  projectPools,
+  type PoolSettings,
 } from "./logic";
+
+const settings: PoolSettings = {
+  dryerKgPerDay: 40_000,
+  millKgPerDay: 10_000,
+  storageCapacityKg: 100_000,
+  dryYieldPct: 90,
+  idleThresholdPct: 25,
+};
+
+/** Projects pools over `from`–`to` with the given rows (date, kg). */
+function project(input: {
+  from: string;
+  to: string;
+  drying?: [string, number][];
+  milling?: [string, number][];
+  offers?: [string, number][];
+  forecast?: [string, number, number, number][];
+  startStockKg?: number;
+  settings?: Partial<PoolSettings>;
+}) {
+  const rows = (r: [string, number][] = []) =>
+    r.map(([date, kg]) => ({ date, kg }));
+  return projectPools({
+    days: dayInputs({
+      from: input.from,
+      to: input.to,
+      drying: rows(input.drying),
+      milling: rows(input.milling),
+      offers: rows(input.offers),
+      forecast: (input.forecast ?? []).map(([date, kgLow, kgMid, kgHigh]) => ({
+        date,
+        kgLow,
+        kgMid,
+        kgHigh,
+      })),
+    }),
+    startStockKg: input.startStockKg ?? 0,
+    settings: { ...settings, ...input.settings },
+  });
+}
 
 const day = (load: Parameters<typeof dayPool>[0]["load"]) =>
   dayPool({
@@ -51,19 +95,20 @@ describe("dayPool", () => {
   });
 });
 
-describe("dryerDays", () => {
+describe("dryer pool", () => {
   it("sums bookings per day and fills empty days", () => {
-    const days = dryerDays({
-      from: "2026-10-19",
-      to: "2026-10-21",
-      bookings: [
-        { scheduled_date: "2026-10-20", est_kg: 30_000 },
-        { scheduled_date: "2026-10-20", est_kg: 20_000 },
-        { scheduled_date: "2026-10-21", est_kg: 15_000 },
-      ],
-      capacityKg: 40_000,
-      idleThresholdPct: 25,
-    });
+    const days = poolDays(
+      project({
+        from: "2026-10-19",
+        to: "2026-10-21",
+        drying: [
+          ["2026-10-20", 30_000],
+          ["2026-10-20", 20_000],
+          ["2026-10-21", 15_000],
+        ],
+      }),
+      "dryer",
+    );
     expect(
       days.map((d) => [d.date, d.load.confirmed.mid, d.overflowKg]),
     ).toEqual([
@@ -72,6 +117,169 @@ describe("dryerDays", () => {
       ["2026-10-21", 15_000, 0],
     ]);
     expect(days[0].idle).toBe(true);
+  });
+
+  it("adds offers as firm load and the forecast as a range", () => {
+    const [d] = poolDays(
+      project({
+        from: "2026-10-20",
+        to: "2026-10-20",
+        drying: [["2026-10-20", 30_000]],
+        offers: [["2026-10-20", 5_000]],
+        forecast: [["2026-10-20", 4_000, 8_000, 12_000]],
+      }),
+      "dryer",
+    );
+    expect(d.load.offer).toEqual(exact(5_000));
+    expect(d.load.forecast).toEqual({ low: 4_000, mid: 8_000, high: 12_000 });
+    // 43 t expected on 40 t, but only 35 t is firm.
+    expect(d.overloaded).toBe(false);
+  });
+
+  it("flags overload once offers push firm load past capacity", () => {
+    const [d] = poolDays(
+      project({
+        from: "2026-10-20",
+        to: "2026-10-20",
+        drying: [["2026-10-20", 30_000]],
+        offers: [["2026-10-20", 12_000]],
+      }),
+      "dryer",
+    );
+    expect(d.overflowKg).toBe(2_000);
+  });
+});
+
+describe("storage and mill pools", () => {
+  it("stores dried IRPC palay and mills it the next day, oldest first", () => {
+    const days = project({
+      from: "2026-10-20",
+      to: "2026-10-22",
+      offers: [["2026-10-20", 20_000]],
+      startStockKg: 5_000,
+    });
+    const storage = poolDays(days, "storage");
+    const mill = poolDays(days, "mill");
+    // Day 1: mill 5 t of starting stock, store 18 t from the offer.
+    expect(storage[0].load.confirmed.mid).toBe(0);
+    expect(storage[0].load.offer.mid).toBe(18_000);
+    expect(mill[0].load.confirmed.mid).toBe(5_000);
+    // Day 2: mill 10 t of the offer; day 3: the last 8 t.
+    expect(storage.map((d) => d.load.offer.mid)).toEqual([18_000, 8_000, 0]);
+    expect(mill.map((d) => d.load.offer.mid)).toEqual([0, 10_000, 8_000]);
+  });
+
+  it("leaves milling bookings first call on the mill", () => {
+    const days = project({
+      from: "2026-10-20",
+      to: "2026-10-20",
+      milling: [["2026-10-20", 7_000]],
+      startStockKg: 50_000,
+    });
+    const [mill] = poolDays(days, "mill");
+    const [storage] = poolDays(days, "storage");
+    expect(mill.load.confirmed.mid).toBe(10_000);
+    expect(storage.load.confirmed.mid).toBe(47_000);
+  });
+
+  it("dries IRPC palay only in the room bookings leave", () => {
+    const [storage] = poolDays(
+      project({
+        from: "2026-10-20",
+        to: "2026-10-20",
+        drying: [["2026-10-20", 35_000]],
+        offers: [["2026-10-20", 10_000]],
+      }),
+      "storage",
+    );
+    expect(storage.load.offer.mid).toBe(4_500);
+  });
+
+  it("caps mill load at capacity even with stock waiting", () => {
+    const mill = poolDays(
+      project({
+        from: "2026-10-20",
+        to: "2026-10-21",
+        startStockKg: 80_000,
+      }),
+      "mill",
+    );
+    expect(mill.every((d) => d.load.confirmed.mid === 10_000)).toBe(true);
+    expect(mill.some((d) => d.overloaded)).toBe(false);
+  });
+
+  it("flags storage overflow from firm stock", () => {
+    const [storage] = poolDays(
+      project({
+        from: "2026-10-20",
+        to: "2026-10-20",
+        offers: [["2026-10-20", 40_000]],
+        startStockKg: 75_000,
+        settings: { millKgPerDay: 0 },
+      }),
+      "storage",
+    );
+    expect(storage.load.confirmed.mid + storage.load.offer.mid).toBe(111_000);
+    expect(storage.overflowKg).toBe(11_000);
+  });
+
+  it("never lets forecast stock alone overload storage", () => {
+    const [storage] = poolDays(
+      project({
+        from: "2026-10-20",
+        to: "2026-10-20",
+        forecast: [["2026-10-20", 20_000, 30_000, 40_000]],
+        startStockKg: 90_000,
+        settings: { millKgPerDay: 0 },
+      }),
+      "storage",
+    );
+    expect(storage.load.forecast).toEqual({
+      low: 18_000,
+      mid: 27_000,
+      high: 36_000,
+    });
+    expect(storage.overloaded).toBe(false);
+  });
+
+  it("reports forecast mill load as a range on top of firm load", () => {
+    const mill = poolDays(
+      project({
+        from: "2026-10-20",
+        to: "2026-10-21",
+        forecast: [["2026-10-20", 2_000, 4_000, 20_000]],
+      }),
+      "mill",
+    );
+    expect(mill[1].load.forecast).toEqual({
+      low: 1_800,
+      mid: 3_600,
+      high: 10_000,
+    });
+    expect(mill[1].load.confirmed.mid).toBe(0);
+  });
+});
+
+describe("electricityBasis", () => {
+  it("scales machine kWh by load and counts days either machine runs", () => {
+    const days = project({
+      from: "2026-10-20",
+      to: "2026-10-22",
+      drying: [
+        ["2026-10-20", 20_000],
+        ["2026-10-21", 60_000],
+      ],
+      milling: [["2026-10-21", 5_000]],
+    });
+    const basis = electricityBasis({
+      days,
+      dryerKw: 100,
+      millKw: 50,
+      hoursPerDay: 10,
+    });
+    // Dryer: half a day (500 kWh) + a full day capped at 40 t (1,000 kWh).
+    // Mill: half a day (250 kWh).
+    expect(basis).toEqual({ machineKwh: 1_750, kg: 65_000, daysRun: 2 });
   });
 });
 
@@ -86,16 +294,17 @@ describe("dateRange", () => {
 });
 
 describe("idleStretches and headline", () => {
-  const days = dryerDays({
-    from: "2026-10-28",
-    to: "2026-11-03",
-    bookings: [
-      { scheduled_date: "2026-10-28", est_kg: 50_000 },
-      { scheduled_date: "2026-11-02", est_kg: 20_000 },
-    ],
-    capacityKg: 40_000,
-    idleThresholdPct: 25,
-  });
+  const days = poolDays(
+    project({
+      from: "2026-10-28",
+      to: "2026-11-03",
+      drying: [
+        ["2026-10-28", 50_000],
+        ["2026-11-02", 20_000],
+      ],
+    }),
+    "dryer",
+  );
 
   it("groups consecutive idle days across a month boundary", () => {
     expect(idleStretches(days)).toEqual([
