@@ -1,0 +1,126 @@
+import { describe, expect, it } from "vitest";
+import {
+  fillTemplate,
+  helpText,
+  isGsm7,
+  parseAnswer,
+  parseDayMonth,
+  parseInbound,
+  SMS_MAX_CHARS,
+} from "./logic";
+
+describe("parseInbound", () => {
+  it("uppercases the first word as the keyword", () => {
+    expect(parseInbound("book dry 500 20/10")).toEqual({
+      keyword: "BOOK",
+      args: ["dry", "500", "20/10"],
+      forPhone: undefined,
+    });
+  });
+
+  it("ignores extra whitespace", () => {
+    expect(parseInbound("  price \n  ")).toEqual({
+      keyword: "PRICE",
+      args: [],
+      forPhone: undefined,
+    });
+  });
+
+  it("returns an empty keyword for an empty text", () => {
+    expect(parseInbound("   ").keyword).toBe("");
+  });
+
+  it("strips a trailing FOR <phone>, case-insensitive", () => {
+    expect(parseInbound("BOOK dry 500 for 09171234567")).toEqual({
+      keyword: "BOOK",
+      args: ["dry", "500"],
+      forPhone: "09171234567",
+    });
+  });
+
+  it("keeps FOR that is not at the end", () => {
+    expect(parseInbound("BOOK FOR 0917 dry")).toEqual({
+      keyword: "BOOK",
+      args: ["FOR", "0917", "dry"],
+      forPhone: undefined,
+    });
+  });
+
+  it("does not treat the keyword itself as FOR", () => {
+    expect(parseInbound("FOR 09171234567").forPhone).toBeUndefined();
+  });
+});
+
+describe("parseAnswer", () => {
+  it("reads YES and NO with a ref", () => {
+    expect(parseAnswer(parseInbound("yes k7p2qx"))).toEqual({
+      yes: true,
+      ref: "K7P2QX",
+    });
+    expect(parseAnswer(parseInbound("NO K7P2QX"))).toEqual({
+      yes: false,
+      ref: "K7P2QX",
+    });
+  });
+
+  it("needs exactly one ref", () => {
+    expect(parseAnswer(parseInbound("YES"))).toBeNull();
+    expect(parseAnswer(parseInbound("YES A B"))).toBeNull();
+    expect(parseAnswer(parseInbound("BOOK A"))).toBeNull();
+  });
+});
+
+describe("parseDayMonth", () => {
+  const today = "2026-10-15";
+
+  it("resolves a later date this year", () => {
+    expect(parseDayMonth("20/10", today)).toBe("2026-10-20");
+    expect(parseDayMonth("1/12", today)).toBe("2026-12-01");
+  });
+
+  it("counts today as the next occurrence", () => {
+    expect(parseDayMonth("15/10", today)).toBe("2026-10-15");
+  });
+
+  it("rolls past dates into next year", () => {
+    expect(parseDayMonth("14/10", today)).toBe("2027-10-14");
+    expect(parseDayMonth("05/01", today)).toBe("2027-01-05");
+  });
+
+  it("finds the next leap day", () => {
+    expect(parseDayMonth("29/02", today)).toBe("2028-02-29");
+  });
+
+  it("rejects impossible or malformed dates", () => {
+    expect(parseDayMonth("31/02", today)).toBeNull();
+    expect(parseDayMonth("31/04", today)).toBeNull();
+    expect(parseDayMonth("0/10", today)).toBeNull();
+    expect(parseDayMonth("10/13", today)).toBeNull();
+    expect(parseDayMonth("10-10", today)).toBeNull();
+    expect(parseDayMonth("tomorrow", today)).toBeNull();
+  });
+});
+
+describe("fillTemplate", () => {
+  it("fills known placeholders and keeps unknown ones", () => {
+    expect(
+      fillTemplate("Hi {name}, ref {ref}. {other}", { name: "Ana", ref: 7 }),
+    ).toBe("Hi Ana, ref 7. {other}");
+  });
+});
+
+describe("helpText", () => {
+  it("lists commands once, sorted, within the SMS limit", () => {
+    const text = helpText(["price", "BOOK", "PRICE"]);
+    expect(text).toContain("BOOK, PRICE");
+    expect(text.length).toBeLessThanOrEqual(SMS_MAX_CHARS);
+    expect(isGsm7(text)).toBe(true);
+  });
+});
+
+describe("isGsm7", () => {
+  it("rejects characters outside GSM-7", () => {
+    expect(isGsm7("PHP 1,234.50 [ok]")).toBe(true);
+    expect(isGsm7("₱1,234")).toBe(false);
+  });
+});
