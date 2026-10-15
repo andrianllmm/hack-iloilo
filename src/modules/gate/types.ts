@@ -8,6 +8,7 @@ export type Batch = Tables["batches"]["Row"];
 export type Dispatch = Tables["dispatches"]["Row"];
 export type QueueStatus = Enums["queue_status"];
 export type BatchOwnership = Enums["batch_ownership"];
+export type BuyerType = Enums["buyer_type"];
 export type Service = Enums["service"];
 export type BookingStatus = Enums["booking_status"];
 export type OfferStatus = Enums["sell_offer_status"];
@@ -53,7 +54,7 @@ export type BatchListRow = Pick<
 };
 /** A dispatch with the buyer (or owner, for a pickup) it went to. */
 export type DispatchRow = Dispatch & {
-  buyer: Pick<Tables["clients"]["Row"], "name">;
+  buyer: Pick<Tables["clients"]["Row"], "name" | "buyer_type">;
 };
 /** A batch with its origin and every dispatch, for the trail from gate to buyers. */
 export type BatchTrail = Batch & {

@@ -5,7 +5,7 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { newRef } from "@/lib/ref";
 import type { Json } from "@/lib/supabase/database.types";
-import { todayManila } from "@/lib/dates";
+import { addDays, joinManila, todayManila } from "@/lib/dates";
 import { db } from "@/lib/supabase/admin";
 import {
   findOrRegisterByPhone,
@@ -39,6 +39,7 @@ import {
   nextStage,
   nextInLineTexts,
   dispatchText,
+  kgByBuyerType,
   normalizeRef,
   queueLines,
   queuePositions,
@@ -55,6 +56,7 @@ import type {
   BatchOwnership,
   BatchSummary,
   BatchTrail,
+  BuyerType,
   Dispatch,
   QueueEntry,
   QueueRow,
@@ -594,9 +596,13 @@ export async function receivedKgByClient(): Promise<Map<string, number>> {
   return kg;
 }
 
-/** Batches for the list page, newest first, optionally one stage only. */
+/**
+ * Batches for the list page, newest first, optionally one stage only and only
+ * those with a dispatch to a buyer of `buyerType`.
+ */
 export async function listBatches(
   stage?: Batch["stage"],
+  buyerType?: BuyerType,
 ): Promise<BatchListRow[]> {
   const facility = await currentFacility();
   let query = db()
@@ -607,9 +613,41 @@ export async function listBatches(
     .eq("facility_id", facility.id)
     .order("batch_no", { ascending: false });
   if (stage) query = query.eq("stage", stage);
+  if (buyerType) {
+    const { data: sold, error } = await db()
+      .from("dispatches")
+      .select("batch_id, buyer:clients!inner(buyer_type)")
+      .eq("buyer.buyer_type", buyerType);
+    if (error) throw error;
+    query = query.in("id", [...new Set(sold.map((d) => d.batch_id))]);
+  }
   const { data, error } = await query;
   if (error) throw error;
   return data;
+}
+
+/**
+ * Kg dispatched to buyers per buyer type, Manila dates `from` to `to`
+ * inclusive. Owner pickups are left out: they go to farmers, not buyers.
+ */
+export async function dispatchedKgByBuyerType(
+  from: string,
+  to: string,
+): Promise<Map<BuyerType | null, number>> {
+  const facility = await currentFacility();
+  const { data, error } = await db()
+    .from("dispatches")
+    .select(
+      "kg, buyer:clients!inner(kind, buyer_type), batch:batches!inner(facility_id)",
+    )
+    .eq("batch.facility_id", facility.id)
+    .eq("buyer.kind", "buyer")
+    .gte("dispatched_at", joinManila(from, "00:00"))
+    .lt("dispatched_at", joinManila(addDays(to, 1), "00:00"));
+  if (error) throw error;
+  return kgByBuyerType(
+    data.map((d) => ({ kg: d.kg, buyerType: d.buyer.buyer_type })),
+  );
 }
 
 /** Buyers (IRPC's clients that buy rice), for the dispatch picker. */
@@ -628,7 +666,7 @@ export async function batchTrail(id: string): Promise<BatchTrail | null> {
   const { data, error } = await db()
     .from("batches")
     .select(
-      "*, client:clients(name, phone, kind, municipality:municipalities(name)), entry:queue_entries(service, started_at), dispatches(*, buyer:clients(name))",
+      "*, client:clients(name, phone, kind, municipality:municipalities(name)), entry:queue_entries(service, started_at), dispatches(*, buyer:clients(name, buyer_type))",
     )
     .eq("id", id)
     .maybeSingle();
