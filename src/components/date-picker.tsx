@@ -90,6 +90,18 @@ export function DatePicker({
   );
 }
 
+/** An uncontrolled date picker for plain forms: submits its value under `name`. */
+export function DateInput({
+  defaultValue,
+  ...props
+}: Omit<DatePickerProps, "value" | "onChange"> & {
+  defaultValue?: string;
+  name: string;
+}) {
+  const [value, setValue] = React.useState(defaultValue);
+  return <DatePicker {...props} value={value} onChange={setValue} />;
+}
+
 type PickerPopoverProps = {
   label?: string;
   placeholder: string;
