@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -221,6 +222,8 @@ export function QueueLine({
       </CardContent>
       <CardFooter>
         <Button
+          size="lg"
+          className="w-full"
           disabled={!next || pending}
           onClick={() => {
             if (!next) return;
@@ -251,7 +254,15 @@ export function QueueLine({
           {busy && busy === next?.id ? (
             <Spinner data-icon="inline-start" />
           ) : null}
-          {next ? "Start next → opens batch" : "Start next"}
+          {next ? (
+            <>
+              Start next
+              <ArrowRight />
+              opens batch
+            </>
+          ) : (
+            "Start next"
+          )}
         </Button>
       </CardFooter>
       <AlertDialog

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -57,8 +58,9 @@ export function GateQueue({
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">Queue</h1>
-          <p className="text-sm text-muted-foreground">
-            {todayLabel} · one line per service · first come, first served
+          <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <Badge>{todayLabel}</Badge>
+            One line per service · first come, first served
           </p>
         </div>
         <Popover open={checkingIn} onOpenChange={setCheckingIn}>
