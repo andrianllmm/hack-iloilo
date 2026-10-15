@@ -191,7 +191,6 @@ export async function ForecastView() {
               <TableRow>
                 <TableHead>Municipality</TableHead>
                 <TableHead className="text-right">Expected</TableHead>
-                <TableHead className="text-right">Likely range</TableHead>
                 <TableHead>Busiest period</TableHead>
               </TableRow>
             </TableHeader>
@@ -203,9 +202,6 @@ export async function ForecastView() {
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {formatTonnes(m.kgMid)}
-                  </TableCell>
-                  <TableCell className="text-right text-muted-foreground tabular-nums">
-                    {rangeT(m)}
                   </TableCell>
                   <TableCell>
                     {m.peak ? span(m.peak.from, m.peak.to) : "—"}
@@ -220,9 +216,6 @@ export async function ForecastView() {
                   <TableCell className="text-right tabular-nums">
                     {formatTonnes(restTotal.kgMid)}
                   </TableCell>
-                  <TableCell className="text-right text-muted-foreground tabular-nums">
-                    {rangeT(restTotal)}
-                  </TableCell>
                   <TableCell />
                 </TableRow>
               </TableFooter>
@@ -233,8 +226,8 @@ export async function ForecastView() {
 
       <p className="text-xs text-muted-foreground">
         Estimated from the province&apos;s planting reports: palay planted now
-        reaches IRPC about {months} months later. Weekly totals usually land
-        within ±{spread}% of the estimate.
+        reaches IRPC about {months} months later. Totals for the whole province
+        usually land within ±{spread}% of the estimate.
       </p>
     </>
   );

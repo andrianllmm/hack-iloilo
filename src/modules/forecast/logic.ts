@@ -99,7 +99,12 @@ export function assertForecastMetrics(
   if (!ok) throw new Error("metrics.json is missing forecast fields");
 }
 
-/** Expected kg arriving, mid estimate with its p10–p90 range. */
+/**
+ * Expected kg arriving, mid estimate with its low–high band. The band is one
+ * fixed ratio of the mid (the province-level held-out p10/p90), so summing
+ * low and high is the same as applying that ratio to the summed mid. It's
+ * calibrated for province totals, not for single municipalities.
+ */
 export type KgRange = { kgLow: number; kgMid: number; kgHigh: number };
 
 export type DayArrivals = KgRange & { date: string };
