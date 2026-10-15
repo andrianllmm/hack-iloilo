@@ -250,14 +250,14 @@ export function queuePositions(
 }
 
 export const NOT_IN_LINE_REPLY =
-  "IRPC: You are not in line. Check in at the gate when you arrive.";
+  "IRPC: Wala ka pa sa linya. Mag-check in sa gate pag-abot mo.";
 
-/** `IRPC: Drying: you are #3 in line. Milling: being served now.` */
+/** `IRPC: Drying: #3 ka sa linya. Milling: ikaw na ang ginaserbisyuhan subong.` */
 export function queueStatusReply(positions: QueuePosition[]): string {
   if (!positions.length) return NOT_IN_LINE_REPLY;
   const parts = positions.map(
     (p) =>
-      `${serviceLabels[p.service]}: ${p.serving ? "being served now" : `you are #${p.position} in line`}.`,
+      `${serviceLabels[p.service]}: ${p.serving ? "ikaw na ang ginaserbisyuhan subong" : `#${p.position} ka sa linya`}.`,
   );
   return `IRPC: ${parts.join(" ")}`;
 }

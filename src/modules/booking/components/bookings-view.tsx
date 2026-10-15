@@ -39,6 +39,9 @@ import {
 import type { BookingClient, BookingRow } from "../types";
 import { BookingForm } from "./booking-form";
 import { BookingsTable } from "./bookings-table";
+import { RescheduleForm } from "./reschedule-form";
+import { formatKg } from "@/lib/format";
+import { serviceLabels } from "../logic";
 
 // SMS bookings arrive from outside the page; pick them up without a reload.
 const REFRESH_MS = 15_000;
@@ -70,6 +73,7 @@ export function BookingsView({
   const [pending, startTransition] = useTransition();
   const [filters, setFilters] = useState(initialFilters);
   const [creating, setCreating] = useState(false);
+  const [rescheduling, setRescheduling] = useState<BookingRow | null>(null);
   const groups = bookings ? groupBookings(bookings, filters) : [];
   const period = formatRange(range.from, range.to);
   const refresh = () => startTransition(() => router.refresh());
@@ -168,7 +172,11 @@ export function BookingsView({
           </Button>
         </Empty>
       ) : groups.length ? (
-        <BookingsTable groups={groups} clients={clients} />
+        <BookingsTable
+          groups={groups}
+          clients={clients}
+          onReschedule={setRescheduling}
+        />
       ) : filtered ? (
         <Empty className="border">
           <EmptyHeader>
@@ -205,6 +213,32 @@ export function BookingsView({
           </Button>
         </Empty>
       )}
+      <Sheet
+        open={rescheduling !== null}
+        onOpenChange={(open) => {
+          if (!open) setRescheduling(null);
+        }}
+      >
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Reschedule booking {rescheduling?.ref}</SheetTitle>
+            <SheetDescription>
+              {rescheduling
+                ? `${rescheduling.client.name} · ${serviceLabels[rescheduling.service]} · ${formatKg(rescheduling.est_kg)}. Confirms instantly and texts the client and booker. Replaces any pending proposal.`
+                : null}
+            </SheetDescription>
+          </SheetHeader>
+          {rescheduling ? (
+            <RescheduleForm
+              key={rescheduling.id}
+              booking={rescheduling}
+              today={today}
+              onSaved={() => setRescheduling(null)}
+              onCancel={() => setRescheduling(null)}
+            />
+          ) : null}
+        </SheetContent>
+      </Sheet>
       <Sheet open={creating} onOpenChange={setCreating}>
         <SheetContent>
           <SheetHeader>

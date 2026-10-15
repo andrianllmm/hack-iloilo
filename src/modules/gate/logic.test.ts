@@ -158,7 +158,7 @@ describe("queueStatusReply", () => {
       { service: "milling", serving: true },
     ]);
     expect(reply).toBe(
-      "IRPC: Drying: you are #3 in line. Milling: being served now.",
+      "IRPC: Drying: #3 ka sa linya. Milling: ikaw na ang ginaserbisyuhan subong.",
     );
     expect(reply).toMatch(gsm7);
     expect(reply.length).toBeLessThanOrEqual(160);

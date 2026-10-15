@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { bookingSchema } from "./booking-schema";
+import { bookingAiSchema, bookingSchema } from "./booking-schema";
 import {
   bookedByLabel,
+  bookingFromAi,
+  SACK_KG,
   canCancel,
   canMove,
   defaultRange,
@@ -11,9 +13,33 @@ import {
   groupBookings,
   parseMoveArgs,
   rescheduleAnswer,
+  validateMove,
   type BookingFilters,
 } from "./logic";
 import type { BookingRow } from "./types";
+
+describe("move date and flex validation", () => {
+  it("accepts today, future dates, and both flex boundaries", () => {
+    expect(validateMove("2026-10-15", 0, "2026-10-15")).toBeNull();
+    expect(validateMove("2027-01-01", 7, "2026-10-15")).toBeNull();
+  });
+  it("rejects past dates against Manila today", () => {
+    expect(validateMove("2026-10-14", 0, "2026-10-15")).toBe(
+      "Choose today or a later date.",
+    );
+  });
+  it.each(["2026-02-30", "invalid", "25/10", "2026-13-01"])(
+    "rejects invalid dates: %s",
+    (date) => {
+      expect(validateMove(date, 0, "2026-10-15")).toBe("Choose a valid date.");
+    },
+  );
+  it.each([-1, 8, 1.5, NaN, Infinity])("rejects invalid flex: %s", (flex) => {
+    expect(validateMove("2026-10-25", flex, "2026-10-15")).toBe(
+      "Flex days must be a whole number from 0 to 7.",
+    );
+  });
+});
 
 const row = (overrides: Partial<BookingRow> = {}): BookingRow => ({
   id: "b1",
@@ -222,5 +248,37 @@ describe("date labels", () => {
     expect(formatDay("2026-10-20")).toBe("Tue, Oct 20");
     expect(formatShortDate("2026-10-20")).toBe("Oct 20");
     expect(formatRange("2026-10-15", "2026-10-31")).toMatch(/^Oct 15\s–\s31$/);
+  });
+});
+
+describe("bookingFromAi", () => {
+  const reading = {
+    service: "drying",
+    dayMonth: "20/10",
+    flexDays: 0,
+  } as const;
+
+  it("converts sacks to kg in code and keeps kg as stated", () => {
+    expect(bookingFromAi({ ...reading, amount: 20, unit: "sacks" })).toEqual({
+      ...reading,
+      estKg: 20 * SACK_KG,
+    });
+    expect(bookingFromAi({ ...reading, amount: 1500, unit: "kg" })).toEqual({
+      ...reading,
+      estKg: 1500,
+    });
+    expect(
+      bookingFromAi({ ...reading, amount: 2.5, unit: "sacks" }).estKg,
+    ).toBe(Math.round(2.5 * SACK_KG));
+  });
+
+  it("asks the AI for an amount and unit, not kg", () => {
+    expect(
+      bookingAiSchema.safeParse({ ...reading, amount: 20, unit: "sacks" })
+        .success,
+    ).toBe(true);
+    expect(bookingAiSchema.safeParse({ ...reading, estKg: 1000 }).success).toBe(
+      false,
+    );
   });
 });

@@ -253,7 +253,7 @@ describe("fillIdle", () => {
       today: "2026-10-15",
     });
     expect(rx.message).toBe(
-      "IRPC: Our dryers have room Oct 30-Nov 2. Drying PHP 1.60/kg, milling PHP 3.30/kg. We buy palay at PHP 21.00/kg (25% MC). To book, text BOOK DRY <kg> <dd/mm>, e.g. BOOK DRY 5000 30/10.",
+      "IRPC: May bakante ang dryer namon sa Oct 30-Nov 2. Drying PHP 1.60/kg, milling PHP 3.30/kg. Nagabakal man kami palay sa PHP 21.00/kg (25% MC). Para mag-book, i-text BOOK DRY <kg> <dd/mm>, pareho sang BOOK DRY 5000 30/10.",
     );
     expect(isGsm7(rx.message)).toBe(true);
     expect(rx.message.length).toBeLessThanOrEqual(SMS_MAX_CHARS);

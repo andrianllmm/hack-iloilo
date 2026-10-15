@@ -25,6 +25,41 @@ export const statusLabels: Record<BookingStatus, string> = {
   no_show: "No-show",
 };
 export const MAX_FLEX_DAYS = 7;
+// TODO(M3): confirm IRPC's sack weight.
+export const SACK_KG = 50;
+
+/** An AI-read booking amount in kg: code converts sacks, never the AI. */
+export function bookingFromAi<
+  T extends { amount: number; unit: "kg" | "sacks" },
+>({
+  amount,
+  unit,
+  ...rest
+}: T): Omit<T, "amount" | "unit"> & { estKg: number } {
+  return {
+    ...rest,
+    estKg: Math.round(unit === "sacks" ? amount * SACK_KG : amount),
+  };
+}
+
+/** Shared move validation; `today` is the Manila calendar date supplied by the caller. */
+export function validateMove(
+  date: string,
+  flexDays: number,
+  today: string,
+): string | null {
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+    !Number.isFinite(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== date
+  )
+    return "Choose a valid date.";
+  if (date < today) return "Choose today or a later date.";
+  if (!Number.isInteger(flexDays) || flexDays < 0 || flexDays > MAX_FLEX_DAYS)
+    return `Flex days must be a whole number from 0 to ${MAX_FLEX_DAYS}.`;
+  return null;
+}
 /** Days shown by default on the bookings page, today included. */
 export const DEFAULT_RANGE_DAYS = 16;
 
@@ -191,6 +226,29 @@ export function formatRange(from: string, to: string): string {
   return shortFormat.formatRange(utc(from), utc(to));
 }
 
+/** SMS replies in Hiligaynon, filled with `fillTemplate`. GSM-7. */
+export const bookingSms = {
+  confirmed:
+    "IRPC: Confirmed na ang booking mo. Ref {ref}: {service}, {kg} kg sa {date}. Para i-cancel: CANCEL {ref}.",
+  rescheduleQuestion:
+    "IRPC: Puno na ang {date}. Puwede namon i-saylo ang {service} booking mo {ref} ({kg} kg) sa {newDate}? Reply YES {ref} ukon NO {ref}.",
+  rescheduleMoved: "IRPC: Na-saylo na ang booking {ref} sa {date}. Salamat!",
+  rescheduleKept: "IRPC: Sige, ang booking {ref} sa {date} gihapon.",
+  moved:
+    "IRPC: Na-saylo na ang booking {ref} sa {date}: {service}, {kg} kg. Para i-cancel: CANCEL {ref}.",
+  cancelled: "IRPC: Na-cancel na ang booking {ref}.",
+  notFound: "IRPC: Wala sang booking nga may ref {ref}.",
+  notCancellable:
+    "IRPC: Indi na ma-cancel ang booking {ref}. Ang confirmed nga booking lang ang ma-cancel.",
+  notMovable:
+    "IRPC: Indi na ma-saylo ang booking {ref}. Ang booking nga wala pa natabo lang ang ma-saylo.",
+  notWaiting: "IRPC: Ang booking {ref} wala na nagahulat sang sabat.",
+  invalidMove:
+    "IRPC: Indi ma-saylo ang booking {ref}. Ang petsa dapat subong ukon sa masunod, kag ang flex 0 tubtob 7 ka adlaw lang. Pareho: MOVE {ref} 25/10 +2",
+  invalidDate:
+    "IRPC: Indi husto ang petsa. Palihog i-text ang adlaw subong ukon sa masunod, sa day/month, pareho sang 25/10.",
+} as const;
+
 const FLEX_ARG = /^[±+]\d+$/;
 
 /** Strict keyword arguments; invalid shapes are rejected by the SMS schema. */
@@ -202,7 +260,8 @@ const weekdayDate = new Intl.DateTimeFormat("en-US", {
 });
 
 /**
- * "book drying for 1,000 kg on Mon, Oct 19, give or take 2 days".
+ * "mag-book sang drying para sa 1,000 kg sa Mon, Oct 19, puwede 2 ka adlaw
+ * nga mas temprano ukon mas ulihi", completing `aiConfirmText`.
  * Falls back to `dayMonth` when the day can't be resolved (e.g. 31/02).
  */
 export function describeBookingRequest({
@@ -222,9 +281,9 @@ export function describeBookingRequest({
     ? weekdayDate.format(new Date(`${date}T00:00:00Z`))
     : dayMonth;
   const flex = flexDays
-    ? `, give or take ${flexDays} day${flexDays === 1 ? "" : "s"}`
+    ? `, puwede ${flexDays} ka adlaw nga mas temprano ukon mas ulihi`
     : "";
-  return `book ${service} for ${formatKg(estKg)} on ${day}${flex}`;
+  return `mag-book sang ${service} para sa ${formatKg(estKg)} sa ${day}${flex}`;
 }
 
 export function parseBookingArgs(args: string[]): unknown {

@@ -109,18 +109,31 @@ export function parseSellArgs(args: string[]): unknown {
   return { estKg: Number(kg), varietyCode: variety.toUpperCase(), dayMonth };
 }
 
+/** SMS replies in Hiligaynon, filled with `fillTemplate`. GSM-7. */
+export const buyingSms = {
+  prices:
+    "IRPC presyo subong: palay {buy}/kg sa {mc}% MC, drying {drying}/kg, milling {milling}/kg, bugas {rice}/kg. Para sa quote: QUOTE <mc>% <kg>.",
+  /** `{total}` is `, 1,000 kg = PHP 21,000.00` or empty. */
+  quote:
+    "IRPC estimate sa {mc}% MC: {perKg}/kg{total}. Estimate lang ini; ang final nga presyo matalana pag-receive sang palay.",
+  unknownVariety:
+    'IRPC: Wala namon nakilala ang variety "{code}". Palihog i-check ang code kag tilawi liwat. I-text ang VARIETIES para sa listahan.',
+  offerRecorded:
+    "IRPC: Nalista na ang offer mo. Ref {ref}: {kg} {variety} para sa harvest sa {date}. I-text ka namon kon may desisyon na ang manager.",
+} as const;
+
 /**
  * The `VARIETIES` reply: the total count, the known variety codes in the order
  * given, and a reminder of the `SELL` format. The count is the full total even
  * when the list is cut, so a farmer can tell there are more than shown. If the
  * whole reply would exceed `maxChars` (the SMS limit, passed in to keep this
- * pure), the list is cut to the codes that fit with a trailing `…`.
+ * pure), the list is cut to the codes that fit with a trailing `...` (GSM-7).
  */
 export function formatVarietiesSms(codes: string[], maxChars: number): string {
   if (codes.length === 0)
-    return "IRPC rice varieties: none yet. To sell: SELL <kg> <variety> <dd/mm>";
-  const prefix = `IRPC rice varieties (${codes.length}): `;
-  const suffix = ". To sell: SELL <kg> <variety> <dd/mm>";
+    return "IRPC: Wala pa sang nalista nga variety sang humay. Para magbaligya: SELL <kg> <variety> <dd/mm>";
+  const prefix = `IRPC mga variety sang humay (${codes.length}): `;
+  const suffix = ". Para magbaligya: SELL <kg> <variety> <dd/mm>";
 
   const full = `${prefix}${codes.join(", ")}${suffix}`;
   if (full.length <= maxChars) return full;
@@ -128,9 +141,9 @@ export function formatVarietiesSms(codes: string[], maxChars: number): string {
   // Over the limit: keep as many codes as fit alongside a trailing ellipsis.
   const kept: string[] = [];
   for (const code of codes) {
-    const candidate = `${prefix}${[...kept, code].join(", ")} …${suffix}`;
+    const candidate = `${prefix}${[...kept, code].join(", ")} ...${suffix}`;
     if (candidate.length > maxChars) break;
     kept.push(code);
   }
-  return `${prefix}${kept.join(", ")} …${suffix}`;
+  return `${prefix}${kept.join(", ")} ...${suffix}`;
 }

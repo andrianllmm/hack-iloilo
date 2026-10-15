@@ -2,6 +2,7 @@
 // Server-side reads. May call other modules' queries.
 
 import "server-only";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase/admin";
 import { newRef } from "@/lib/ref";
 import {
@@ -18,20 +19,15 @@ import {
   type SmsPrompt,
 } from "@/modules/sms/registry";
 import type { BookingSmsInput, MoveSmsInput } from "./booking-schema";
-import {
-  BOOKING_CONFIRMATION,
-  BOOKING_MOVED,
-  RESCHEDULE_KEPT,
-  RESCHEDULE_MOVED,
-  RESCHEDULE_QUESTION,
-} from "./sms";
 import { currentFacility } from "@/modules/setup/queries";
 import {
+  bookingSms,
   canCancel,
   canMove,
   formatDay,
   rescheduleAnswer,
   serviceLabels,
+  validateMove,
 } from "./logic";
 import type {
   Booking,
@@ -145,7 +141,7 @@ export async function proposeReschedule(
       .eq("status", "reschedule_proposed");
     throw error;
   }
-  await send(client.phone, RESCHEDULE_QUESTION, {
+  await send(client.phone, bookingSms.rescheduleQuestion, {
     date: formatDay(booking.scheduled_date),
     service: serviceLabels[booking.service].toLowerCase(),
     ref: booking.ref,
@@ -171,11 +167,11 @@ export async function answerReschedule(
     .eq("ref", prompt.ref)
     .maybeSingle();
   if (findError) throw findError;
-  if (!found) return `IRPC: No booking with ref ${prompt.ref}.`;
+  if (!found) return fillTemplate(bookingSms.notFound, { ref: prompt.ref });
   const answer = rescheduleAnswer(found, found.client.phone, ctx.phone, yes);
   if (answer.status === "forbidden")
     throw new PromptRefusal(helpText(commandUsages()));
-  const closed = `IRPC: Booking ${found.ref} is no longer waiting for an answer.`;
+  const closed = fillTemplate(bookingSms.notWaiting, { ref: found.ref });
   if (answer.status === "not_open") return closed;
 
   const { data, error } = await db()
@@ -192,10 +188,13 @@ export async function answerReschedule(
   if (error) throw error;
   if (!data) return closed;
 
-  const reply = fillTemplate(yes ? RESCHEDULE_MOVED : RESCHEDULE_KEPT, {
-    ref: data.ref,
-    date: formatDay(data.scheduled_date),
-  });
+  const reply = fillTemplate(
+    yes ? bookingSms.rescheduleMoved : bookingSms.rescheduleKept,
+    {
+      ref: data.ref,
+      date: formatDay(data.scheduled_date),
+    },
+  );
   // The booker answered for the client: let the client know too.
   if (found.client.phone !== ctx.phone) {
     try {
@@ -253,6 +252,7 @@ export async function cancelBooking(
 
 export type MoveResult =
   | { status: "moved"; booking: Booking; clientPhone: string }
+  | { status: "invalid"; message: string }
   | { status: "not_found" | "forbidden" | "not_movable" };
 
 /**
@@ -277,6 +277,12 @@ export async function moveBooking(
   if (!found) return { status: "not_found" };
   const check = canMove(found, found.client.phone, byPhone);
   if (check !== "ok") return { status: check };
+  const message = validateMove(
+    date,
+    flexDays ?? found.flex_days,
+    todayManila(),
+  );
+  if (message) return { status: "invalid", message };
   const { data, error } = await db()
     .from("bookings")
     .update({
@@ -292,7 +298,10 @@ export async function moveBooking(
     .maybeSingle();
   if (error) throw error;
   if (!data) return { status: "not_movable" };
-  if (found.status === "reschedule_proposed") await expirePrompt(found.ref);
+  await expirePrompt(found.ref);
+  revalidatePath("/bookings");
+  revalidatePath("/");
+  revalidatePath("/suggestions");
   return { status: "moved", booking: data, clientPhone: found.client.phone };
 }
 
@@ -356,7 +365,7 @@ export async function bookingClient(id: string): Promise<BookingClient | null> {
 }
 
 function confirmation(booking: Booking): string {
-  return fillTemplate(BOOKING_CONFIRMATION, {
+  return fillTemplate(bookingSms.confirmed, {
     ref: booking.ref,
     service: booking.service === "drying" ? "Drying" : "Milling",
     kg: booking.est_kg,
@@ -410,13 +419,13 @@ export async function cancelBySms(
   const result = await cancelBooking(ref, ctx.phone);
   switch (result.status) {
     case "cancelled":
-      return `IRPC: Booking ${result.booking.ref} cancelled.`;
+      return fillTemplate(bookingSms.cancelled, { ref: result.booking.ref });
     case "forbidden":
       return helpText(commandUsages());
     case "not_found":
-      return `IRPC: No booking with ref ${ref}.`;
+      return fillTemplate(bookingSms.notFound, { ref });
     case "not_cancellable":
-      return `IRPC: Booking ${ref} cannot be cancelled. Only confirmed bookings can be cancelled.`;
+      return fillTemplate(bookingSms.notCancellable, { ref });
   }
 }
 
@@ -425,31 +434,47 @@ export async function moveBySms(
   ctx: CommandContext,
 ): Promise<string> {
   const date = parseDayMonth(dayMonth, todayManila());
-  if (!date) return helpText(commandUsages());
+  if (!date) return bookingSms.invalidDate;
   // FOR never grants authority: always authorize the actual sender.
   const result = await moveBooking(ref, date, flexDays, ctx.phone);
   switch (result.status) {
     case "forbidden":
-      return helpText(commandUsages());
     case "not_found":
-      return `IRPC: No booking with ref ${ref}.`;
+      return helpText(commandUsages());
+    case "invalid":
+      return fillTemplate(bookingSms.invalidMove, { ref });
     case "not_movable":
-      return `IRPC: Booking ${ref} cannot be moved. Only upcoming bookings can be moved.`;
+      return fillTemplate(bookingSms.notMovable, { ref });
   }
   const { booking, clientPhone } = result;
-  const reply = fillTemplate(BOOKING_MOVED, {
+  const reply = movedConfirmation(booking);
+  // M3 sends the returned reply to the sender exactly once.
+  await notifyBookingMoved(
+    booking,
+    [clientPhone].filter((phone) => phone !== ctx.phone),
+  );
+  return reply;
+}
+
+function movedConfirmation(booking: Booking): string {
+  return fillTemplate(bookingSms.moved, {
     ref: booking.ref,
     date: formatDay(booking.scheduled_date),
     service: serviceLabels[booking.service],
     kg: booking.est_kg,
   });
-  // The booker moved it for the client: let the client know too.
-  if (clientPhone !== ctx.phone) {
+}
+
+/** Send each recipient one confirmation; a gateway failure does not undo a saved move. */
+export async function notifyBookingMoved(
+  booking: Booking,
+  phones: string[],
+): Promise<void> {
+  for (const phone of new Set(phones)) {
     try {
-      await send(clientPhone, reply);
+      await send(phone, movedConfirmation(booking));
     } catch (error) {
-      console.error("Unable to send booking move to the client", error);
+      console.error("Unable to send booking move confirmation", error);
     }
   }
-  return reply;
 }

@@ -7,9 +7,6 @@ import { env } from "@/lib/env";
 
 const model = google("gemini-3.5-flash");
 
-// TODO(M3): confirm IRPC's sack weight.
-const SACK_KG = 50;
-
 // Past this, the sender gets the rule-based help reply instead.
 const TIMEOUT_MS = 8000;
 
@@ -33,7 +30,7 @@ export async function extract<T>(
       timeout: TIMEOUT_MS,
       maxRetries: 1,
       output: Output.object({ schema }),
-      system: `Extract the farmer's request from this SMS. Today is ${todayManila()}. Convert sacks to kg at ${SACK_KG} kg per sack. Leave out anything not stated.`,
+      system: `Extract the farmer's request from this SMS, which may be in Hiligaynon, Tagalog, English or a mix. Today is ${todayManila()}. Copy amounts exactly as stated, in the farmer's unit; never convert units or calculate. Leave out anything not stated.`,
       prompt: text,
     });
     return output;

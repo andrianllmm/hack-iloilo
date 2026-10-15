@@ -61,7 +61,7 @@ describe.skipIf(process.env.RUN_SMS_DB_TESTS !== "1")(
         .eq("phone", phone)
         .single();
       expect(client?.name).toMatch(/^SMS /);
-      expect((await lastReply())?.body).toMatch(/Please text: .*ECHOTEST/);
+      expect((await lastReply())?.body).toMatch(/Palihog i-text: .*ECHOTEST/);
       expect((await lastReply())?.status).toBe("sent");
     });
 
@@ -74,7 +74,7 @@ describe.skipIf(process.env.RUN_SMS_DB_TESTS !== "1")(
 
     it("replies with help when args fail the schema", async () => {
       await handleInbound({ phone, body: "ECHOTEST abc" });
-      expect((await lastReply())?.body).toMatch(/didn't get that/);
+      expect((await lastReply())?.body).toMatch(/wala namon naintiendihan/);
     });
 
     it("dedupes on gateway id", async () => {
@@ -114,13 +114,15 @@ describe.skipIf(process.env.RUN_SMS_DB_TESTS !== "1")(
         payload: { keyword: "ECHOTEST", args: { n: 3 } },
       });
       await handleInbound({ phone: other, body: `YES ${ref}` });
-      expect((await lastReply(other))?.body).toMatch(/didn't get that/);
+      expect((await lastReply(other))?.body).toMatch(
+        /wala namon naintiendihan/,
+      );
 
       await handleInbound({ phone, body: `yes ${ref.toLowerCase()}` });
       expect((await lastReply())?.body).toMatch(/^n=3 /);
 
       await handleInbound({ phone, body: `NO ${ref}` });
-      expect((await lastReply())?.body).toMatch(/no question waiting/);
+      expect((await lastReply())?.body).toMatch(/Wala kami pamangkot/);
     });
 
     it("reads free text with AI and runs it on a plain yes", async () => {
@@ -129,7 +131,7 @@ describe.skipIf(process.env.RUN_SMS_DB_TESTS !== "1")(
       });
       await handleInbound({ phone, body: "echo seven please" });
       expect((await lastReply())?.body).toBe(
-        "IRPC: Just to check, you want to echo 7? Is that right?",
+        "IRPC: Para sigurado, gusto mo echo 7? Husto bala?",
       );
       const inbound = (await smsThread(phone)).filter(
         (m) => m.body === "echo seven please",
@@ -146,11 +148,9 @@ describe.skipIf(process.env.RUN_SMS_DB_TESTS !== "1")(
       });
       await handleInbound({ phone, body: "echo eight" });
       await handleInbound({ phone, body: "indi" });
-      expect((await lastReply())?.body).toBe(
-        "IRPC: Okay, we didn't save anything.",
-      );
+      expect((await lastReply())?.body).toBe("IRPC: Sige, wala kami gin-save.");
       await handleInbound({ phone, body: "yes please" });
-      expect((await lastReply())?.body).toMatch(/no question waiting/);
+      expect((await lastReply())?.body).toMatch(/Wala kami pamangkot/);
     });
 
     it("runs AI readings without a summary right away", async () => {
@@ -168,12 +168,38 @@ describe.skipIf(process.env.RUN_SMS_DB_TESTS !== "1")(
       expect((await lastReply())?.body).toBe("peeked");
     });
 
+    it("maps an AI input reading to the command's args in code", async () => {
+      registerCommand({
+        keywords: ["SACKTEST"],
+        schema: z.object({ kg: z.number().int() }),
+        parse: () => null,
+        handle: async ({ kg }) => `kg=${kg}`,
+        ai: {
+          description: "Weigh sacks.",
+          input: {
+            schema: z.object({ sacks: z.number() }),
+            toArgs: ({ sacks }) => ({ kg: sacks * 50 }),
+          },
+        },
+      });
+      extract.mockResolvedValueOnce({
+        intent: { command: "SACKTEST", args: { sacks: 20 } },
+      });
+      await handleInbound({ phone, body: "20 ka sako" });
+      expect((await lastReply())?.body).toBe("kg=1000");
+      extract.mockResolvedValueOnce({
+        intent: { command: "SACKTEST", args: { kg: 1000 } },
+      });
+      await handleInbound({ phone, body: "1000 kg" });
+      expect((await lastReply())?.body).toMatch(/wala namon naintiendihan/);
+    });
+
     it("falls back to the keyword formats when AI fails", async () => {
       extract.mockResolvedValueOnce(null);
       await handleInbound({ phone, body: "pa dry 20 sako" });
       const reply = (await lastReply())?.body ?? "";
-      expect(reply).toMatch(/Please text: .*ECHOTEST/);
-      expect(reply).not.toMatch(/sacks/);
+      expect(reply).toMatch(/Palihog i-text: .*ECHOTEST/);
+      expect(reply).not.toMatch(/sako/);
       await handleInbound({ phone, body: "ECHOTEST 4" });
       expect((await lastReply())?.body).toMatch(/^n=4 /);
     });
@@ -181,12 +207,12 @@ describe.skipIf(process.env.RUN_SMS_DB_TESTS !== "1")(
     it("replies with help when AI reads nothing valid", async () => {
       extract.mockResolvedValueOnce({ intent: { command: "NONE" } });
       await handleInbound({ phone, body: "hi" });
-      expect((await lastReply())?.body).toMatch(/didn't get that/);
+      expect((await lastReply())?.body).toMatch(/wala namon naintiendihan/);
       extract.mockResolvedValueOnce({
         intent: { command: "ECHOTEST", args: { n: "x" } },
       });
       await handleInbound({ phone, body: "echo x" });
-      expect((await lastReply())?.body).toMatch(/didn't get that/);
+      expect((await lastReply())?.body).toMatch(/wala namon naintiendihan/);
     });
 
     it("expires prompts after 24 hours", async () => {

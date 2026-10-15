@@ -11,7 +11,8 @@
 | `05_buying.sql`   | Sell offers (offered and accepted) over the next weeks      |
 | `08_forecast.sql` | Trained forecast and metrics (`pnpm seed:forecast`)         |
 | `NN_<module>.sql` | Each later ticket adds its own file; don't edit shared ones |
-| `90_peak.sql`     | Peak demo scenario (#44)                                    |
+| `90_peak.sql`     | Peak demo: dryer 30 t over in 2 weeks, idle in 3 weeks      |
+| `91_sms.sql`      | SMS threads for seeded bookings and offers, one open prompt |
 
 Rules for every seed file:
 

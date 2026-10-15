@@ -13,7 +13,7 @@ export type CommandContext = {
   forPhone?: string;
 };
 
-export type Command<T> = {
+export type Command<T, A = T> = {
   /** Matched on the first word, case-insensitive, e.g. `["BOOK"]`. */
   keywords: string[];
   /** Validates the parsed args; a failure gets the help reply. */
@@ -28,6 +28,12 @@ export type Command<T> = {
   ai?: {
     /** What the command does, for the AI. */
     description: string;
+    /**
+     * What the AI fills in when it differs from `schema`, e.g. an amount and
+     * unit as stated, so code (never AI) converts sacks to kg. Defaults to
+     * `schema`; `toArgs` maps the reading back to `schema`'s shape.
+     */
+    input?: { schema: z.ZodType<A>; toArgs: (extracted: A) => unknown };
     /**
      * Completes "you want to …?", asked before running, e.g. "cancel booking
      * K7P2QX". Omit for read-only commands, which run right away.
@@ -60,7 +66,7 @@ const RESERVED = new Set(["YES", "NO", "HELP"]);
 const commands = new Map<string, Command<unknown>>();
 const promptHandlers = new Map<SmsPromptKind, PromptHandler>();
 
-export function registerCommand<T>(command: Command<T>): void {
+export function registerCommand<T, A = T>(command: Command<T, A>): void {
   for (const keyword of command.keywords) {
     const key = keyword.toUpperCase();
     if (RESERVED.has(key)) throw new Error(`SMS keyword ${key} is reserved`);
