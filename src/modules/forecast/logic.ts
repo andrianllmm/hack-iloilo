@@ -16,6 +16,13 @@ export type ArrivalRow = {
 const HEADER = "psgc_code,date,kg_low,kg_mid,kg_high,source";
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+/** A real `YYYY-MM-DD` calendar date (rejects `2026-02-30`). */
+function isDate(value: string): boolean {
+  if (!DATE.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return !isNaN(parsed.getTime()) && parsed.toISOString().startsWith(value);
+}
+
 function kg(value: string, line: number): number {
   const n = Number(value);
   if (value === "" || !Number.isInteger(n) || n < 0) {
@@ -36,7 +43,7 @@ export function parseArrivalsCsv(text: string): ArrivalRow[] {
     if (rest.length || source === undefined) {
       throw new Error(`Line ${line}: expected 6 columns`);
     }
-    if (!DATE.test(date)) throw new Error(`Line ${line}: bad date "${date}"`);
+    if (!isDate(date)) throw new Error(`Line ${line}: bad date "${date}"`);
     if (!(FORECAST_SOURCES as readonly string[]).includes(source)) {
       throw new Error(`Line ${line}: unknown source "${source}"`);
     }
@@ -79,7 +86,7 @@ export function assertForecastMetrics(
   const m = value as Partial<ForecastMetrics> | null;
   const ok =
     typeof m?.trained_on === "string" &&
-    DATE.test(m.trained_on) &&
+    isDate(m.trained_on) &&
     Array.isArray(m.lags_half_months) &&
     Array.isArray(m.lag_weights) &&
     m.lags_half_months.length === m.lag_weights.length &&
