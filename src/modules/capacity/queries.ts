@@ -4,7 +4,11 @@
 import "server-only";
 import { bookingList, bookingsBetween } from "@/modules/booking/queries";
 import type { Booking, BookingRow } from "@/modules/booking/types";
-import { acceptedOffersBetween } from "@/modules/buying/queries";
+import {
+  acceptedOffersBetween,
+  listOffers,
+  type OfferListItem,
+} from "@/modules/buying/queries";
 import { expectedArrivals } from "@/modules/forecast/queries";
 import { storageStockOn } from "@/modules/gate/queries";
 import { capacitySettings } from "@/modules/setup/queries";
@@ -55,15 +59,22 @@ export async function idleThresholdPct(): Promise<number> {
   return facility.idle_threshold_pct;
 }
 
-/** Open drying bookings with their clients, for the day panel. */
-export async function dryingBookings(
+/** Open drying and milling bookings with their clients, for the day panel. */
+export async function openBookings(
   from: string,
   to: string,
 ): Promise<BookingRow[]> {
   const rows = await bookingList(from, to);
   return rows.filter(
-    (r) =>
-      r.service === "drying" &&
-      (r.status === "confirmed" || r.status === "reschedule_proposed"),
+    (r) => r.status === "confirmed" || r.status === "reschedule_proposed",
   );
+}
+
+/** Accepted offers harvested in `[from, to]` with their clients, for the day panel. */
+export async function acceptedOffers(
+  from: string,
+  to: string,
+): Promise<OfferListItem[]> {
+  const rows = await listOffers("accepted");
+  return rows.filter((o) => o.harvest_date >= from && o.harvest_date <= to);
 }
