@@ -70,7 +70,7 @@ export function BookingsTable({
     <>
       <div className="overflow-hidden rounded-lg border">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted [&_th]:text-xs [&_th]:font-bold [&_th]:tracking-wide [&_th]:uppercase">
             <TableRow>
               <TableHead>Ref</TableHead>
               <TableHead>Client</TableHead>
