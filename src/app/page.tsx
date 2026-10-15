@@ -19,7 +19,7 @@ import { formatMoney } from "@/lib/format";
 import { priceOn } from "@/modules/pricing/queries";
 
 export const metadata: Metadata = {
-  title: { absolute: "SACKto · Iloilo Rice Processing Complex" },
+  title: { absolute: "SACKTO · Iloilo Rice Processing Complex" },
 };
 
 const SMS_COMMANDS = [

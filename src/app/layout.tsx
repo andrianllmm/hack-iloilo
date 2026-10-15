@@ -21,7 +21,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: { default: "SACKto", template: "%s · SACKto" },
+  title: { default: "SACKTO", template: "%s · SACKTO" },
   description: "Post-harvest facility capacity planning for IRPC",
 };
 
