@@ -249,7 +249,7 @@ Computed from M9. The manager accepts or dismisses each.
 
 **P0**
 
-- **Plain-language explanation:** each suggestion comes with a short AI-written note on why and what it gains, such as "Oct 20 is 30 t over. Moving 3 flexible bookings to Oct 22–23 clears it without turning anyone away." AI only words the computed numbers, which are shown beside it.
+- **Plain-language explanation:** each suggestion comes with a short note on why and what it gains, such as "Oct 20 is 30 t over. Moving 3 flexible bookings to Oct 22–23 clears it without turning anyone away." The note is a template filled from the computed numbers, which are shown beside it.
 - **Move bookings:** move flexible bookings off a busy day to the nearest days with room. Accepting texts the clients.
 - **Fill idle days:** before an idle stretch, text rates and buying prices to farmers and co-ops with no open booking.
 
@@ -261,7 +261,7 @@ Computed from M9. The manager accepts or dismisses each.
 ## Rules
 
 - **SMS is a channel:** every client action (booking, sell offer, quote) also works from a staff form, and SMS commands call the same actions.
-- **AI explains, rules decide:** AI explains suggestions and reads free-text SMS. Capacity, prescription and cost numbers come from fixed rules, and people confirm every action.
+- **AI reads, rules decide:** AI reads free-text SMS. Capacity, prescription and cost numbers come from fixed rules, and people confirm every action.
 - **No official receipts:** the app only stores receipt and voucher numbers.
 - **Cheap to run:** mobile web, SMS for basic phones, no new plant hardware.
 

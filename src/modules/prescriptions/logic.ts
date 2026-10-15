@@ -3,7 +3,7 @@
 
 import { addDays, daysBetween } from "@/lib/dates";
 import { formatTonnes } from "@/lib/format";
-import type { MoveBookingsPrescription, Move } from "./types";
+import type { Move, MoveBookingsPrescription, Prescription } from "./types";
 
 /** 53-bit hash (cyrb53) as hex: stable across runs and machines. */
 export function hashKey(value: unknown): string {
@@ -179,4 +179,18 @@ function nearestWithRoom(
     }
   }
   return null;
+}
+
+/** The card's plain-language note on why and what it gains, from its facts only. */
+export function templateNote(p: Omit<Prescription, "decision">): string {
+  const f = p.facts;
+  switch (p.kind) {
+    case "move_bookings": {
+      const n = Number(f.bookings_moved);
+      const moving = `Moving ${n} flexible ${n === 1 ? "booking" : "bookings"} to ${f.new_days}`;
+      return p.remainderKg === 0
+        ? `${f.day} is ${f.overflow} over. ${moving} clears it without turning anyone away.`
+        : `${f.day} is ${f.overflow} over. ${moving} leaves ${f.remainder} over.`;
+    }
+  }
 }

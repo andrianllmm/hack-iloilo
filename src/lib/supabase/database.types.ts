@@ -253,20 +253,6 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"prescription_notes": {
-                  Row: {
-                    "created_at": string,"id": string,"key": string,"text": string,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "created_at"?: string,"id"?: string,"key": string,"text": string,"updated_at"?: string
-                  }
-                  Update: {
-                    "created_at"?: string,"id"?: string,"key"?: string,"text"?: string,"updated_at"?: string
-                  }
-                  Relationships: [
-                    
-                  ]
                 },"prices": {
                   Row: {
                     "buy_base_minor_per_kg": number,"buy_reference_mc": number,"buy_rules": NonNullable<Json>,"created_at": string,"drying_fee_minor_per_kg": number,"effective_date": string,"facility_id": string,"id": string,"milling_fee_minor_per_kg": number,"rice_minor_per_kg": number,"updated_at": string

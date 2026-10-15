@@ -7,7 +7,7 @@ How we build the [PRD](PRD.md). Module numbers (M1–M10) match.
 - One Next.js app on Vercel, with Supabase for the database and auth. All free tiers.
 - One folder per module.
 - Clients use SMS through SMS Gateway for Android (SMSGate) on its cloud server, with a simulator for the demo.
-- AI (Gemini) explains prescriptions in plain language and reads free-text SMS. It never computes numbers.
+- AI (Gemini) reads free-text SMS. It never computes numbers.
 - The forecast is trained offline in Python. The app imports its output.
 - Single facility (IRPC) and crop (rice). Operations tables keep a `facility_id` for later.
 
@@ -100,7 +100,6 @@ interface SmsGateway {
 
 ### AI helper (`lib`)
 
-- `explain(facts)` sends a prescription's computed numbers to Gemini and returns one or two sentences.
 - `extract(schema, text)` turns free-text SMS into data matching a command's Zod schema (P1).
 - On failure, fall back to the help text or an empty form.
 
@@ -325,16 +324,14 @@ No tables. **Export:** `capacityByDay(from, to)` returns per day and pool (`drye
 
 `prescription_decisions`: `kind`, `key` (hash of inputs), `status` (`accepted`, `dismissed`), `decided_by`. Suggestions are recomputed from `capacityByDay()`; only decisions are stored.
 
-`prescription_notes`: `key`, `text`. Caches each explanation by the prescription's input hash, so Gemini is called once per distinct suggestion.
-
-**Explanation:** `explain()` gets only the rule's output (day, overflow t, bookings moved, ₱/kg saved, recipients). The prompt forbids new figures. The card shows the numbers beside the text. On AI failure, a template sentence is shown instead.
+**Explanation:** a template sentence per kind, filled from the rule's `facts` only (day, overflow t, bookings moved, ₱/kg saved, recipients). The card shows the numbers beside it. No AI: it would only reword these numbers, and adds latency and a failure mode.
 
 - **Move bookings:** for each overloaded dryer day, move flexible bookings, largest first, to the nearest day within `flex_days` with room, until the overflow clears. Report any remainder. Accepting calls M4 `proposeReschedule`.
 - **Fill idle days:** for each idle stretch, list farmers and co-ops with no open booking, by past volume and municipality, and draft a text with rates and buying price. Accepting sends it.
 - **Mill in full loads (P1):** compare milling stock on ⌈stock ÷ daily capacity⌉ full days against spreading it over the stretch, each priced with M7 `electricityPerKg`. Return dates, ₱/kg for each plan and the saving.
 - **Store, mill later (P1):** move mill overflow into storage, then fill the nearest idle mill days.
 
-**Tests:** a 30 t overflow with three flexible bookings, idle-day recipients, and the template fallback.
+**Tests:** a 30 t overflow with three flexible bookings, idle-day recipients, and the template note.
 
 ## Testing and CI
 
