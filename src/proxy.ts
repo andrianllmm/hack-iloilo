@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/api/sms/inbound"];
+// /api/sms/process authenticates the webhook relay with SMS_RELAY_SECRET.
+const PUBLIC_PATHS = ["/login", "/api/sms/process"];
 
 /** Refreshes the Supabase session and sends signed-out visitors to /login. */
 export async function proxy(request: NextRequest) {
