@@ -19,20 +19,57 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatTonnes } from "@/lib/format";
-import { dayLabel, expectedKg, headline, shortDay } from "../logic";
-import type { DayPool } from "../types";
+import { formatMoney, formatTonnes } from "@/lib/format";
+import { cn } from "cn";
+import {
+  dayLabel,
+  expectedKg,
+  headline,
+  idleStretches,
+  poolDays,
+  shortDay,
+  sources,
+} from "../logic";
+import type { DayPool, Pool } from "../types";
 import { CapacityCalendar } from "./capacity-calendar";
-import { LoadChart, loadConfig, shownSources } from "./load-chart";
+import { DayBadge } from "./day-badge";
+import {
+  formatRange,
+  LoadChart,
+  loadConfig,
+  shownSources,
+  sourceLabels,
+} from "./load-chart";
+
+const pools: Pool[] = ["dryer", "storage", "mill"];
+
+const poolNames: Record<Pool, string> = {
+  dryer: "Dryer",
+  storage: "Storage",
+  mill: "Mill",
+};
+
+/** Electricity per kg over the window, in centavos. */
+export type Electricity = { minorPerKg: number; daysRun: number };
 
 /** A booking as the day panel lists it. */
 export type PanelBooking = {
   id: string;
   ref: string;
+  service: "drying" | "milling";
   client: string;
   estKg: number;
   flexDays: number;
   reschedule: boolean;
+};
+
+/** An accepted offer as the day panel lists it, by harvest date. */
+export type PanelOffer = {
+  id: string;
+  ref: string;
+  client: string;
+  variety: string | null;
+  estKg: number;
 };
 
 const plainTonnes = (kg: number) =>
@@ -43,16 +80,22 @@ const span = (from: string, to: string) =>
 
 /** Capacity page: pool tabs, headline tiles, stacked load chart, day grid and day panel. */
 export function CapacityView({
-  days,
+  days: allDays,
   bookings,
+  offers,
   idleThresholdPct,
+  electricity,
   range,
   today,
   suggestions,
 }: {
+  /** Every pool, as `capacityByDay` returns it. */
   days: DayPool[] | null;
   bookings: Record<string, PanelBooking[]>;
+  offers: Record<string, PanelOffer[]>;
   idleThresholdPct: number;
+  /** Window electricity cost; undefined for non-managers. */
+  electricity?: Electricity | null;
   range: { from: string; to: string };
   today: string;
   /** Suggested actions per date, shown in the day panel (M10). */
@@ -60,8 +103,11 @@ export function CapacityView({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [pool, setPool] = useState<Pool>("dryer");
   const [selected, setSelected] = useState<string | null>(null);
-  const day = days?.find((d) => d.date === selected);
+  const days = allDays && poolDays(allDays, pool);
+  const selectedDays = allDays?.filter((d) => d.date === selected) ?? [];
+  const config = loadConfig(pool);
 
   return (
     <section className="flex min-w-0 flex-col gap-6">
@@ -73,20 +119,11 @@ export function CapacityView({
             <Badge>Today, {shortDay(today)}</Badge>
           </p>
         </div>
-        <Tabs value="dryer">
+        <Tabs value={pool} onValueChange={(v) => setPool(v as Pool)}>
           <TabsList aria-label="Pool">
-            {[
-              ["overall", "Overall"],
-              ["dryer", "Dryer"],
-              ["storage", "Storage"],
-              ["mill", "Mill"],
-            ].map(([value, label]) => (
-              <TabsTrigger
-                key={value}
-                value={value}
-                disabled={value !== "dryer"}
-              >
-                {label}
+            {pools.map((p) => (
+              <TabsTrigger key={p} value={p}>
+                {poolNames[p]}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -111,12 +148,17 @@ export function CapacityView({
         </Empty>
       ) : (
         <>
-          <Headline days={days} idleThresholdPct={idleThresholdPct} />
+          <Headline
+            pool={pool}
+            days={days}
+            idleThresholdPct={idleThresholdPct}
+            electricity={electricity}
+          />
 
           <Card>
             <CardContent className="flex flex-col gap-4">
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                <h2 className="flex-1 font-semibold">Dryer load</h2>
+                <h2 className="flex-1 font-semibold">{poolNames[pool]} load</h2>
                 {shownSources(days).map((s) => (
                   <span
                     key={s}
@@ -124,13 +166,19 @@ export function CapacityView({
                   >
                     <span
                       className="size-3 shrink-0"
-                      style={{ background: loadConfig[s].color }}
+                      style={{ background: config[s].color }}
                     />
-                    {loadConfig[s].label}
+                    {config[s].label}
                   </span>
                 ))}
               </div>
-              <LoadChart days={days} today={today} onSelect={setSelected} />
+              <LoadChart
+                pool={pool}
+                days={days}
+                today={today}
+                onSelect={setSelected}
+              />
+              <IdleNote days={days} />
             </CardContent>
           </Card>
 
@@ -145,17 +193,19 @@ export function CapacityView({
       )}
 
       <Sheet
-        open={day !== undefined}
+        open={selectedDays.length > 0}
         onOpenChange={(open) => {
           if (!open) setSelected(null);
         }}
       >
         <SheetContent>
-          {day && (
+          {selected && selectedDays.length > 0 && (
             <DayPanel
-              day={day}
-              bookings={bookings[day.date] ?? []}
-              suggestions={suggestions?.[day.date]}
+              date={selected}
+              days={selectedDays}
+              bookings={bookings[selected] ?? []}
+              offers={offers[selected] ?? []}
+              suggestions={suggestions?.[selected]}
             />
           )}
         </SheetContent>
@@ -165,18 +215,27 @@ export function CapacityView({
 }
 
 function Headline({
+  pool,
   days,
   idleThresholdPct,
+  electricity,
 }: {
+  pool: Pool;
   days: DayPool[];
   idleThresholdPct: number;
+  electricity?: Electricity | null;
 }) {
   const h = headline(days);
   const first = h.overloaded[0];
   return (
-    <div className="grid gap-5 sm:grid-cols-3">
+    <div
+      className={cn(
+        "grid gap-5 sm:grid-cols-3",
+        electricity !== undefined && "sm:grid-cols-2 xl:grid-cols-4",
+      )}
+    >
       <Tile
-        label="Dryer use"
+        label={`${poolNames[pool]} use`}
         value={h.utilizationPct === null ? "—" : `${h.utilizationPct}%`}
         note={`${plainTonnes(h.expectedKg)} of ${formatTonnes(h.capacityKg)}`}
       />
@@ -194,6 +253,19 @@ function Headline({
         value={String(h.idleDays)}
         note={`Under ${idleThresholdPct}% full`}
       />
+      {electricity !== undefined && (
+        <Tile
+          label="Electricity"
+          value={
+            electricity ? `${formatMoney(electricity.minorPerKg)}/kg` : "—"
+          }
+          note={
+            electricity
+              ? `Dried or milled, incl. base load, ${electricity.daysRun} ${electricity.daysRun === 1 ? "day" : "days"} running`
+              : "Nothing to dry or mill"
+          }
+        />
+      )}
     </div>
   );
 }
@@ -222,62 +294,165 @@ function Tile({
   );
 }
 
+/** Idle stretches in words, under the chart. */
+function IdleNote({ days }: { days: DayPool[] }) {
+  const stretches = idleStretches(days);
+  if (!stretches.length) return null;
+  return (
+    <p className="text-sm text-muted-foreground">
+      Idle:{" "}
+      {stretches
+        .map(
+          (s) =>
+            `${span(s.from, s.to)} (${s.days} ${s.days === 1 ? "day" : "days"})`,
+        )
+        .join(", ")}
+    </p>
+  );
+}
+
 function DayPanel({
-  day,
+  date,
+  days,
   bookings,
+  offers,
   suggestions,
 }: {
-  day: DayPool;
+  date: string;
+  /** This date in every pool. */
+  days: DayPool[];
   bookings: PanelBooking[];
+  offers: PanelOffer[];
   suggestions?: React.ReactNode;
 }) {
+  const overloaded = days.filter((d) => d.overloaded);
   return (
     <>
       <SheetHeader>
-        <SheetTitle>{dayLabel(day.date)}</SheetTitle>
+        <SheetTitle>{dayLabel(date)}</SheetTitle>
         <SheetDescription>
-          Dryer: {formatTonnes(expectedKg(day))} of{" "}
-          {formatTonnes(day.capacityKg)}
-          {day.overloaded && (
-            <span className="font-medium text-destructive">
-              {" "}
-              · {formatTonnes(day.overflowKg)} over
-            </span>
-          )}
+          {overloaded.length
+            ? overloaded
+                .map(
+                  (d) =>
+                    `${poolNames[d.pool]} ${formatTonnes(d.overflowKg)} over`,
+                )
+                .join(" · ")
+            : "Within capacity"}
         </SheetDescription>
       </SheetHeader>
       <div className="flex flex-col gap-6 overflow-y-auto px-4 pb-4">
         <section className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium">Bookings ({bookings.length})</h3>
-          {bookings.length ? (
+          <h3 className="text-sm font-medium">Load</h3>
+          <ul className="divide-y rounded-lg border">
+            {days.map((d) => (
+              <li key={d.pool} className="flex flex-col gap-1.5 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium">{poolNames[d.pool]}</span>
+                  <DayBadge day={d} />
+                </div>
+                <span className="text-sm tabular-nums">
+                  {formatTonnes(expectedKg(d))} of {formatTonnes(d.capacityKg)}
+                </span>
+                {sources.map(
+                  (s) =>
+                    d.load[s].high > 0 && (
+                      <span
+                        key={s}
+                        className="flex justify-between gap-3 text-xs text-muted-foreground"
+                      >
+                        {sourceLabels[d.pool][s]}
+                        <span className="tabular-nums">
+                          {formatRange(d.load[s])}
+                        </span>
+                      </span>
+                    ),
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+        {(["drying", "milling"] as const).map((service) => (
+          <BookingList
+            key={service}
+            title={
+              service === "drying" ? "Drying bookings" : "Milling bookings"
+            }
+            bookings={bookings.filter((b) => b.service === service)}
+          />
+        ))}
+        <section className="flex flex-col gap-2">
+          <h3 className="text-sm font-medium">
+            Accepted offers harvesting ({offers.length})
+          </h3>
+          {offers.length ? (
             <ul className="divide-y rounded-lg border">
-              {bookings.map((b) => (
+              {offers.map((o) => (
                 <li
-                  key={b.id}
+                  key={o.id}
                   className="flex items-center justify-between gap-3 p-3"
                 >
                   <div className="flex min-w-0 flex-col">
-                    <span className="truncate font-medium">{b.client}</span>
+                    <span className="truncate font-medium">{o.client}</span>
                     <span className="text-xs text-muted-foreground">
-                      {b.ref} ·{" "}
-                      {b.flexDays
-                        ? `can move ${b.flexDays} ${b.flexDays === 1 ? "day" : "days"}`
-                        : "fixed date"}
-                      {b.reschedule && " · asked to move"}
+                      {o.ref}
+                      {o.variety && ` · ${o.variety}`}
                     </span>
                   </div>
                   <span className="shrink-0 tabular-nums">
-                    {formatTonnes(b.estKg)}
+                    {formatTonnes(o.estKg)}
                   </span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">No bookings.</p>
+            <p className="text-sm text-muted-foreground">No offers.</p>
           )}
         </section>
         {suggestions}
       </div>
     </>
+  );
+}
+
+function BookingList({
+  title,
+  bookings,
+}: {
+  title: string;
+  bookings: PanelBooking[];
+}) {
+  return (
+    <section className="flex flex-col gap-2">
+      <h3 className="text-sm font-medium">
+        {title} ({bookings.length})
+      </h3>
+      {bookings.length ? (
+        <ul className="divide-y rounded-lg border">
+          {bookings.map((b) => (
+            <li
+              key={b.id}
+              className="flex items-center justify-between gap-3 p-3"
+            >
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate font-medium">{b.client}</span>
+                <span className="text-xs text-muted-foreground">
+                  {b.ref} ·{" "}
+                  {b.flexDays
+                    ? `can move ${b.flexDays} ${b.flexDays === 1 ? "day" : "days"}`
+                    : "fixed date"}
+                  {b.reschedule && " · asked to move"}
+                </span>
+              </div>
+              <span className="shrink-0 tabular-nums">
+                {formatTonnes(b.estKg)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">No bookings.</p>
+      )}
+    </section>
   );
 }
