@@ -695,16 +695,21 @@ export async function riceStock(): Promise<number> {
   return riceStockKg(data);
 }
 
-/** A batch's origin and dates by batch no., for buyers. Never reads names or phones. */
+/**
+ * A sold batch's origin and dates by batch no., for buyers. Only IRPC-owned
+ * batches with a dispatch: a farmer's custom-milled rice stays private. Never
+ * reads names or phones.
+ */
 export async function publicBatchTrail(
   batchNo: string,
 ): Promise<PublicTrail | null> {
   const { data, error } = await db()
     .from("batches")
     .select(
-      "batch_no, dry_end, mill_end, variety:varieties(name), client:clients(kind, name, coop:coop_id(name), municipality:municipalities(name))",
+      "batch_no, dry_end, mill_end, variety:varieties(name), client:clients(kind, name, coop:coop_id(name), municipality:municipalities(name)), dispatches!inner(id)",
     )
     .eq("batch_no", batchNo)
+    .eq("ownership", "irpc")
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;

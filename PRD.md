@@ -207,7 +207,7 @@ The input end for IRPC-owned palay. Private mills win on fast, clear quotes, and
 - **Pickup alerts:** custom clients and their original booker are texted when milling finishes, or when staff mark drying complete and ready for pickup. IRPC-owned batches receive no pickup alert.
 - **Weight confirmation:** text the owner at receiving and after drying. YES confirms; NO flags a dispute for re-weighing. Staff can record in-person agreement. Processing continues regardless of confirmation.
 - **Trace:** a batch page showing the trail from gate to buyers.
-- **Public trace:** `/buy` looks up a batch no. and shows the co-op (else municipality), variety and dates. No personal names.
+- **Public trace:** `/buy` looks up a sold IRPC batch by batch no. and shows the co-op (else municipality), variety and dates. No personal names.
 
 ### M7. Pricing and Cost
 

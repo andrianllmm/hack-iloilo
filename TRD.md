@@ -367,7 +367,7 @@ Code lives in `src/modules/orders`. See [decision 0003](docs/decisions/0003-buye
 
 **Price and stock:** the estimate is `kg × rice_minor_per_kg` (M7); the dispatch (M6) sets the real price. No payment and no stock lock: `/rice-buying` shows free kg = M6 `riceStock()` − accepted kg, and flags open requests above it.
 
-**Public trace:** M6 `publicBatchTrail(batchNo)` reads only dates, variety and origin. `traceOrigin` shows the co-op, else "<municipality> farmers", never a person.
+**Public trace:** M6 `publicBatchTrail(batchNo)` finds only IRPC-owned batches with a dispatch and reads only dates, variety and origin. `traceOrigin` shows the co-op, else "<municipality> farmers", never a person.
 
 **Tests:** cancel rules, estimate, free kg and the over-free flag, trace origin, and every text within one GSM-7 SMS.
 
