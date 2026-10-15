@@ -44,7 +44,7 @@ export function AppSidebar({ staff }: { staff: Staff }) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<Link href="/" />}>
+            <SidebarMenuButton size="lg" render={<Link href="/capacity" />}>
               <div className="flex size-8 items-center justify-center text-primary">
                 <Logo className="size-8" />
               </div>
@@ -68,11 +68,7 @@ export function AppSidebar({ staff }: { staff: Staff }) {
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
                       tooltip={item.title}
-                      isActive={
-                        item.href === "/"
-                          ? pathname === "/"
-                          : pathname.startsWith(item.href)
-                      }
+                      isActive={pathname.startsWith(item.href)}
                       render={<Link href={item.href} />}
                     >
                       <item.icon />

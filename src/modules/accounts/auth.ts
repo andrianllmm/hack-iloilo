@@ -33,6 +33,6 @@ export const getStaff = cache(async (): Promise<Staff | null> => {
 export async function requireRole(role?: StaffRole): Promise<Staff> {
   const staff = await getStaff();
   if (!staff) redirect("/login");
-  if (role === "manager" && staff.role !== "manager") redirect("/");
+  if (role === "manager" && staff.role !== "manager") redirect("/capacity");
   return staff;
 }
