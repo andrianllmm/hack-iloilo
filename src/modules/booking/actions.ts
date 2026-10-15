@@ -7,7 +7,12 @@ import { revalidatePath } from "next/cache";
 import { todayManila } from "@/lib/dates";
 import { requireRole } from "@/modules/accounts/auth";
 import { bookingSchema, type BookingInput } from "./booking-schema";
-import { bookingClient, cancelBooking, createBooking } from "./queries";
+import {
+  bookingClient,
+  cancelBooking,
+  createBooking,
+  notifyBookingConfirmation,
+} from "./queries";
 import type { Booking } from "./types";
 
 export type BookForClientResult =
@@ -50,6 +55,7 @@ export async function bookForClient(
       channel: "staff",
       bookedByPhone: client.phone,
     });
+    await notifyBookingConfirmation(created, client.phone);
     revalidatePath("/bookings");
     return { status: "created", booking: created };
   } catch (error) {

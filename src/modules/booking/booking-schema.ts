@@ -17,3 +17,13 @@ export const bookingSchema = z.object({
     .max(MAX_FLEX_DAYS, `Flex days can be at most ${MAX_FLEX_DAYS}.`),
 });
 export type BookingInput = z.infer<typeof bookingSchema>;
+
+/** SMS date resolution belongs to the shared SMS core. */
+export const bookingSmsSchema = bookingSchema
+  .pick({ service: true, estKg: true, flexDays: true })
+  .extend({ dayMonth: z.string().regex(/^\d{1,2}\/\d{1,2}$/) });
+export type BookingSmsInput = z.infer<typeof bookingSmsSchema>;
+
+export const cancelSmsSchema = z.object({
+  ref: z.string().regex(/^[A-Z0-9]{6}$/),
+});

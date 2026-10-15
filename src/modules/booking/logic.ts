@@ -144,3 +144,17 @@ export function formatShortDate(date: string): string {
 export function formatRange(from: string, to: string): string {
   return shortFormat.formatRange(utc(from), utc(to));
 }
+
+/** Strict keyword arguments; invalid shapes are rejected by the SMS schema. */
+export function parseBookingArgs(args: string[]): unknown {
+  if (args.length < 3 || args.length > 4) return null;
+  const [service, kg, dayMonth, flex] = args;
+  if (!/^\d+$/.test(kg) || (flex !== undefined && !/^[±+]\d+$/.test(flex)))
+    return null;
+  return {
+    service: { DRY: "drying", MILL: "milling" }[service.toUpperCase()],
+    estKg: Number(kg),
+    dayMonth,
+    flexDays: flex === undefined ? 0 : Number(flex.slice(1)),
+  };
+}

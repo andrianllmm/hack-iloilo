@@ -4,7 +4,16 @@
 import "server-only";
 import { db } from "@/lib/supabase/admin";
 import { newRef } from "@/lib/ref";
-import { clientsDirectory } from "@/modules/accounts/queries";
+import {
+  clientsDirectory,
+  findOrRegisterByPhone,
+} from "@/modules/accounts/queries";
+import { todayManila } from "@/lib/dates";
+import { fillTemplate, helpText, parseDayMonth } from "@/modules/sms/logic";
+import { send } from "@/modules/sms/queries";
+import { commandKeywords, type CommandContext } from "@/modules/sms/registry";
+import type { BookingSmsInput } from "./booking-schema";
+import { BOOKING_CONFIRMATION } from "./sms";
 import { currentFacility } from "@/modules/setup/queries";
 import { canCancel } from "./logic";
 import type {
@@ -185,4 +194,69 @@ export async function bookingClient(id: string): Promise<BookingClient | null> {
     .maybeSingle();
   if (error) throw error;
   return data;
+}
+
+function confirmation(booking: Booking): string {
+  return fillTemplate(BOOKING_CONFIRMATION, {
+    ref: booking.ref,
+    service: booking.service === "drying" ? "Drying" : "Milling",
+    kg: booking.est_kg,
+    date: booking.scheduled_date,
+  });
+}
+
+/** Notification failure must never turn a saved booking into a failed booking. */
+export async function notifyBookingConfirmation(
+  booking: Booking,
+  phone: string,
+): Promise<void> {
+  try {
+    await send(phone, confirmation(booking));
+  } catch (error) {
+    console.error("Unable to send booking confirmation", error);
+  }
+}
+
+/** Trusted SMS router entrypoint, not a public staff server action. */
+export async function bookBySms(
+  input: BookingSmsInput,
+  ctx: CommandContext,
+): Promise<string> {
+  const preferredDate = parseDayMonth(input.dayMonth, todayManila());
+  if (!preferredDate) return helpText(commandKeywords());
+  const client =
+    ctx.forPhone && ctx.forPhone !== ctx.phone
+      ? await findOrRegisterByPhone(ctx.forPhone)
+      : ctx.client;
+  const booking = await createBooking({
+    clientId: client.id,
+    service: input.service,
+    estKg: input.estKg,
+    preferredDate,
+    flexDays: input.flexDays,
+    channel: "sms",
+    bookedByPhone: ctx.phone,
+  });
+  // M3 sends the returned reply to the sender exactly once.
+  if (client.phone !== ctx.phone)
+    await notifyBookingConfirmation(booking, client.phone);
+  return confirmation(booking);
+}
+
+export async function cancelBySms(
+  { ref }: { ref: string },
+  ctx: CommandContext,
+): Promise<string> {
+  // FOR never grants authority: always authorize the actual sender.
+  const result = await cancelBooking(ref, ctx.phone);
+  switch (result.status) {
+    case "cancelled":
+      return `IRPC: Booking ${result.booking.ref} cancelled.`;
+    case "forbidden":
+      return helpText(commandKeywords());
+    case "not_found":
+      return `IRPC: No booking with ref ${ref}.`;
+    case "not_cancellable":
+      return `IRPC: Booking ${ref} cannot be cancelled. Only confirmed bookings can be cancelled.`;
+  }
 }
