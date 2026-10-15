@@ -71,6 +71,29 @@ export async function createOffer(input: CreateOfferInput): Promise<Offer> {
   throw new Error("Create offer: could not allocate a unique ref.");
 }
 
+/**
+ * Texts the seller the ref of an offer made on the public /sell page, in the
+ * same words as the SMS `SELL` reply. A failed text never fails the saved offer.
+ */
+export async function notifyOfferRecorded(
+  offer: Offer,
+  phone: string,
+): Promise<void> {
+  try {
+    const variety = offer.variety_id
+      ? (await listVarieties()).find((v) => v.id === offer.variety_id)
+      : undefined;
+    await send(phone, buyingSms.offerRecorded, {
+      ref: offer.ref,
+      kg: formatKg(offer.est_kg),
+      variety: variety?.code ?? "palay",
+      date: formatDate(offer.harvest_date),
+    });
+  } catch (error) {
+    console.error("Unable to send offer confirmation", error);
+  }
+}
+
 /** An offer joined with its client and variety, for the buying list. */
 export type OfferListItem = Offer & {
   client: { name: string; phone: string } | null;

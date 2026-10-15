@@ -4,10 +4,23 @@
 // Server actions. Check the staff role first with requireRole().
 
 import { revalidatePath } from "next/cache";
+import type { z } from "zod";
+import { todayManila } from "@/lib/dates";
 import { db } from "@/lib/supabase/admin";
 import { requireRole } from "@/modules/accounts/auth";
+import { normalizePhone } from "@/modules/accounts/logic";
+import {
+  ClientInputError,
+  findOrRegisterByPhone,
+} from "@/modules/accounts/queries";
 import { applyOverride, parseOfferForm, parseOverrideForm } from "./logic";
-import { createOffer, purchaseByBatch } from "./queries";
+import { webOfferSchema, type WebOfferInput } from "./offer-schema";
+import {
+  createOffer,
+  notifyOfferRecorded,
+  purchaseByBatch,
+  type Offer,
+} from "./queries";
 
 export type OfferFormState =
   { ok: true; ref: string } | { ok: false; error: string } | undefined;
@@ -25,6 +38,68 @@ export async function submitOffer(
   const offer = await createOffer(parsed.value);
   revalidatePath("/buying");
   return { ok: true, ref: offer.ref };
+}
+
+export type OfferOnlineResult =
+  | {
+      status: "created";
+      offer: Pick<Offer, "ref" | "est_kg" | "harvest_date">;
+    }
+  | {
+      status: "error";
+      message?: string;
+      fieldErrors?: Partial<Record<keyof WebOfferInput, string>>;
+    };
+
+function fieldErrors(error: z.ZodError) {
+  return Object.fromEntries(
+    error.issues.map((issue) => [issue.path[0], issue.message]),
+  );
+}
+
+/**
+ * Sell offer from the public /sell page, without requireRole(): like an SMS
+ * `SELL`, it can only create an `offered` offer for the entered phone, which
+ * is texted the ref. Offers stay inert until a manager accepts.
+ */
+export async function offerOnline(input: unknown): Promise<OfferOnlineResult> {
+  const parsed = webOfferSchema.safeParse(input);
+  if (!parsed.success)
+    return { status: "error", fieldErrors: fieldErrors(parsed.error) };
+  const { name, phone, municipalityId, ...offer } = parsed.data;
+  if (offer.harvestDate < todayManila())
+    return {
+      status: "error",
+      fieldErrors: { harvestDate: "Choose today or a later date." },
+    };
+  const normalized = normalizePhone(phone)!;
+  try {
+    // Name and municipality only label a new client; an existing one is never changed.
+    const client = await findOrRegisterByPhone(normalized, {
+      name,
+      municipality_id: municipalityId,
+    });
+    const created = await createOffer({
+      ...offer,
+      clientId: client.id,
+      bookedByPhone: normalized,
+    });
+    await notifyOfferRecorded(created, normalized);
+    revalidatePath("/buying");
+    const { ref, est_kg, harvest_date } = created;
+    return { status: "created", offer: { ref, est_kg, harvest_date } };
+  } catch (error) {
+    if (error instanceof ClientInputError && error.field === "municipality_id")
+      return {
+        status: "error",
+        fieldErrors: { municipalityId: "Choose your municipality." },
+      };
+    console.error("Unable to create web offer", error);
+    return {
+      status: "error",
+      message: "Unable to save the offer. Please try again.",
+    };
+  }
 }
 
 /** Accept or decline an offer. Manager only. Only an `offered` offer can be decided. */
