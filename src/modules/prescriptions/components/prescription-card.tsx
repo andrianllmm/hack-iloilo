@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import { useTransition } from "react";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/status-badge";
@@ -128,8 +128,10 @@ function Moves({ p }: { p: MoveBookingsPrescription }) {
           label: (
             <>
               {m.client}{" "}
-              <span className="text-muted-foreground">
-                {m.ref} → {shortDay(m.to)}
+              <span className="inline-flex items-center gap-1 text-muted-foreground">
+                {m.ref}
+                <ArrowRight aria-label="to" className="size-3.5" />
+                {shortDay(m.to)}
               </span>
             </>
           ),
