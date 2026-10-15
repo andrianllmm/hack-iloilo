@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { isGsm7, SMS_MAX_CHARS } from "@/modules/sms/logic";
 import {
   daySpan,
+  fillIdle,
+  type Candidate,
+  type Rates,
   hashKey,
   moveBookings,
   templateNote,
@@ -165,5 +169,105 @@ describe("templateNote", () => {
     expect(templateNote(p)).toBe(
       "Oct 19 is 30 t over. Moving 1 flexible booking to Oct 20 leaves 10 t over.",
     );
+  });
+});
+
+describe("fillIdle", () => {
+  const rates: Rates = {
+    dryingMinorPerKg: 160,
+    millingMinorPerKg: 330,
+    buyBaseMinorPerKg: 2100,
+    buyReferenceMc: 25,
+  };
+  const candidate = (
+    name: string,
+    pastKg: number,
+    municipality: string | null,
+    extra: Partial<Candidate> = {},
+  ): Candidate => ({
+    clientId: name.toLowerCase(),
+    name,
+    phone: `+63917${String(pastKg).padStart(7, "0")}`,
+    municipality,
+    pastKg,
+    kind: "farmer",
+    hasOpenBooking: false,
+    ...extra,
+  });
+  const candidates = [
+    candidate("Ana", 5_000, "Pototan"),
+    candidate("Ben", 12_000, "Dumangas"),
+    candidate("Coop", 30_000, "Dumangas", { kind: "coop" }),
+    candidate("Dina", 0, "Barotac Nuevo"),
+    candidate("Eli", 0, null),
+    candidate("Fe", 0, "Anilao"),
+    candidate("Booked", 40_000, "Pototan", { hasOpenBooking: true }),
+    candidate("Trader", 50_000, "Pototan", { kind: "trader" }),
+    candidate("Buyer", 50_000, "Pototan", { kind: "buyer" }),
+  ];
+
+  it("texts farmers and co-ops with no open booking, by past volume then municipality", () => {
+    const [rx, ...rest] = fillIdle({
+      stretches: [{ from: "2026-10-17", to: "2026-10-19" }],
+      candidates,
+      rates,
+      today: "2026-10-15",
+    });
+    expect(rest).toEqual([]);
+    expect(rx.title).toBe("Oct 17–19 are idle");
+    expect(rx.recipients.map((r) => r.name)).toEqual([
+      "Coop",
+      "Ben",
+      "Ana",
+      "Fe", // Anilao
+      "Dina", // Barotac Nuevo
+      "Eli", // no municipality last
+    ]);
+    expect(rx.facts).toEqual({
+      days: "Oct 17–19",
+      idle_days: 3,
+      recipients: 6,
+      municipalities: "Dumangas 2, Anilao 1, Barotac Nuevo 1, 2 more",
+    });
+  });
+
+  it("drafts a GSM-7 text of at most 320 characters with today's rates", () => {
+    const [rx] = fillIdle({
+      stretches: [{ from: "2026-10-30", to: "2026-11-02" }],
+      candidates,
+      rates,
+      today: "2026-10-15",
+    });
+    expect(rx.message).toBe(
+      "IRPC: Our dryers have room Oct 30-Nov 2. Drying PHP 1.60/kg, milling PHP 3.30/kg. We buy palay at PHP 21.00/kg (25% MC). To book, text BOOK DRY <kg> <dd/mm>, e.g. BOOK DRY 5000 30/10.",
+    );
+    expect(isGsm7(rx.message)).toBe(true);
+    expect(rx.message.length).toBeLessThanOrEqual(SMS_MAX_CHARS);
+  });
+
+  it("starts a stretch tomorrow at the earliest and skips one that is over", () => {
+    const rx = fillIdle({
+      stretches: [
+        { from: "2026-10-15", to: "2026-10-15" },
+        { from: "2026-10-14", to: "2026-10-17" },
+      ],
+      candidates,
+      rates,
+      today: "2026-10-15",
+    });
+    expect(rx.map((p) => [p.from, p.to])).toEqual([
+      ["2026-10-16", "2026-10-17"],
+    ]);
+  });
+
+  it("gives no card without recipients", () => {
+    expect(
+      fillIdle({
+        stretches: [{ from: "2026-10-17", to: "2026-10-19" }],
+        candidates: [candidate("Booked", 1, null, { hasOpenBooking: true })],
+        rates,
+        today: "2026-10-15",
+      }),
+    ).toEqual([]);
   });
 });

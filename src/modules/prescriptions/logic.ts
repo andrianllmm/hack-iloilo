@@ -2,8 +2,14 @@
 // Pure functions only: no I/O and no imports from other modules. Unit-test here.
 
 import { addDays, daysBetween } from "@/lib/dates";
-import { formatTonnes } from "@/lib/format";
-import type { Move, MoveBookingsPrescription, Prescription } from "./types";
+import { formatMoneySms, formatTonnes } from "@/lib/format";
+import type {
+  FillIdlePrescription,
+  Move,
+  MoveBookingsPrescription,
+  Recipient,
+  Suggestion,
+} from "./types";
 
 /** 53-bit hash (cyrb53) as hex: stable across runs and machines. */
 export function hashKey(value: unknown): string {
@@ -33,8 +39,11 @@ export function shortDay(date: string): string {
   return monthDay.format(new Date(`${date}T00:00:00Z`));
 }
 
-/** `Oct 22` or `Oct 22–23` / `Oct 30–Nov 2` for a set of dates. */
-export function daySpan(dates: string[]): string {
+/**
+ * `Oct 22` or `Oct 22–23` / `Oct 30–Nov 2` for a set of dates. Pass `-` as
+ * the dash for SMS, since `–` is not GSM-7.
+ */
+export function daySpan(dates: string[], dash = "–"): string {
   const sorted = [...new Set(dates)].sort();
   const first = sorted[0];
   const last = sorted.at(-1);
@@ -42,7 +51,7 @@ export function daySpan(dates: string[]): string {
   if (first === last) return shortDay(first);
   const [m1] = shortDay(first).split(" ");
   const [m2, d2] = shortDay(last).split(" ");
-  return `${shortDay(first)}–${m1 === m2 ? d2 : `${m2} ${d2}`}`;
+  return `${shortDay(first)}${dash}${m1 === m2 ? d2 : `${m2} ${d2}`}`;
 }
 
 /** Dryer capacity and firm load (confirmed + offer) on one day. */
@@ -181,8 +190,113 @@ function nearestWithRoom(
   return null;
 }
 
+/** Today's rates, in centavos per kg, for the idle-day text. */
+export type Rates = {
+  dryingMinorPerKg: number;
+  millingMinorPerKg: number;
+  buyBaseMinorPerKg: number;
+  /** MC the buying base is quoted at, percent. */
+  buyReferenceMc: number;
+};
+
+/** The text sent before an idle stretch: GSM-7, well under 320 characters. */
+export function idleDraft(from: string, to: string, rates: Rates): string {
+  const ddmm = `${from.slice(8, 10)}/${from.slice(5, 7)}`;
+  return (
+    `IRPC: Our dryers have room ${daySpan([from, to], "-")}. ` +
+    `Drying ${formatMoneySms(rates.dryingMinorPerKg)}/kg, milling ${formatMoneySms(rates.millingMinorPerKg)}/kg. ` +
+    `We buy palay at ${formatMoneySms(rates.buyBaseMinorPerKg)}/kg (${rates.buyReferenceMc}% MC). ` +
+    `To book, text BOOK DRY <kg> <dd/mm>, e.g. BOOK DRY 5000 ${ddmm}.`
+  );
+}
+
+/** A client the idle-day rule may text. */
+export type Candidate = Recipient & {
+  kind: string;
+  hasOpenBooking: boolean;
+};
+
+/**
+ * For each idle dryer stretch still ahead (from tomorrow), texts farmers and
+ * co-ops with no open booking, by past volume, then municipality, then name.
+ * One card per stretch; none without recipients.
+ */
+export function fillIdle(input: {
+  stretches: { from: string; to: string }[];
+  candidates: Candidate[];
+  rates: Rates;
+  today: string;
+}): Omit<FillIdlePrescription, "decision">[] {
+  const recipients: Recipient[] = input.candidates
+    .filter(
+      (c) => (c.kind === "farmer" || c.kind === "coop") && !c.hasOpenBooking,
+    )
+    .sort(
+      (a, b) =>
+        b.pastKg - a.pastKg ||
+        (a.municipality ?? "\uffff").localeCompare(
+          b.municipality ?? "\uffff",
+        ) ||
+        a.name.localeCompare(b.name),
+    )
+    .map(({ clientId, name, phone, municipality, pastKg }) => ({
+      clientId,
+      name,
+      phone,
+      municipality,
+      pastKg,
+    }));
+  if (!recipients.length) return [];
+
+  const tomorrow = addDays(input.today, 1);
+  return input.stretches.flatMap((s) => {
+    const from = s.from < tomorrow ? tomorrow : s.from;
+    if (from > s.to) return [];
+    const days = daysBetween(from, s.to) + 1;
+    const message = idleDraft(from, s.to, input.rates);
+    return [
+      {
+        kind: "fill_idle" as const,
+        key: hashKey([
+          "fill_idle",
+          from,
+          s.to,
+          recipients.map((r) => r.clientId),
+          message,
+        ]),
+        title: `${daySpan([from, s.to])} ${days === 1 ? "is" : "are"} idle`,
+        facts: {
+          days: daySpan([from, s.to]),
+          idle_days: days,
+          recipients: recipients.length,
+          municipalities: municipalitySummary(recipients),
+        },
+        from,
+        to: s.to,
+        recipients,
+        message,
+      },
+    ];
+  });
+}
+
+/** `Dumangas 5, Pototan 3, 2 more` by recipient count. */
+export function municipalitySummary(recipients: Recipient[], top = 3): string {
+  const counts = new Map<string, number>();
+  for (const r of recipients) {
+    const m = r.municipality ?? "No municipality";
+    counts.set(m, (counts.get(m) ?? 0) + 1);
+  }
+  const sorted = [...counts].sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+  );
+  const shown = sorted.slice(0, top).map(([m, n]) => `${m} ${n}`);
+  const more = sorted.length - top;
+  return more > 0 ? `${shown.join(", ")}, ${more} more` : shown.join(", ");
+}
+
 /** The card's plain-language note on why and what it gains, from its facts only. */
-export function templateNote(p: Omit<Prescription, "decision">): string {
+export function templateNote(p: Suggestion): string {
   const f = p.facts;
   switch (p.kind) {
     case "move_bookings": {
@@ -191,6 +305,10 @@ export function templateNote(p: Omit<Prescription, "decision">): string {
       return p.remainderKg === 0
         ? `${f.day} is ${f.overflow} over. ${moving} clears it without turning anyone away.`
         : `${f.day} is ${f.overflow} over. ${moving} leaves ${f.remainder} over.`;
+    }
+    case "fill_idle": {
+      const n = Number(f.recipients);
+      return `The dryers have room ${f.days}. Texting today's rates and buying price to ${n} ${n === 1 ? "farmer or co-op" : "farmers and co-ops"} with no booking can bring palay in to fill it.`;
     }
   }
 }

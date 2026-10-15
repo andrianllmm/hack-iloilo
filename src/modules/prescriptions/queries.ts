@@ -4,11 +4,19 @@
 import "server-only";
 import { addDays, todayManila } from "@/lib/dates";
 import { db } from "@/lib/supabase/admin";
-import { bookingList } from "@/modules/booking/queries";
-import { WINDOW_DAYS } from "@/modules/capacity/logic";
+import { clientsDirectory, municipalities } from "@/modules/accounts/queries";
+import { bookingList, bookingsBetween } from "@/modules/booking/queries";
+import { idleStretches, poolDays, WINDOW_DAYS } from "@/modules/capacity/logic";
 import { capacityByDay, type DayPool } from "@/modules/capacity/queries";
-import { moveBookings, type OpenBooking } from "./logic";
-import type { Decision, Prescription } from "./types";
+import { receivedKgByClient } from "@/modules/gate/queries";
+import { priceOn } from "@/modules/pricing/queries";
+import {
+  fillIdle,
+  moveBookings,
+  type Candidate,
+  type OpenBooking,
+} from "./logic";
+import type { Decision, Prescription, Suggestion } from "./types";
 export type { Prescription } from "./types";
 
 /**
@@ -43,7 +51,7 @@ export async function prescriptions(
         ]
       : [],
   );
-  const suggested = moveBookings({
+  const suggested: Suggestion[] = moveBookings({
     days: days
       .filter((d) => d.pool === "dryer")
       .map((d) => ({
@@ -54,11 +62,49 @@ export async function prescriptions(
     bookings,
     today,
   });
+  suggested.push(...(await idleSuggestions(days, today)));
   const decisions = await decisionsByKey(suggested.map((s) => s.key));
   return suggested.map((s) => ({
     ...s,
     decision: decisions.get(s.key) ?? null,
   }));
+}
+
+/** Fill-idle cards for the dryer's idle stretches, with today's rates. */
+async function idleSuggestions(days: DayPool[], today: string) {
+  const stretches = idleStretches(poolDays(days, "dryer"));
+  if (!stretches.length) return [];
+  const [clients, towns, open, pastKg, prices] = await Promise.all([
+    clientsDirectory(),
+    municipalities(),
+    // Any open booking from today on counts, however far ahead.
+    bookingsBetween(today, addDays(today, 365)),
+    receivedKgByClient(),
+    priceOn(today),
+  ]);
+  const townName = new Map(towns.map((m) => [m.id, m.name]));
+  const booked = new Set(open.map((b) => b.client_id));
+  const candidates: Candidate[] = clients.map((c) => ({
+    clientId: c.id,
+    name: c.name,
+    phone: c.phone,
+    kind: c.kind,
+    municipality:
+      (c.municipality_id && townName.get(c.municipality_id)) || null,
+    pastKg: pastKg.get(c.id) ?? 0,
+    hasOpenBooking: booked.has(c.id),
+  }));
+  return fillIdle({
+    stretches,
+    candidates,
+    rates: {
+      dryingMinorPerKg: prices.drying_fee_minor_per_kg,
+      millingMinorPerKg: prices.milling_fee_minor_per_kg,
+      buyBaseMinorPerKg: prices.buy_base_minor_per_kg,
+      buyReferenceMc: Number(prices.buy_reference_mc),
+    },
+    today,
+  });
 }
 
 async function decisionsByKey(keys: string[]): Promise<Map<string, Decision>> {
