@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RoleGate } from "@/modules/accounts/components/role-gate";
 import { PurchaseCard } from "@/modules/buying/components/purchase-card";
 import { BatchDispatch } from "@/modules/gate/components/batch-dispatch";
 import { BatchSummaryCard } from "@/modules/gate/components/batch-summary";
+import { BatchCostCard } from "@/modules/pricing/components/batch-cost-card";
 
 export const metadata: Metadata = { title: "Batch" };
 
@@ -14,6 +16,9 @@ async function Batch({ params }: Pick<PageProps<"/batches/[id]">, "params">) {
       <BatchSummaryCard id={id} />
       <PurchaseCard id={id} />
       <BatchDispatch id={id} />
+      <RoleGate role="manager">
+        <BatchCostCard id={id} />
+      </RoleGate>
     </div>
   );
 }
