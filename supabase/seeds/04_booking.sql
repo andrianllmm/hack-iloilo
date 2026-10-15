@@ -30,7 +30,8 @@ from (
   ('W6UC4N', 'drying',  'c1000000-0000-0000-0000-000000000021', null,            'staff',  3500, 2, 1, 2, 'cancelled'),
   ('F7AX2M', 'drying',  'c1000000-0000-0000-0000-000000000015', null,            'sms',    4000, 3, 1, 3, 'confirmed'),
   ('R3EH8P', 'drying',  'c1000000-0000-0000-0000-000000000016', null,            'staff',  3500, 3, 0, 3, 'confirmed'),
-  ('N4VS6K', 'drying',  'c1000000-0000-0000-0000-000000000013', '+639171000002', 'sms',    4500, 3, 2, 3, 'reschedule_proposed'),
+  -- On the day 14 peak (90_peak.sql), already asked to move to day 15 (91_sms.sql).
+  ('N4VS6K', 'drying',  'c1000000-0000-0000-0000-000000000013', '+639171000002', 'sms',    4500, 14, 2, 14, 'reschedule_proposed'),
   ('C9LT5G', 'milling', 'c2000000-0000-0000-0000-000000000002', null,            'sms',   15000, 2, 1, 2, 'confirmed'),
   ('J2PB7D', 'milling', 'c0000000-0000-0000-0000-000000000001', null,            'staff', 20000, 4, 3, 4, 'confirmed'),
   -- Mill peak: day 8 is 10.4 t over the 49.6 t mill day (M10 store now, mill later).

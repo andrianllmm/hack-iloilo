@@ -42,6 +42,14 @@ export const bookingSmsSchema = bookingSchema
   });
 export type BookingSmsInput = z.infer<typeof bookingSmsSchema>;
 
+/** A free-text booking as AI reads it: the amount as stated, converted by `bookingFromAi`. */
+export const bookingAiSchema = bookingSmsSchema.omit({ estKg: true }).extend({
+  amount: z.number().positive().describe("The amount exactly as stated"),
+  unit: z
+    .enum(["kg", "sacks"])
+    .describe("The unit stated: kg, or sacks (sako)"),
+});
+
 export const cancelSmsSchema = z.object({
   ref: z.string().regex(/^[A-Z0-9]{6}$/),
 });

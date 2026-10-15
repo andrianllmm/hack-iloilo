@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { bookingSchema } from "./booking-schema";
+import { bookingAiSchema, bookingSchema } from "./booking-schema";
 import {
   bookedByLabel,
+  bookingFromAi,
+  SACK_KG,
   canCancel,
   canMove,
   defaultRange,
@@ -246,5 +248,37 @@ describe("date labels", () => {
     expect(formatDay("2026-10-20")).toBe("Tue, Oct 20");
     expect(formatShortDate("2026-10-20")).toBe("Oct 20");
     expect(formatRange("2026-10-15", "2026-10-31")).toMatch(/^Oct 15\s–\s31$/);
+  });
+});
+
+describe("bookingFromAi", () => {
+  const reading = {
+    service: "drying",
+    dayMonth: "20/10",
+    flexDays: 0,
+  } as const;
+
+  it("converts sacks to kg in code and keeps kg as stated", () => {
+    expect(bookingFromAi({ ...reading, amount: 20, unit: "sacks" })).toEqual({
+      ...reading,
+      estKg: 20 * SACK_KG,
+    });
+    expect(bookingFromAi({ ...reading, amount: 1500, unit: "kg" })).toEqual({
+      ...reading,
+      estKg: 1500,
+    });
+    expect(
+      bookingFromAi({ ...reading, amount: 2.5, unit: "sacks" }).estKg,
+    ).toBe(Math.round(2.5 * SACK_KG));
+  });
+
+  it("asks the AI for an amount and unit, not kg", () => {
+    expect(
+      bookingAiSchema.safeParse({ ...reading, amount: 20, unit: "sacks" })
+        .success,
+    ).toBe(true);
+    expect(bookingAiSchema.safeParse({ ...reading, estKg: 1000 }).success).toBe(
+      false,
+    );
   });
 });

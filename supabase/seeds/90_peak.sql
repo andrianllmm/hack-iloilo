@@ -4,8 +4,11 @@
 --   Days 0–16   steady trader drying so no day before the peak reads idle.
 --   Day 14      30 t over: 130 t booked + 12 t accepted offer (SELL08, 05_buying.sql).
 --               Three flexible bookings (12 + 10 + 8 t) can move to clear it (M10).
+--               N4VS6K (4.5 t, 04_booking.sql) was already asked to move to day 15,
+--               so the chart shows 34.5 t over while M10 counts it on day 15.
 --   Days 17–20  idle: nothing booked, only the forecast.
--- Fillers go to traders so co-ops and farmers stay fill-idle recipients.
+-- Fillers go to traders so farmers without bookings stay fill-idle recipients
+-- (every co-op already has an open booking, so none are).
 
 insert into public.bookings (
   facility_id, ref, service, client_id, booked_by_phone, channel,

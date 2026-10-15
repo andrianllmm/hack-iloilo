@@ -133,7 +133,7 @@ describe("formatVarietiesSms", () => {
   it("leads with the count and lists every code in the given order", () => {
     const reply = formatVarietiesSms(codes, 320);
     expect(reply).toBe(
-      "IRPC rice varieties (3): RC160, RC216, RC222. Para magbaligya: SELL <kg> <variety> <dd/mm>",
+      "IRPC mga variety sang humay (3): RC160, RC216, RC222. Para magbaligya: SELL <kg> <variety> <dd/mm>",
     );
   });
 
@@ -143,7 +143,7 @@ describe("formatVarietiesSms", () => {
 
   it("keeps the full count even when the list is truncated", () => {
     const max =
-      "IRPC rice varieties (3): RC160, RC216 .... Para magbaligya: SELL <kg> <variety> <dd/mm>"
+      "IRPC mga variety sang humay (3): RC160, RC216 .... Para magbaligya: SELL <kg> <variety> <dd/mm>"
         .length;
     const reply = formatVarietiesSms(codes, max);
     expect(reply.length).toBeLessThanOrEqual(max);
@@ -155,7 +155,7 @@ describe("formatVarietiesSms", () => {
 
   it("handles an empty list", () => {
     expect(formatVarietiesSms([], 320)).toBe(
-      "IRPC rice varieties: wala pa. Para magbaligya: SELL <kg> <variety> <dd/mm>",
+      "IRPC: Wala pa sang nalista nga variety sang humay. Para magbaligya: SELL <kg> <variety> <dd/mm>",
     );
   });
 });

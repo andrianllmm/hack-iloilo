@@ -25,6 +25,22 @@ export const statusLabels: Record<BookingStatus, string> = {
   no_show: "No-show",
 };
 export const MAX_FLEX_DAYS = 7;
+// TODO(M3): confirm IRPC's sack weight.
+export const SACK_KG = 50;
+
+/** An AI-read booking amount in kg: code converts sacks, never the AI. */
+export function bookingFromAi<
+  T extends { amount: number; unit: "kg" | "sacks" },
+>({
+  amount,
+  unit,
+  ...rest
+}: T): Omit<T, "amount" | "unit"> & { estKg: number } {
+  return {
+    ...rest,
+    estKg: Math.round(unit === "sacks" ? amount * SACK_KG : amount),
+  };
+}
 
 /** Shared move validation; `today` is the Manila calendar date supplied by the caller. */
 export function validateMove(
@@ -244,7 +260,8 @@ const weekdayDate = new Intl.DateTimeFormat("en-US", {
 });
 
 /**
- * "book drying for 1,000 kg on Mon, Oct 19, give or take 2 days".
+ * "mag-book sang drying para sa 1,000 kg sa Mon, Oct 19, puwede 2 ka adlaw
+ * nga mas temprano ukon mas ulihi", completing `aiConfirmText`.
  * Falls back to `dayMonth` when the day can't be resolved (e.g. 31/02).
  */
 export function describeBookingRequest({
