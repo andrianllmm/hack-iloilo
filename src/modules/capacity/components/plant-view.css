@@ -118,13 +118,6 @@
   letter-spacing: 0.08em;
   fill: var(--muted-foreground);
 }
-.plant-sheet .ttl {
-  font-family: var(--font-mono);
-  font-size: 7px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  fill: var(--ink);
-}
 .plant-sheet .lvl {
   font-family: var(--font-mono);
   font-size: 8px;

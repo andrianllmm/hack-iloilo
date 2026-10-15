@@ -230,20 +230,8 @@ function PoolUnit({
   const forecast = day.load.forecast.mid;
   const level = day.capacityKg ? expectedKg(day) / day.capacityKg : 0;
   const drawing = {
-    dryer: (
-      <DryerDrawing
-        level={level}
-        overKg={day.overflowKg}
-        capacityKg={day.capacityKg}
-      />
-    ),
-    storage: (
-      <SiloDrawing
-        level={level}
-        overKg={day.overflowKg}
-        capacityKg={day.capacityKg}
-      />
-    ),
+    dryer: <DryerDrawing level={level} overKg={day.overflowKg} />,
+    storage: <SiloDrawing level={level} overKg={day.overflowKg} />,
     mill: <MillDrawing level={level} />,
   }[pool];
   return (
