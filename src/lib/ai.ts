@@ -87,7 +87,12 @@ export async function extract<T>(
     let model: LanguageModel | undefined = pool.openRouter;
     if (provider === "gemini") {
       const previous = pool.state.current;
-      const selection = reserveKey(pool.state, pool.limits, now, attempted);
+      // Retry the configured primary on a new SMS after transient outages;
+      // quota/cooldown checks still skip it when it is unavailable.
+      const preferred = attempted.length
+        ? pool.state
+        : { ...pool.state, current: 0 };
+      const selection = reserveKey(preferred, pool.limits, now, attempted);
       pool.state = selection.pool;
       index = selection.index;
       if (index === null) continue;

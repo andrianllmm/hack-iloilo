@@ -143,6 +143,19 @@ describe("AI extraction key failover", () => {
     expect(sdk.generateText.mock.calls[0][0].model.testKey).toBe("test-key-a");
   });
 
+  it("prefers the configured primary again after a transient failure uses the backup", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "router-test-key");
+    sdk.generateText
+      .mockRejectedValueOnce({ statusCode: 503 })
+      .mockRejectedValueOnce({ statusCode: 503 });
+    const { extract } = await import("./ai");
+    expect(await extract(schema, "price")).toEqual(output);
+    expect(await extract(schema, "price")).toEqual(output);
+    expect(
+      sdk.generateText.mock.calls.map(([args]) => args.model.testKey),
+    ).toEqual(["test-key-a", "router-test-key", "test-key-b", "test-key-a"]);
+  });
+
   it("gives OpenRouter the full budget when all Gemini keys are cooling down", async () => {
     vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEYS", "test-key-a,test-key-b");
     vi.stubEnv("OPENROUTER_API_KEY", "router-test-key");
