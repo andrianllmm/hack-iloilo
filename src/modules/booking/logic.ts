@@ -101,19 +101,47 @@ export function bookedByLabel(
   return `${namesByPhone.get(row.booked_by_phone) ?? row.booked_by_phone} · FOR`;
 }
 
+const isClientOrBooker = (
+  booking: Pick<Booking, "booked_by_phone">,
+  clientPhone: string,
+  phone: string,
+) => phone === clientPhone || phone === booking.booked_by_phone;
+
 /** Only confirmed bookings cancel; by SMS only the client or booker may. */
 export function canCancel(
   booking: Pick<Booking, "status" | "booked_by_phone">,
   clientPhone: string,
   byPhone?: string,
 ): "ok" | "forbidden" | "not_cancellable" {
-  if (
-    byPhone !== undefined &&
-    byPhone !== clientPhone &&
-    byPhone !== booking.booked_by_phone
-  )
+  if (byPhone !== undefined && !isClientOrBooker(booking, clientPhone, byPhone))
     return "forbidden";
   return booking.status === "confirmed" ? "ok" : "not_cancellable";
+}
+
+/**
+ * The date a reschedule answer leaves the booking on: YES takes the proposed
+ * date, NO keeps the scheduled one. Only the client or booker may answer.
+ */
+export function rescheduleAnswer(
+  booking: Pick<
+    Booking,
+    "status" | "booked_by_phone" | "scheduled_date" | "proposed_date"
+  >,
+  clientPhone: string,
+  byPhone: string,
+  yes: boolean,
+):
+  | { status: "forbidden" }
+  | { status: "not_open" }
+  | { status: "ok"; date: string } {
+  if (!isClientOrBooker(booking, clientPhone, byPhone))
+    return { status: "forbidden" };
+  if (booking.status !== "reschedule_proposed" || !booking.proposed_date)
+    return { status: "not_open" };
+  return {
+    status: "ok",
+    date: yes ? booking.proposed_date : booking.scheduled_date,
+  };
 }
 
 // Calendar dates are rendered at UTC midnight so the host time zone never shifts them.

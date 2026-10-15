@@ -10,12 +10,22 @@ import {
 } from "@/modules/accounts/queries";
 import { todayManila } from "@/lib/dates";
 import { fillTemplate, helpText, parseDayMonth } from "@/modules/sms/logic";
-import { send } from "@/modules/sms/queries";
-import { commandKeywords, type CommandContext } from "@/modules/sms/registry";
+import { openPrompt, send } from "@/modules/sms/queries";
+import {
+  commandKeywords,
+  PromptRefusal,
+  type CommandContext,
+  type SmsPrompt,
+} from "@/modules/sms/registry";
 import type { BookingSmsInput } from "./booking-schema";
-import { BOOKING_CONFIRMATION } from "./sms";
+import {
+  BOOKING_CONFIRMATION,
+  RESCHEDULE_KEPT,
+  RESCHEDULE_MOVED,
+  RESCHEDULE_QUESTION,
+} from "./sms";
 import { currentFacility } from "@/modules/setup/queries";
-import { canCancel } from "./logic";
+import { canCancel, formatDay, rescheduleAnswer, serviceLabels } from "./logic";
 import type {
   Booking,
   BookingChannel,
@@ -94,8 +104,9 @@ export async function markArrived(bookingId: string): Promise<Booking | null> {
 }
 
 /**
- * Asks to move a `confirmed` booking to `date` (M10). It keeps its scheduled
- * date until the client answers. Null if it is no longer `confirmed`.
+ * Asks to move a `confirmed` booking to `date` (M10) and texts the client a
+ * `reschedule` prompt under the booking ref. It keeps its scheduled date until
+ * the client answers. Null if it is no longer `confirmed`.
  */
 export async function proposeReschedule(
   bookingId: string,
@@ -106,10 +117,87 @@ export async function proposeReschedule(
     .update({ status: "reschedule_proposed", proposed_date: date })
     .eq("id", bookingId)
     .eq("status", "confirmed")
+    .select("*, client:clients(phone)")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const { client, ...booking } = data;
+  try {
+    await openPrompt({
+      phone: client.phone,
+      kind: "reschedule",
+      payload: { bookingId, date },
+      ref: booking.ref,
+    });
+  } catch (error) {
+    // Without a prompt the client could never answer: keep the booking as is.
+    await db()
+      .from("bookings")
+      .update({ status: "confirmed", proposed_date: null })
+      .eq("id", bookingId)
+      .eq("status", "reschedule_proposed");
+    throw error;
+  }
+  await send(client.phone, RESCHEDULE_QUESTION, {
+    date: formatDay(booking.scheduled_date),
+    service: serviceLabels[booking.service].toLowerCase(),
+    ref: booking.ref,
+    kg: booking.est_kg,
+    newDate: formatDay(date),
+  });
+  return booking;
+}
+
+/**
+ * Prompt handler for `YES <ref>` / `NO <ref>` to a reschedule: YES moves the
+ * booking to its proposed date, NO keeps its date; both confirm it. Only the
+ * client or booker may answer; others get the help reply.
+ */
+export async function answerReschedule(
+  prompt: SmsPrompt,
+  yes: boolean,
+  ctx: CommandContext,
+): Promise<string> {
+  const { data: found, error: findError } = await db()
+    .from("bookings")
+    .select("*, client:clients(phone)")
+    .eq("ref", prompt.ref)
+    .maybeSingle();
+  if (findError) throw findError;
+  if (!found) return `IRPC: No booking with ref ${prompt.ref}.`;
+  const answer = rescheduleAnswer(found, found.client.phone, ctx.phone, yes);
+  if (answer.status === "forbidden")
+    throw new PromptRefusal(helpText(commandKeywords()));
+  const closed = `IRPC: Booking ${found.ref} is no longer waiting for an answer.`;
+  if (answer.status === "not_open") return closed;
+
+  const { data, error } = await db()
+    .from("bookings")
+    .update({
+      status: "confirmed",
+      scheduled_date: answer.date,
+      proposed_date: null,
+    })
+    .eq("id", found.id)
+    .eq("status", "reschedule_proposed")
     .select()
     .maybeSingle();
   if (error) throw error;
-  return data;
+  if (!data) return closed;
+
+  const reply = fillTemplate(yes ? RESCHEDULE_MOVED : RESCHEDULE_KEPT, {
+    ref: data.ref,
+    date: formatDay(data.scheduled_date),
+  });
+  // The booker answered for the client: let the client know too.
+  if (found.client.phone !== ctx.phone) {
+    try {
+      await send(found.client.phone, reply);
+    } catch (error) {
+      console.error("Unable to send reschedule outcome to the client", error);
+    }
+  }
+  return reply;
 }
 
 /** Undoes `markArrived` when the check-in that caused it fails. */

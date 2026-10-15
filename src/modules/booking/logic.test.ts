@@ -8,6 +8,7 @@ import {
   formatRange,
   formatShortDate,
   groupBookings,
+  rescheduleAnswer,
   type BookingFilters,
 } from "./logic";
 import type { BookingRow } from "./types";
@@ -110,6 +111,39 @@ describe("canCancel", () => {
     expect(canCancel(booking, "+6391", "+6391")).toBe("ok");
     expect(canCancel(booking, "+6391", "+6392")).toBe("ok");
     expect(canCancel(booking, "+6391", "+6393")).toBe("forbidden");
+  });
+});
+
+describe("rescheduleAnswer", () => {
+  const booking = {
+    status: "reschedule_proposed" as const,
+    booked_by_phone: "+6392",
+    scheduled_date: "2026-10-20",
+    proposed_date: "2026-10-22",
+  };
+  it("moves on YES and keeps the date on NO", () => {
+    expect(rescheduleAnswer(booking, "+6391", "+6391", true)).toEqual({
+      status: "ok",
+      date: "2026-10-22",
+    });
+    expect(rescheduleAnswer(booking, "+6391", "+6392", false)).toEqual({
+      status: "ok",
+      date: "2026-10-20",
+    });
+  });
+  it("lets only the client or booker answer", () => {
+    expect(rescheduleAnswer(booking, "+6391", "+6393", true)).toEqual({
+      status: "forbidden",
+    });
+  });
+  it("refuses bookings no longer awaiting an answer", () => {
+    for (const changed of [
+      { ...booking, status: "arrived" as const },
+      { ...booking, status: "confirmed" as const, proposed_date: null },
+    ])
+      expect(rescheduleAnswer(changed, "+6391", "+6391", true)).toEqual({
+        status: "not_open",
+      });
   });
 });
 
