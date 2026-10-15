@@ -15,14 +15,19 @@ import {
   quote,
 } from "@/modules/pricing/logic";
 import { priceOn } from "@/modules/pricing/queries";
-import { helpText, parseDayMonth, SMS_MAX_CHARS } from "@/modules/sms/logic";
+import {
+  fillTemplate,
+  helpText,
+  parseDayMonth,
+  SMS_MAX_CHARS,
+} from "@/modules/sms/logic";
 import { commandUsages, type CommandContext } from "@/modules/sms/registry";
 import {
   currentFacility,
   findVarietyByCode,
   listVarieties,
 } from "@/modules/setup/queries";
-import { formatVarietiesSms } from "./logic";
+import { buyingSms, formatVarietiesSms } from "./logic";
 import type { CreateOfferInput, QuoteSmsInput, SellSmsInput } from "./logic";
 
 export type Offer = Database["public"]["Tables"]["sell_offers"]["Row"];
@@ -226,12 +231,13 @@ export async function listOffers(
 /** `PRICE`: today's buying base, drying and milling fees, and rice price. */
 export async function priceBySms(): Promise<string> {
   const prices = await priceOn(todayManila());
-  return (
-    `IRPC prices today: palay base ${formatMoneySms(prices.buy_base_minor_per_kg)}/kg ` +
-    `at ${prices.buy_reference_mc}% MC, drying ${formatMoneySms(prices.drying_fee_minor_per_kg)}/kg, ` +
-    `milling ${formatMoneySms(prices.milling_fee_minor_per_kg)}/kg, ` +
-    `rice ${formatMoneySms(prices.rice_minor_per_kg)}/kg. For a quote: QUOTE <mc>% <kg>.`
-  );
+  return fillTemplate(buyingSms.prices, {
+    buy: formatMoneySms(prices.buy_base_minor_per_kg),
+    mc: prices.buy_reference_mc,
+    drying: formatMoneySms(prices.drying_fee_minor_per_kg),
+    milling: formatMoneySms(prices.milling_fee_minor_per_kg),
+    rice: formatMoneySms(prices.rice_minor_per_kg),
+  });
 }
 
 /** `QUOTE <mc>% [<kg>]`: the MC-adjusted price per kg and total, as an estimate. */
@@ -247,10 +253,11 @@ export async function quoteBySms(input: QuoteSmsInput): Promise<string> {
     totalMinor === undefined
       ? ""
       : `, ${formatKg(input.kg as number)} = ${formatMoneySms(totalMinor)}`;
-  return (
-    `IRPC estimate at ${input.mc}% MC: ${formatMoneySms(minorPerKg)}/kg${total}. ` +
-    `Estimate only; the final price is set at receiving.`
-  );
+  return fillTemplate(buyingSms.quote, {
+    mc: input.mc,
+    perKg: formatMoneySms(minorPerKg),
+    total,
+  });
 }
 
 /** `SELL <kg> <variety> <dd/mm>` (with optional `FOR <phone>`): records an offer. */
@@ -260,7 +267,7 @@ export async function sellBySms(
 ): Promise<string> {
   const variety = await findVarietyByCode(input.varietyCode);
   if (!variety)
-    return `IRPC: We don't recognize variety "${input.varietyCode}". Please check the code and try again.`;
+    return fillTemplate(buyingSms.unknownVariety, { code: input.varietyCode });
   const harvestDate = parseDayMonth(input.dayMonth, todayManila());
   if (!harvestDate) return helpText(commandUsages());
 
@@ -276,10 +283,12 @@ export async function sellBySms(
     harvestDate,
     bookedByPhone: ctx.phone,
   });
-  return (
-    `IRPC: Offer recorded. Ref ${offer.ref}: ${formatKg(offer.est_kg)} ${variety.code} ` +
-    `for harvest ${formatDate(harvestDate)}. We will text you when the manager decides.`
-  );
+  return fillTemplate(buyingSms.offerRecorded, {
+    ref: offer.ref,
+    kg: formatKg(offer.est_kg),
+    variety: variety.code,
+    date: formatDate(harvestDate),
+  });
 }
 
 /** `VARIETIES`: the rice variety codes IRPC recognizes, for use in `SELL`. */

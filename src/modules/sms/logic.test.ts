@@ -123,16 +123,16 @@ describe("helpText", () => {
   it("lists the keyword formats once, within the SMS limit", () => {
     const text = helpText(usages);
     expect(text).toBe(
-      "IRPC: Sorry, we didn't get that. Please text: BOOK DRY 1000 20/10 +2; CANCEL <ref>; STATUS",
+      "IRPC: Pasensya, wala namon naintiendihan. Palihog i-text: BOOK DRY 1000 20/10 +2; CANCEL <ref>; STATUS",
     );
     expect(isGsm7(text)).toBe(true);
   });
 
   it("invites plain language only when AI is up", () => {
     const text = helpText(usages, true);
-    expect(text).toMatch(/dry 20 sacks on Monday.*CANCEL <ref>/);
+    expect(text).toMatch(/pa-dry 20 ka sako sa Lunes.*CANCEL <ref>/);
     expect(text.length).toBeLessThanOrEqual(SMS_MAX_CHARS);
-    expect(helpText(usages)).not.toMatch(/sacks/);
+    expect(helpText(usages)).not.toMatch(/sako/);
   });
 });
 
@@ -146,9 +146,9 @@ describe("isGsm7", () => {
 describe("aiConfirmText", () => {
   it("asks a plain question within one GSM-7 text", () => {
     const text = aiConfirmText(
-      "book milling for 1,000,000 kg on Mon, Oct 19, give or take 7 days",
+      "mag-book sang milling para sa 1,000,000 kg sa Mon, Oct 19, puwede 7 ka adlaw nga mas temprano ukon mas ulihi",
     );
-    expect(text).toMatch(/you want to book milling .*\? Is that right\?$/);
+    expect(text).toMatch(/gusto mo mag-book sang milling .*\? Husto bala\?$/);
     expect(text).not.toMatch(/YES|NO/);
     expect(isGsm7(text)).toBe(true);
     expect(text.length).toBeLessThanOrEqual(160);

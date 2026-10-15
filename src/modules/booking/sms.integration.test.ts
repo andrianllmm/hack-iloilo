@@ -44,7 +44,7 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
     const book = async (body = "BOOK DRY 5000 20/10", phone = sender) => {
       await inbound(body, phone);
       const reply = await lastReply(phone);
-      expect(reply.body).toContain("Booking confirmed");
+      expect(reply.body).toContain("Confirmed na ang booking");
       const ref = /Ref ([A-Z0-9]{6})/.exec(reply.body)![1];
       return (await findByRef(ref))!;
     };
@@ -136,7 +136,7 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
         "BOOK DRY 1 20/10 FOR invalid",
       ]) {
         await inbound(body);
-        expect((await lastReply()).body).toContain("didn't get that");
+        expect((await lastReply()).body).toContain("wala namon naintiendihan");
       }
       expect(await count()).toBe(before);
     });
@@ -159,12 +159,14 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
     it("authorizes the actual sender, not FOR, and allows the beneficiary to cancel", async () => {
       const booking = await book(`BOOK DRY 100 20/10 FOR ${beneficiary}`);
       await inbound(`CANCEL ${booking.ref} FOR ${beneficiary}`, stranger);
-      expect((await lastReply(stranger)).body).toContain("didn't get that");
+      expect((await lastReply(stranger)).body).toContain(
+        "wala namon naintiendihan",
+      );
       expect((await findByRef(booking.ref))!.status).toBe("confirmed");
       await inbound(`cancel ${booking.ref.toLowerCase()}`, beneficiary);
       expect((await findByRef(booking.ref))!.status).toBe("cancelled");
       expect((await lastReply(beneficiary)).body).toContain(
-        `${booking.ref} cancelled`,
+        `Na-cancel na ang booking ${booking.ref}`,
       );
     });
 
@@ -173,12 +175,14 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
       await inbound(`CANCEL ${booking.ref}`);
       expect((await findByRef(booking.ref))!.status).toBe("cancelled");
       await inbound(`CANCEL ${booking.ref}`);
-      expect((await lastReply()).body).toContain("cannot be cancelled");
+      expect((await lastReply()).body).toContain("Indi na ma-cancel");
     });
 
     it("reports unknown references", async () => {
       await inbound("CANCEL ZZZZZZ");
-      expect((await lastReply()).body).toContain("No booking with ref");
+      expect((await lastReply()).body).toContain(
+        "Wala sang booking nga may ref",
+      );
     });
 
     it("sends staff confirmations and preserves saved bookings if SMS logging fails", async () => {
@@ -215,7 +219,7 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
       });
       const question = (await lastReply()).body;
       expect(question).toContain(
-        `Reply YES ${booking.ref} or NO ${booking.ref}`,
+        `Reply YES ${booking.ref} ukon NO ${booking.ref}`,
       );
       expect(isGsm7(question)).toBe(true);
       expect(question.length).toBeLessThanOrEqual(SMS_MAX_CHARS);
@@ -223,7 +227,9 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
       expect(await proposeReschedule(booking.id, to)).toBeNull();
 
       await inbound(`YES ${booking.ref}`, stranger);
-      expect((await lastReply(stranger)).body).toContain("didn't get that");
+      expect((await lastReply(stranger)).body).toContain(
+        "wala namon naintiendihan",
+      );
       expect((await findByRef(booking.ref))!.status).toBe(
         "reschedule_proposed",
       );
@@ -234,7 +240,9 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
         scheduled_date: to,
         proposed_date: null,
       });
-      expect((await lastReply()).body).toContain(`${booking.ref} moved to`);
+      expect((await lastReply()).body).toContain(
+        `Na-saylo na ang booking ${booking.ref}`,
+      );
     });
 
     it("keeps the date on NO from the booker and tells the client", async () => {
@@ -252,7 +260,7 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
         scheduled_date: booking.scheduled_date,
         proposed_date: null,
       });
-      expect((await lastReply()).body).toContain(`${booking.ref} stays on`);
+      expect((await lastReply()).body).toContain("gihapon");
       expect((await lastReply(beneficiary)).body).toBe(
         (await lastReply()).body,
       );
@@ -272,7 +280,7 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
         flex_days: 2,
       });
       const reply = (await lastReply()).body;
-      expect(reply).toContain(`${booking.ref} moved to`);
+      expect(reply).toContain(`Na-saylo na ang booking ${booking.ref}`);
       expect(isGsm7(reply)).toBe(true);
       expect(reply.length).toBeLessThanOrEqual(SMS_MAX_CHARS);
 
@@ -283,17 +291,19 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
     it("refuses MOVE from a stranger, for unknown refs and closed bookings", async () => {
       const booking = await book(`BOOK DRY 100 20/10 FOR ${beneficiary}`);
       await inbound(`MOVE ${booking.ref} 25/10 FOR ${beneficiary}`, stranger);
-      expect((await lastReply(stranger)).body).toContain("didn't get that");
+      expect((await lastReply(stranger)).body).toContain(
+        "wala namon naintiendihan",
+      );
       expect((await findByRef(booking.ref))!.scheduled_date).toBe(
         booking.scheduled_date,
       );
       await inbound("MOVE ZZZZZZ 25/10");
-      expect((await lastReply()).body).toContain("didn't get that");
+      expect((await lastReply()).body).toContain("wala namon naintiendihan");
       await inbound(`MOVE ${booking.ref} 31/02`);
-      expect((await lastReply()).body).toContain("Choose a valid date");
+      expect((await lastReply()).body).toContain("Indi husto ang petsa");
       await inbound(`CANCEL ${booking.ref}`);
       await inbound(`MOVE ${booking.ref} 25/10`);
-      expect((await lastReply()).body).toContain("cannot be moved");
+      expect((await lastReply()).body).toContain("Indi na ma-saylo");
     });
 
     it("drops a pending reschedule on MOVE from the booker and tells the client", async () => {
@@ -333,7 +343,7 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
         message: "Choose today or a later date.",
       });
       await inbound(`MOVE ${booking.ref} 25/10 +8`);
-      expect((await lastReply()).body).toContain("whole number from 0 to 7");
+      expect((await lastReply()).body).toContain("0 tubtob 7");
       expect(await findByRef(booking.ref)).toEqual(booking);
       for (const status of ["arrived", "cancelled", "no_show"] as const) {
         const { error } = await db()
@@ -342,7 +352,7 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
           .eq("id", booking.id);
         if (error) throw error;
         await inbound(`MOVE ${booking.ref} 25/10`);
-        expect((await lastReply()).body).toContain("cannot be moved");
+        expect((await lastReply()).body).toContain("Indi na ma-saylo");
         expect((await findByRef(booking.ref))!.status).toBe(status);
       }
     });
@@ -371,7 +381,9 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
       expect((await lastReply()).body).toBe(
         (await lastReply(beneficiary)).body,
       );
-      expect((await lastReply()).body).toContain(`${booking.ref} moved to`);
+      expect((await lastReply()).body).toContain(
+        `Na-saylo na ang booking ${booking.ref}`,
+      );
       expect(
         (
           await bookingsBetween(booking.scheduled_date, booking.scheduled_date)

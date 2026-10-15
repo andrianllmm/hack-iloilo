@@ -216,10 +216,10 @@ export type Rates = {
 export function idleDraft(from: string, to: string, rates: Rates): string {
   const ddmm = `${from.slice(8, 10)}/${from.slice(5, 7)}`;
   return (
-    `IRPC: Our dryers have room ${daySpan([from, to], "-")}. ` +
+    `IRPC: May bakante ang dryer namon sa ${daySpan([from, to], "-")}. ` +
     `Drying ${formatMoneySms(rates.dryingMinorPerKg)}/kg, milling ${formatMoneySms(rates.millingMinorPerKg)}/kg. ` +
-    `We buy palay at ${formatMoneySms(rates.buyBaseMinorPerKg)}/kg (${rates.buyReferenceMc}% MC). ` +
-    `To book, text BOOK DRY <kg> <dd/mm>, e.g. BOOK DRY 5000 ${ddmm}.`
+    `Nagabakal man kami palay sa ${formatMoneySms(rates.buyBaseMinorPerKg)}/kg (${rates.buyReferenceMc}% MC). ` +
+    `Para mag-book, i-text BOOK DRY <kg> <dd/mm>, pareho sang BOOK DRY 5000 ${ddmm}.`
   );
 }
 
