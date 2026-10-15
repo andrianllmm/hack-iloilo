@@ -315,14 +315,14 @@ isOneToOne: false
                   ]
                 },"queue_entries": {
                   Row: {
-                    "booking_id": string | null,"checked_in_at": string,"client_id": string,"created_at": string,"facility_id": string,"finished_at": string | null,"id": string,"offer_id": string | null,"service": Database["public"]['Enums']["service"],"started_at": string | null,"status": Database["public"]['Enums']["queue_status"],"updated_at": string
+                    "booking_id": string | null,"checked_in_at": string,"client_id": string,"created_at": string,"est_kg": number | null,"facility_id": string,"finished_at": string | null,"id": string,"offer_id": string | null,"ownership": Database["public"]['Enums']["batch_ownership"] | null,"service": Database["public"]['Enums']["service"],"started_at": string | null,"status": Database["public"]['Enums']["queue_status"],"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "booking_id"?: string | null,"checked_in_at"?: string,"client_id": string,"created_at"?: string,"facility_id": string,"finished_at"?: string | null,"id"?: string,"offer_id"?: string | null,"service": Database["public"]['Enums']["service"],"started_at"?: string | null,"status"?: Database["public"]['Enums']["queue_status"],"updated_at"?: string
+                    "booking_id"?: string | null,"checked_in_at"?: string,"client_id": string,"created_at"?: string,"est_kg"?: number | null,"facility_id": string,"finished_at"?: string | null,"id"?: string,"offer_id"?: string | null,"ownership"?: Database["public"]['Enums']["batch_ownership"] | null,"service": Database["public"]['Enums']["service"],"started_at"?: string | null,"status"?: Database["public"]['Enums']["queue_status"],"updated_at"?: string
                   }
                   Update: {
-                    "booking_id"?: string | null,"checked_in_at"?: string,"client_id"?: string,"created_at"?: string,"facility_id"?: string,"finished_at"?: string | null,"id"?: string,"offer_id"?: string | null,"service"?: Database["public"]['Enums']["service"],"started_at"?: string | null,"status"?: Database["public"]['Enums']["queue_status"],"updated_at"?: string
+                    "booking_id"?: string | null,"checked_in_at"?: string,"client_id"?: string,"created_at"?: string,"est_kg"?: number | null,"facility_id"?: string,"finished_at"?: string | null,"id"?: string,"offer_id"?: string | null,"ownership"?: Database["public"]['Enums']["batch_ownership"] | null,"service"?: Database["public"]['Enums']["service"],"started_at"?: string | null,"status"?: Database["public"]['Enums']["queue_status"],"updated_at"?: string
                   }
                   Relationships: [
                     {
