@@ -3,11 +3,14 @@ import { bookingSchema } from "./booking-schema";
 import {
   bookedByLabel,
   canCancel,
+  canMove,
   defaultRange,
   formatDay,
   formatRange,
   formatShortDate,
   groupBookings,
+  parseMoveArgs,
+  rescheduleAnswer,
   type BookingFilters,
 } from "./logic";
 import type { BookingRow } from "./types";
@@ -110,6 +113,75 @@ describe("canCancel", () => {
     expect(canCancel(booking, "+6391", "+6391")).toBe("ok");
     expect(canCancel(booking, "+6391", "+6392")).toBe("ok");
     expect(canCancel(booking, "+6391", "+6393")).toBe("forbidden");
+  });
+});
+
+describe("canMove", () => {
+  const booking = { status: "confirmed" as const, booked_by_phone: "+6392" };
+  it("moves only open bookings", () => {
+    expect(canMove(booking, "+6391")).toBe("ok");
+    expect(
+      canMove({ ...booking, status: "reschedule_proposed" }, "+6391"),
+    ).toBe("ok");
+    for (const status of ["arrived", "cancelled", "no_show"] as const)
+      expect(canMove({ ...booking, status }, "+6391")).toBe("not_movable");
+  });
+  it("lets only the client or booker move by phone", () => {
+    expect(canMove(booking, "+6391", "+6391")).toBe("ok");
+    expect(canMove(booking, "+6391", "+6392")).toBe("ok");
+    expect(canMove(booking, "+6391", "+6393")).toBe("forbidden");
+  });
+});
+
+describe("parseMoveArgs", () => {
+  it("reads the ref, date and optional flex days", () => {
+    expect(parseMoveArgs(["k7p2qx", "25/10"])).toEqual({
+      ref: "K7P2QX",
+      dayMonth: "25/10",
+    });
+    expect(parseMoveArgs(["K7P2QX", "25/10", "±3"])).toEqual({
+      ref: "K7P2QX",
+      dayMonth: "25/10",
+      flexDays: 3,
+    });
+  });
+  it("rejects other shapes", () => {
+    expect(parseMoveArgs(["K7P2QX"])).toBeNull();
+    expect(parseMoveArgs(["K7P2QX", "25/10", "3"])).toBeNull();
+    expect(parseMoveArgs(["K7P2QX", "25/10", "±3", "x"])).toBeNull();
+  });
+});
+
+describe("rescheduleAnswer", () => {
+  const booking = {
+    status: "reschedule_proposed" as const,
+    booked_by_phone: "+6392",
+    scheduled_date: "2026-10-20",
+    proposed_date: "2026-10-22",
+  };
+  it("moves on YES and keeps the date on NO", () => {
+    expect(rescheduleAnswer(booking, "+6391", "+6391", true)).toEqual({
+      status: "ok",
+      date: "2026-10-22",
+    });
+    expect(rescheduleAnswer(booking, "+6391", "+6392", false)).toEqual({
+      status: "ok",
+      date: "2026-10-20",
+    });
+  });
+  it("lets only the client or booker answer", () => {
+    expect(rescheduleAnswer(booking, "+6391", "+6393", true)).toEqual({
+      status: "forbidden",
+    });
+  });
+  it("refuses bookings no longer awaiting an answer", () => {
+    for (const changed of [
+      { ...booking, status: "arrived" as const },
+      { ...booking, status: "confirmed" as const, proposed_date: null },
+    ])
+      expect(rescheduleAnswer(changed, "+6391", "+6391", true)).toEqual({
+        status: "not_open",
+      });
   });
 });
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, useTransition } from "react";
+import { ImageDown } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DatePicker } from "@/components/date-picker";
@@ -24,11 +25,10 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { formatDate, formatKg } from "@/lib/format";
-import { bookOnline, type BookOnlineResult } from "../actions";
+import { bookOnline } from "../actions";
 import { webBookingSchema, type WebBookingInput } from "../booking-schema";
 import { MAX_FLEX_DAYS, serviceLabels, services } from "../logic";
-
-type Booked = Extract<BookOnlineResult, { status: "created" }>["booking"];
+import { saveBookingSlip, type BookingSlip } from "./booking-image";
 
 const serviceItems = services.map((value) => ({
   value,
@@ -40,7 +40,9 @@ export function WebBookingForm({ today }: { today: string }) {
   const formId = useId();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string>();
-  const [booked, setBooked] = useState<Booked>();
+  const [booked, setBooked] = useState<BookingSlip>();
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string>();
   const form = useForm<WebBookingInput>({
     resolver: zodResolver(webBookingSchema),
     defaultValues: {
@@ -67,7 +69,7 @@ export function WebBookingForm({ today }: { today: string }) {
             );
           return;
         }
-        setBooked(result.booking);
+        setBooked({ ...result.booking, name: input.name.trim() });
       } catch {
         setMessage("Unable to save the booking. Please try again.");
       }
@@ -93,11 +95,40 @@ export function WebBookingForm({ today }: { today: string }) {
         </p>
         <Button
           type="button"
+          className="w-full"
+          disabled={saving}
+          onClick={async () => {
+            setSaving(true);
+            setSaveError(undefined);
+            try {
+              await saveBookingSlip(booked);
+            } catch {
+              setSaveError(
+                "Unable to save the image. Take a screenshot instead.",
+              );
+            } finally {
+              setSaving(false);
+            }
+          }}
+        >
+          {saving ? (
+            <Spinner data-icon="inline-start" />
+          ) : (
+            <ImageDown data-icon="inline-start" />
+          )}
+          Save as image
+        </Button>
+        {saveError ? (
+          <p className="text-sm text-destructive">{saveError}</p>
+        ) : null}
+        <Button
+          type="button"
           variant="outline"
           className="w-full"
           onClick={() => {
             form.reset({ ...form.getValues(), estKg: undefined });
             setBooked(undefined);
+            setSaveError(undefined);
           }}
         >
           Book another

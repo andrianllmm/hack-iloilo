@@ -40,3 +40,9 @@ export type BookingSmsInput = z.infer<typeof bookingSmsSchema>;
 export const cancelSmsSchema = z.object({
   ref: z.string().regex(/^[A-Z0-9]{6}$/),
 });
+
+export const moveSmsSchema = cancelSmsSchema.extend({
+  dayMonth: bookingSmsSchema.shape.dayMonth,
+  flexDays: bookingSchema.shape.flexDays.optional(),
+});
+export type MoveSmsInput = z.infer<typeof moveSmsSchema>;
