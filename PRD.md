@@ -184,6 +184,7 @@ The input end for IRPC-owned palay. Private mills win on fast, clear quotes, and
 
 - **Override:** the manager overrides a price with a reason.
 - **Budget:** working capital used and remaining.
+- **Web sell offer:** quote and offer from a phone browser.
 
 ### M6. Gate and Batches
 
