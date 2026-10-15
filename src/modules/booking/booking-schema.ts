@@ -19,8 +19,9 @@ export const bookingSchema = z.object({
 });
 export type BookingInput = z.infer<typeof bookingSchema>;
 
-/** Public web booking: the client enters their own phone instead of picking a client. */
+/** Public web booking: the client enters their own name and phone instead of picking a client. */
 export const webBookingSchema = bookingSchema.omit({ clientId: true }).extend({
+  name: z.string().trim().min(1, "Enter your name."),
   phone: z
     .string()
     .refine(

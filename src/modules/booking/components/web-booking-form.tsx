@@ -44,6 +44,7 @@ export function WebBookingForm({ today }: { today: string }) {
   const form = useForm<WebBookingInput>({
     resolver: zodResolver(webBookingSchema),
     defaultValues: {
+      name: "",
       phone: "",
       service: "drying",
       preferredDate: today,
@@ -107,6 +108,18 @@ export function WebBookingForm({ today }: { today: string }) {
   return (
     <form onSubmit={submit}>
       <FieldGroup>
+        <Field data-invalid={!!errors.name}>
+          <FieldLabel htmlFor={`${formId}-name`}>Name</FieldLabel>
+          <Input
+            id={`${formId}-name`}
+            autoComplete="name"
+            placeholder="Juan Dela Cruz"
+            {...form.register("name")}
+            aria-invalid={!!errors.name}
+            disabled={pending}
+          />
+          <FieldError errors={[errors.name]} />
+        </Field>
         <Field data-invalid={!!errors.phone}>
           <FieldLabel htmlFor={`${formId}-phone`}>Mobile number</FieldLabel>
           <Input

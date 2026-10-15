@@ -96,7 +96,7 @@ export async function bookOnline(input: unknown): Promise<BookOnlineResult> {
   const parsed = webBookingSchema.safeParse(input);
   if (!parsed.success)
     return { status: "error", fieldErrors: fieldErrors(parsed.error) };
-  const { phone, ...booking } = parsed.data;
+  const { name, phone, ...booking } = parsed.data;
   if (booking.preferredDate < todayManila())
     return {
       status: "error",
@@ -104,7 +104,8 @@ export async function bookOnline(input: unknown): Promise<BookOnlineResult> {
     };
   const normalized = normalizePhone(phone)!;
   try {
-    const client = await findOrRegisterByPhone(normalized);
+    // The name only labels a new client; an existing one is never renamed.
+    const client = await findOrRegisterByPhone(normalized, { name });
     const created = await createBooking({
       ...booking,
       clientId: client.id,

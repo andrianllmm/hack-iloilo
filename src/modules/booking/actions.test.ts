@@ -60,6 +60,7 @@ it("does not save or notify when staff authentication fails", async () => {
 });
 
 const webInput = {
+  name: "Juan Dela Cruz",
   phone: "0917 123 4567",
   service: "drying",
   estKg: 5000,
@@ -89,7 +90,9 @@ it("books online without staff auth, by and for the entered phone", async () => 
     },
   });
   expect(requireRole).not.toHaveBeenCalled();
-  expect(findOrRegisterByPhone).toHaveBeenCalledWith("+639171234567");
+  expect(findOrRegisterByPhone).toHaveBeenCalledWith("+639171234567", {
+    name: "Juan Dela Cruz",
+  });
   expect(createBooking).toHaveBeenCalledWith({
     clientId: "client-1",
     service: "drying",
@@ -104,7 +107,11 @@ it("books online without staff auth, by and for the entered phone", async () => 
     "+639171234567",
   );
 });
-it("rejects an invalid phone or a past date online without saving", async () => {
+it("rejects a blank name, an invalid phone or a past date online without saving", async () => {
+  expect(await bookOnline({ ...webInput, name: "  " })).toMatchObject({
+    status: "error",
+    fieldErrors: { name: "Enter your name." },
+  });
   expect(await bookOnline({ ...webInput, phone: "12345" })).toMatchObject({
     status: "error",
     fieldErrors: { phone: "Enter a valid Philippine mobile number." },
