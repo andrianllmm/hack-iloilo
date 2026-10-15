@@ -1,11 +1,14 @@
-import { PagePlaceholder } from "@/components/page-placeholder";
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { CapacityLoader } from "@/modules/capacity/components/capacity-loader";
+
+export const metadata: Metadata = { title: "Capacity" };
 
 export default function CapacityPage() {
   return (
-    <PagePlaceholder
-      title="Capacity"
-      module="M9"
-      description="Dryer, storage and mill load against capacity, with suggested actions (M10)."
-    />
+    <Suspense fallback={<Skeleton className="h-96" />}>
+      <CapacityLoader />
+    </Suspense>
   );
 }
