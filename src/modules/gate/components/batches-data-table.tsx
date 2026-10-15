@@ -5,7 +5,6 @@ import {
   ServiceLabel,
   isServiceIconKind,
 } from "@/components/service-icon";
-import Link from "next/link";
 import { useMemo } from "react";
 import {
   createColumnHelper,
@@ -32,6 +31,7 @@ import {
 import { formatKg } from "@/lib/format";
 import { serviceLabels, stageLabels, stageTones } from "../logic";
 import type { BatchListRow } from "../types";
+import { BatchLink } from "./batch-link";
 
 const features = tableFeatures({
   rowPaginationFeature,
@@ -59,12 +59,7 @@ const columns = columnHelper.columns([
   columnHelper.accessor("batch_no", {
     header: "Batch",
     cell: ({ row }) => (
-      <Link
-        href={`/batches/${row.original.id}`}
-        className="rounded-md bg-primary/10 px-2 py-1 font-mono text-xs font-semibold text-primary underline-offset-4 hover:underline"
-      >
-        {row.original.batch_no}
-      </Link>
+      <BatchLink id={row.original.id} batchNo={row.original.batch_no} />
     ),
   }),
   columnHelper.accessor("clientName", { header: "Client" }),

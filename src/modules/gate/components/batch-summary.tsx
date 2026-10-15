@@ -26,6 +26,7 @@ import {
 } from "../logic";
 import { WeightConfirmations } from "./weight-confirmations";
 import { batchWeightConfirmations, batchSummary } from "../queries";
+import { batchChip } from "./batch-link";
 import { BatchStages } from "./batch-stages";
 
 const started = new Intl.DateTimeFormat("en-PH", {
@@ -91,8 +92,8 @@ export async function BatchSummaryCard({ id }: { id: string }) {
   return (
     <section className="flex min-w-0 flex-col gap-6 font-sans [--font-sans:var(--font-geist-sans)]">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Batch {batch.batch_no}
+        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+          Batch <span className={batchChip}>{batch.batch_no}</span>
         </h1>
         <p className="text-sm text-muted-foreground">
           Recorded in stages, from the gate through drying and milling.

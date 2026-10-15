@@ -2,7 +2,6 @@
 
 import { ServiceIcon } from "@/components/service-icon";
 import { ArrowRight } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -52,6 +51,7 @@ import {
   type QueueLine as Line,
 } from "../logic";
 import type { QueueRow, Service } from "../types";
+import { BatchLink } from "./batch-link";
 
 const clock = new Intl.DateTimeFormat("en-PH", {
   hour: "numeric",
@@ -141,12 +141,7 @@ export function QueueLine({
               </ItemTitle>
               <ItemDescription>
                 {row.batch ? (
-                  <Link
-                    href={`/batches/${row.batch.id}`}
-                    className="underline underline-offset-4"
-                  >
-                    Batch {row.batch.batch_no}
-                  </Link>
+                  <BatchLink id={row.batch.id} batchNo={row.batch.batch_no} />
                 ) : (
                   "No batch"
                 )}
