@@ -21,12 +21,15 @@ import {
 } from "@/modules/buying/queries";
 import { currentFacility } from "@/modules/setup/queries";
 import type { CommandContext } from "@/modules/sms/registry";
+import { send } from "@/modules/sms/queries";
 import {
   type BatchAction,
   batchOwnership,
   batchPrefix,
   nextBatchNo,
   nextStage,
+  nextInLineTexts,
+  dispatchText,
   normalizeRef,
   queueLines,
   queuePositions,
@@ -291,6 +294,7 @@ export async function start(entryId: string): Promise<Batch> {
       // Another start took the same number; count again.
       if (batchError?.code === "23505" && attempt < BATCH_NO_ATTEMPTS) continue;
       if (batchError) throw batchError;
+      await notifyNextWaiting(entry);
       return batch;
     }
   } catch (cause) {
@@ -301,6 +305,45 @@ export async function start(entryId: string): Promise<Batch> {
       .eq("id", entry.id)
       .eq("status", "serving");
     throw cause;
+  }
+}
+
+/** Notification reads and sends must never put a successfully started entry back in line. */
+async function notifyNextWaiting(entry: QueueEntry): Promise<void> {
+  try {
+    const { data: facility, error: facilityError } = await db()
+      .from("facilities")
+      .select("notify_ahead_n")
+      .eq("id", entry.facility_id)
+      .single();
+    if (facilityError) throw facilityError;
+    if (facility.notify_ahead_n === 0) return;
+    const { data: waiting, error } = await db()
+      .from("queue_entries")
+      .select(
+        "id, facility_id, service, status, checked_in_at, client:clients(phone)",
+      )
+      .eq("facility_id", entry.facility_id)
+      .eq("service", entry.service)
+      .eq("status", "waiting")
+      .order("checked_in_at")
+      .order("id")
+      .limit(facility.notify_ahead_n);
+    if (error) throw error;
+    for (const text of nextInLineTexts(
+      waiting,
+      entry.facility_id,
+      entry.service,
+      facility.notify_ahead_n,
+    )) {
+      try {
+        await send(text.phone, text.body);
+      } catch (error) {
+        console.error("Unable to send next-in-line text", error);
+      }
+    }
+  } catch (error) {
+    console.error("Unable to notify the waiting line", error);
   }
 }
 
@@ -570,7 +613,7 @@ export async function batchTrail(id: string): Promise<BatchTrail | null> {
 /**
  * Records a dispatch from a batch — a sale to a buyer or a pickup by the owner
  * — after checking the kg against what's left. Flips the batch to `dispatched`
- * once every dispatchable kg has gone. #42 adds the buyer receipt text.
+ * once every dispatchable kg has gone, then texts the recipient the saved receipt.
  */
 export async function dispatch(params: {
   batchId: string;
@@ -589,7 +632,22 @@ export async function dispatch(params: {
     p_or_ref: params.orRef as string,
   });
   if (error) throw dispatchError(error);
-  return data as Dispatch;
+  const saved = data as Dispatch;
+  try {
+    const { data: details, error: detailsError } = await db()
+      .from("dispatches")
+      .select("buyer:clients(phone), batch:batches(batch_no)")
+      .eq("id", saved.id)
+      .single();
+    if (detailsError) throw detailsError;
+    await send(
+      details.buyer.phone,
+      dispatchText(details.batch.batch_no, saved.or_ref),
+    );
+  } catch (error) {
+    console.error("Unable to send dispatch receipt text", error);
+  }
+  return saved;
 }
 
 /** Maps a `dispatch_from_batch` exception to the GateError the action expects. */
