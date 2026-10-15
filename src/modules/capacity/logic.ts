@@ -225,18 +225,49 @@ export function projectPools(input: {
   ]);
 }
 
+/** An active dryer, as the electricity basis reads it. */
+export type DryerMachine = {
+  capacityKg: number;
+  cycleHours: number;
+  kw: number;
+};
+
 /**
- * Inputs for `electricityPerKg` over the window: machine kWh scaled by how full
- * the dryer and mill run each day, the kg they handle and the days either runs.
+ * kWh to dry `kg` in one day. Dryers run whole cycles, so a part load costs a
+ * full cycle; loads go to the largest dryers first, each up to the cycles its
+ * hours allow.
+ */
+export function dryingKwh(
+  kg: number,
+  dryers: DryerMachine[],
+  hoursPerDay: number,
+): number {
+  let left = kg;
+  let kwh = 0;
+  for (const m of [...dryers].sort((a, b) => b.capacityKg - a.capacityKg)) {
+    for (
+      let c = Math.floor(hoursPerDay / m.cycleHours);
+      c > 0 && left > 0;
+      c--
+    ) {
+      kwh += m.kw * m.cycleHours;
+      left -= m.capacityKg;
+    }
+  }
+  return kwh;
+}
+
+/**
+ * Inputs for `electricityPerKg` over the window: dryer kWh in whole cycles,
+ * mill kWh by hours run, the kg they handle and the days either runs.
  */
 export function electricityBasis(input: {
   days: DayPool[];
-  /** Rated kW of active dryers and mills. */
-  dryerKw: number;
+  dryers: DryerMachine[];
+  /** Rated kW of active mills. */
   millKw: number;
   hoursPerDay: number;
 }): { machineKwh: number; kg: number; daysRun: number } {
-  const kw = { dryer: input.dryerKw, mill: input.millKw } as const;
   let machineKwh = 0;
   let kg = 0;
   const run = new Set<string>();
@@ -244,7 +275,10 @@ export function electricityBasis(input: {
     if (d.pool === "storage" || d.capacityKg <= 0) continue;
     const handled = Math.min(expectedKg(d), d.capacityKg);
     if (handled <= 0) continue;
-    machineKwh += kw[d.pool] * input.hoursPerDay * (handled / d.capacityKg);
+    machineKwh +=
+      d.pool === "dryer"
+        ? dryingKwh(handled, input.dryers, input.hoursPerDay)
+        : input.millKw * input.hoursPerDay * (handled / d.capacityKg);
     kg += handled;
     run.add(d.date);
   }

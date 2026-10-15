@@ -62,14 +62,23 @@ export async function electricityHeadline(
   days: DayPool[],
 ): Promise<{ minorPerKg: number; daysRun: number } | null> {
   const { facility, machines } = await capacitySettings();
-  const kw = (type: "dryer" | "mill") =>
-    machines
-      .filter((m) => m.active && m.type === type)
-      .reduce((sum, m) => sum + m.rated_kw, 0);
+  const active = machines.filter((m) => m.active);
   const basis = electricityBasis({
     days,
-    dryerKw: kw("dryer"),
-    millKw: kw("mill"),
+    dryers: active.flatMap((m) =>
+      m.type === "dryer" && m.capacity_kg && m.cycle_hours
+        ? [
+            {
+              capacityKg: m.capacity_kg,
+              cycleHours: m.cycle_hours,
+              kw: m.rated_kw,
+            },
+          ]
+        : [],
+    ),
+    millKw: active
+      .filter((m) => m.type === "mill")
+      .reduce((sum, m) => sum + m.rated_kw, 0),
     hoursPerDay: facility.operating_hours_per_day,
   });
   if (basis.kg <= 0) return null;

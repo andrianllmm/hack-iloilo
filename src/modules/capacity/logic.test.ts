@@ -3,6 +3,7 @@ import {
   dateRange,
   dayInputs,
   dayPool,
+  dryingKwh,
   electricityBasis,
   exact,
   headline,
@@ -260,26 +261,48 @@ describe("storage and mill pools", () => {
   });
 });
 
+describe("dryingKwh", () => {
+  // Two 10 t dryers and one 6 t dryer, 15 kW, 8-hour cycles, 16-hour days.
+  const dryers = [
+    { capacityKg: 6_000, cycleHours: 8, kw: 15 },
+    { capacityKg: 10_000, cycleHours: 8, kw: 15 },
+    { capacityKg: 10_000, cycleHours: 8, kw: 15 },
+  ];
+
+  it("charges a part load a full cycle", () => {
+    expect(dryingKwh(1_000, dryers, 16)).toBe(120);
+  });
+
+  it("fills the largest dryers first, in whole cycles", () => {
+    // 41 t: four 10 t cycles, then one 6 t cycle.
+    expect(dryingKwh(41_000, dryers, 16)).toBe(600);
+  });
+
+  it("charges nothing for no load", () => {
+    expect(dryingKwh(0, dryers, 16)).toBe(0);
+  });
+});
+
 describe("electricityBasis", () => {
-  it("scales machine kWh by load and counts days either machine runs", () => {
+  it("uses dryer cycles and mill hours, and counts days either runs", () => {
     const days = project({
       from: "2026-10-20",
       to: "2026-10-22",
       drying: [
-        ["2026-10-20", 20_000],
+        ["2026-10-20", 1_000],
         ["2026-10-21", 60_000],
       ],
       milling: [["2026-10-21", 5_000]],
     });
     const basis = electricityBasis({
       days,
-      dryerKw: 100,
+      dryers: [{ capacityKg: 10_000, cycleHours: 5, kw: 20 }],
       millKw: 50,
       hoursPerDay: 10,
     });
-    // Dryer: half a day (500 kWh) + a full day capped at 40 t (1,000 kWh).
+    // Dryer: one cycle (100 kWh), then both cycles the day allows (200 kWh).
     // Mill: half a day (250 kWh).
-    expect(basis).toEqual({ machineKwh: 1_750, kg: 65_000, daysRun: 2 });
+    expect(basis).toEqual({ machineKwh: 550, kg: 46_000, daysRun: 2 });
   });
 });
 
