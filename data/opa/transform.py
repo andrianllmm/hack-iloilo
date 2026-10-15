@@ -132,6 +132,25 @@ def transform_harvesting(sheet, outname):
         if sub == eco:
             sub = ""
         cols[c] = (eco, sub, seed, metric)
+    # Data-row names are shifted for 18 places (Pototan's rows say "Pavia"). Each
+    # place's total row (name, no period) is correctly named, so label the 24 data
+    # rows above it with that name and drop the total rows themselves.
+    data_rows = []
+    owner = {}
+    for r in range(11, ws.max_row + 1):
+        if ws.cell(r, 2).value in (None, ""):
+            continue
+        if ws.cell(r, 3).value not in (None, ""):
+            data_rows.append(r)
+            continue
+        block = data_rows[-24:]
+        assert len(block) == 24 and not owner.keys() & set(block), f"bad harvest block at row {r}"
+        for dr in block:
+            owner[dr] = str(ws.cell(r, 2).value).strip()
+    assert len(owner) == len(data_rows), "harvest data rows without a total row"
+    # Grand-total production (col 75) has a bad Zarraga value for Jan 16-31;
+    # recompute it from the four seed-class production columns (see reconciliation.md).
+    GT_PROD, SEED_PROD = 75, (63, 66, 69, 72)
     rows = []
     cur_month = None
     skipped = 0
@@ -139,12 +158,15 @@ def transform_harvesting(sheet, outname):
         a = ws.cell(r, 1).value
         if a not in (None, ""):
             cur_month = str(a).strip()
-        muni = ws.cell(r, 2).value
-        if muni in (None, ""):
+        if r not in owner:
             continue
+        muni = owner[r]
         period = ws.cell(r, 3).value
         for c, (eco, sub, seed, metric) in cols.items():
             v = ws.cell(r, c).value
+            if c == GT_PROD:
+                parts = [ws.cell(r, sc).value for sc in SEED_PROD]
+                v = sum(p for p in parts if isinstance(p, (int, float))) or v
             if v in (None, "") or str(v).strip() in ("-", "—"):
                 continue
             try:
@@ -152,7 +174,7 @@ def transform_harvesting(sheet, outname):
             except ValueError:
                 skipped += 1
                 continue
-            rows.append([cur_month, str(muni).strip(),
+            rows.append([cur_month, muni,
                          str(period).strip() if period else "",
                          eco, sub, seed, metric, num])
     if skipped:
