@@ -24,6 +24,7 @@ const row = (overrides: Partial<BookingRow> = {}): BookingRow => ({
   preferred_date: "2026-10-20",
   flex_days: 0,
   scheduled_date: "2026-10-20",
+  proposed_date: null,
   status: "confirmed",
   created_at: "",
   updated_at: "",

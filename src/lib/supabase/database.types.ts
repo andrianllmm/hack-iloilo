@@ -75,14 +75,14 @@ isOneToOne: false
                   ]
                 },"bookings": {
                   Row: {
-                    "booked_by_phone": string,"channel": Database["public"]['Enums']["booking_channel"],"client_id": string,"created_at": string,"est_kg": number,"facility_id": string,"flex_days": number,"id": string,"preferred_date": string,"ref": string,"scheduled_date": string,"service": Database["public"]['Enums']["service"],"status": Database["public"]['Enums']["booking_status"],"updated_at": string
+                    "booked_by_phone": string,"channel": Database["public"]['Enums']["booking_channel"],"client_id": string,"created_at": string,"est_kg": number,"facility_id": string,"flex_days": number,"id": string,"preferred_date": string,"proposed_date": string | null,"ref": string,"scheduled_date": string,"service": Database["public"]['Enums']["service"],"status": Database["public"]['Enums']["booking_status"],"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "booked_by_phone": string,"channel": Database["public"]['Enums']["booking_channel"],"client_id": string,"created_at"?: string,"est_kg": number,"facility_id": string,"flex_days"?: number,"id"?: string,"preferred_date": string,"ref": string,"scheduled_date": string,"service": Database["public"]['Enums']["service"],"status"?: Database["public"]['Enums']["booking_status"],"updated_at"?: string
+                    "booked_by_phone": string,"channel": Database["public"]['Enums']["booking_channel"],"client_id": string,"created_at"?: string,"est_kg": number,"facility_id": string,"flex_days"?: number,"id"?: string,"preferred_date": string,"proposed_date"?: string | null,"ref": string,"scheduled_date": string,"service": Database["public"]['Enums']["service"],"status"?: Database["public"]['Enums']["booking_status"],"updated_at"?: string
                   }
                   Update: {
-                    "booked_by_phone"?: string,"channel"?: Database["public"]['Enums']["booking_channel"],"client_id"?: string,"created_at"?: string,"est_kg"?: number,"facility_id"?: string,"flex_days"?: number,"id"?: string,"preferred_date"?: string,"ref"?: string,"scheduled_date"?: string,"service"?: Database["public"]['Enums']["service"],"status"?: Database["public"]['Enums']["booking_status"],"updated_at"?: string
+                    "booked_by_phone"?: string,"channel"?: Database["public"]['Enums']["booking_channel"],"client_id"?: string,"created_at"?: string,"est_kg"?: number,"facility_id"?: string,"flex_days"?: number,"id"?: string,"preferred_date"?: string,"proposed_date"?: string | null,"ref"?: string,"scheduled_date"?: string,"service"?: Database["public"]['Enums']["service"],"status"?: Database["public"]['Enums']["booking_status"],"updated_at"?: string
                   }
                   Relationships: [
                     {
