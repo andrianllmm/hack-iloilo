@@ -21,10 +21,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "IRPC Capacity Planning",
+  title: { default: "SACKto", template: "%s · SACKto" },
   description: "Post-harvest facility capacity planning for IRPC",
-  // Empty favicon until the brand icon is ready.
-  icons: { icon: "data:," },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

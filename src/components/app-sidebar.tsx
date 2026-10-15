@@ -1,8 +1,9 @@
 "use client";
 
-import { ChevronsUpDown, LogOut, Wheat } from "lucide-react";
+import { ChevronsUpDown, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Logo } from "@/components/brand";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,13 +45,13 @@ export function AppSidebar({ staff }: { staff: Staff }) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<Link href="/" />}>
-              <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                <Wheat className="size-4" />
+              <div className="flex size-8 items-center justify-center text-primary">
+                <Logo className="size-8" />
               </div>
               <div className="grid text-left leading-tight">
-                <span className="font-medium">IRPC</span>
+                <span className="font-medium">SACKto</span>
                 <span className="text-xs text-muted-foreground">
-                  Capacity Planning
+                  IRPC Capacity Planning
                 </span>
               </div>
             </SidebarMenuButton>
