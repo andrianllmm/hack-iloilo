@@ -1,5 +1,4 @@
 import { ServiceLabel } from "@/components/service-icon";
-import { StatusBadge } from "@/components/status-badge";
 import {
   Table,
   TableBody,
@@ -8,9 +7,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { splitManila, todayManila } from "@/lib/dates";
+import { splitManila } from "@/lib/dates";
 import { formatMoney } from "@/lib/format";
-import { livePrice, priceTrend } from "../logic";
+import { priceTrend } from "../logic";
 import { listPrices } from "../queries";
 import { PriceTrendChart } from "./price-trend-chart";
 
@@ -21,8 +20,6 @@ export async function PriceTrend() {
 
 export async function PricesView() {
   const prices = await listPrices();
-  const today = todayManila();
-  const liveId = livePrice(prices, today)?.id;
 
   if (prices.length === 0) {
     return <p className="text-sm text-muted-foreground">No prices set yet.</p>;
@@ -49,14 +46,7 @@ export async function PricesView() {
           const saved = splitManila(p.created_at);
           return (
             <TableRow key={p.id}>
-              <TableCell>
-                <span className="flex items-center gap-2">
-                  {p.effective_date}
-                  {p.id === liveId && (
-                    <StatusBadge tone="success">In effect</StatusBadge>
-                  )}
-                </span>
-              </TableCell>
+              <TableCell>{p.effective_date}</TableCell>
               <TableCell className="text-muted-foreground">
                 {saved.date} {saved.time}
               </TableCell>

@@ -201,8 +201,8 @@ export function priceReceiving(
 
 /**
  * The price row in effect on `today`, from rows sorted newest effective date
- * first: the first row with `effective_date <= today`. Shared by the page
- * prefill and the History "In effect" tag.
+ * first: the first row with `effective_date <= today`. Prefills the price
+ * form.
  */
 export function livePrice<T extends { effective_date: string }>(
   rows: T[],
