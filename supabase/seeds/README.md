@@ -9,6 +9,7 @@
 | `06_gate.sql`     | Today's live gate queue and its open batches                |
 | `04_booking.sql`  | Upcoming drying and milling bookings                        |
 | `05_buying.sql`   | Sell offers (offered and accepted) over the next weeks      |
+| `08_forecast.sql` | Demo forecast arrivals over the next 8 weeks                |
 | `NN_<module>.sql` | Each later ticket adds its own file; don't edit shared ones |
 | `90_peak.sql`     | Peak demo scenario (#44)                                    |
 
