@@ -137,11 +137,25 @@ export function bookedByLabel(
   return `${namesByPhone.get(row.booked_by_phone) ?? row.booked_by_phone} · FOR`;
 }
 
-const isClientOrBooker = (
+/** Ownership for SMS and /track: only the client or whoever booked for them. */
+export const isClientOrBooker = (
   booking: Pick<Booking, "booked_by_phone">,
   clientPhone: string,
   phone: string,
 ) => phone === clientPhone || phone === booking.booked_by_phone;
+
+/** A typed ref as stored: uppercase, without spaces or dashes (`k7p-2qx` → `K7P2QX`). */
+export function cleanRef(input: string): string {
+  return input.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+/** Failed /track lookups a phone may make per window before it is locked out. */
+export const TRACK_MAX_FAILURES = 5;
+export const TRACK_WINDOW_MINUTES = 15;
+
+export function isTrackLocked(recentFailures: number): boolean {
+  return recentFailures >= TRACK_MAX_FAILURES;
+}
 
 /** Only confirmed bookings cancel; by SMS only the client or booker may. */
 export function canCancel(

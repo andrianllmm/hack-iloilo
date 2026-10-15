@@ -25,8 +25,11 @@ import {
   canCancel,
   canMove,
   formatDay,
+  isClientOrBooker,
+  isTrackLocked,
   rescheduleAnswer,
   serviceLabels,
+  TRACK_WINDOW_MINUTES,
   validateMove,
 } from "./logic";
 import type {
@@ -91,6 +94,44 @@ export async function findByRef(ref: string): Promise<Booking | null> {
 }
 
 /**
+ * A booking as /track shows it, only to its client or booker. Null when the
+ * ref is unknown or the phone is not theirs, so the two look the same.
+ */
+export async function trackedBooking(
+  ref: string,
+  phone: string,
+): Promise<Booking | null> {
+  const { data, error } = await db()
+    .from("bookings")
+    .select("*, client:clients(phone)")
+    .eq("ref", ref.trim().toUpperCase())
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const { client, ...booking } = data;
+  return isClientOrBooker(booking, client.phone, phone) ? booking : null;
+}
+
+/** Too many failed /track tries for this phone in the current window. */
+export async function trackLocked(phone: string): Promise<boolean> {
+  const since = new Date(
+    Date.now() - TRACK_WINDOW_MINUTES * 60_000,
+  ).toISOString();
+  const { count, error } = await db()
+    .from("track_attempts")
+    .select("id", { count: "exact", head: true })
+    .eq("phone", phone)
+    .gte("created_at", since);
+  if (error) throw error;
+  return isTrackLocked(count ?? 0);
+}
+
+export async function recordTrackFailure(phone: string): Promise<void> {
+  const { error } = await db().from("track_attempts").insert({ phone });
+  if (error) throw error;
+}
+
+/**
  * Marks an open booking (`confirmed` or `reschedule_proposed`) `arrived` when
  * the client checks in at the gate. Null if it is no longer open.
  */
@@ -151,28 +192,29 @@ export async function proposeReschedule(
   return booking;
 }
 
+export type ProposalResult =
+  | { status: "answered"; booking: Booking; clientPhone: string; reply: string }
+  | { status: "not_found" | "forbidden" | "not_open" };
+
 /**
- * Prompt handler for `YES <ref>` / `NO <ref>` to a reschedule: YES moves the
- * booking to its proposed date, NO keeps its date; both confirm it. Only the
- * client or booker may answer; others get the help reply.
+ * Answers a pending M10 proposal: YES moves the booking to its proposed date,
+ * NO keeps its date; both confirm it. Only the client or booker may. Shared by
+ * SMS `YES`/`NO` and /track; the caller closes the prompt and sends texts.
  */
-export async function answerReschedule(
-  prompt: SmsPrompt,
+export async function answerProposal(
+  ref: string,
   yes: boolean,
-  ctx: CommandContext,
-): Promise<string> {
+  byPhone: string,
+): Promise<ProposalResult> {
   const { data: found, error: findError } = await db()
     .from("bookings")
     .select("*, client:clients(phone)")
-    .eq("ref", prompt.ref)
+    .eq("ref", ref.trim().toUpperCase())
     .maybeSingle();
   if (findError) throw findError;
-  if (!found) return fillTemplate(bookingSms.notFound, { ref: prompt.ref });
-  const answer = rescheduleAnswer(found, found.client.phone, ctx.phone, yes);
-  if (answer.status === "forbidden")
-    throw new PromptRefusal(helpText(commandUsages()));
-  const closed = fillTemplate(bookingSms.notWaiting, { ref: found.ref });
-  if (answer.status === "not_open") return closed;
+  if (!found) return { status: "not_found" };
+  const answer = rescheduleAnswer(found, found.client.phone, byPhone, yes);
+  if (answer.status !== "ok") return answer;
 
   const { data, error } = await db()
     .from("bookings")
@@ -186,8 +228,11 @@ export async function answerReschedule(
     .select()
     .maybeSingle();
   if (error) throw error;
-  if (!data) return closed;
+  if (!data) return { status: "not_open" };
 
+  revalidatePath("/bookings");
+  revalidatePath("/capacity");
+  revalidatePath("/suggestions");
   const reply = fillTemplate(
     yes ? bookingSms.rescheduleMoved : bookingSms.rescheduleKept,
     {
@@ -195,15 +240,49 @@ export async function answerReschedule(
       date: formatDay(data.scheduled_date),
     },
   );
-  // The booker answered for the client: let the client know too.
-  if (found.client.phone !== ctx.phone) {
+  return {
+    status: "answered",
+    booking: data,
+    clientPhone: found.client.phone,
+    reply,
+  };
+}
+
+/** Texts each phone once; a gateway failure never undoes a saved change. */
+export async function textEach(phones: string[], text: string): Promise<void> {
+  for (const phone of new Set(phones)) {
     try {
-      await send(found.client.phone, reply);
+      await send(phone, text);
     } catch (error) {
-      console.error("Unable to send reschedule outcome to the client", error);
+      console.error("Unable to send booking text", error);
     }
   }
-  return reply;
+}
+
+/**
+ * Prompt handler for `YES <ref>` / `NO <ref>` to a reschedule. Only the client
+ * or booker may answer; others get the help reply.
+ */
+export async function answerReschedule(
+  prompt: SmsPrompt,
+  yes: boolean,
+  ctx: CommandContext,
+): Promise<string> {
+  const result = await answerProposal(prompt.ref, yes, ctx.phone);
+  switch (result.status) {
+    case "forbidden":
+      throw new PromptRefusal(helpText(commandUsages()));
+    case "not_found":
+      return fillTemplate(bookingSms.notFound, { ref: prompt.ref });
+    case "not_open":
+      return fillTemplate(bookingSms.notWaiting, { ref: prompt.ref });
+  }
+  // M3 sends the reply to the sender; when the booker answered, tell the client too.
+  await textEach(
+    [result.clientPhone].filter((phone) => phone !== ctx.phone),
+    result.reply,
+  );
+  return result.reply;
 }
 
 /** Undoes `markArrived` when the check-in that caused it fails. */
@@ -470,11 +549,5 @@ export async function notifyBookingMoved(
   booking: Booking,
   phones: string[],
 ): Promise<void> {
-  for (const phone of new Set(phones)) {
-    try {
-      await send(phone, movedConfirmation(booking));
-    } catch (error) {
-      console.error("Unable to send booking move confirmation", error);
-    }
-  }
+  await textEach(phones, movedConfirmation(booking));
 }

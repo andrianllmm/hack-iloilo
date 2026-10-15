@@ -33,6 +33,7 @@ import {
   normalizeRef,
   queueLines,
   queuePositions,
+  type QueuePosition,
   queueStatusReply,
   REF_LENGTH,
   refCheckInError,
@@ -387,9 +388,14 @@ export async function queueStatusBySms(
   _args: unknown,
   ctx: CommandContext,
 ): Promise<string> {
-  return queueStatusReply(
-    queuePositions(queueLines(await liveQueue()), ctx.client.id),
-  );
+  return queueStatusReply(await clientQueuePositions(ctx.client.id));
+}
+
+/** The client's place in each line, as `STATUS` and /track report it. */
+export async function clientQueuePositions(
+  clientId: string,
+): Promise<QueuePosition[]> {
+  return queuePositions(queueLines(await liveQueue()), clientId);
 }
 
 /** Everyone waiting or being served, with their client and open batch. */

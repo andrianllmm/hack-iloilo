@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { normalizePhone } from "@/modules/accounts/logic";
-import { MAX_FLEX_DAYS, services } from "./logic";
+import { cleanRef, MAX_FLEX_DAYS, services } from "./logic";
 
 /** Staff booking form. Past dates are checked on the server against Manila today. */
 export const bookingSchema = z.object({
@@ -19,15 +19,17 @@ export const bookingSchema = z.object({
 });
 export type BookingInput = z.infer<typeof bookingSchema>;
 
+const phoneSchema = z
+  .string()
+  .refine(
+    (value) => normalizePhone(value) !== null,
+    "Enter a valid Philippine mobile number.",
+  );
+
 /** Public web booking: the client enters their own name and phone instead of picking a client. */
 export const webBookingSchema = bookingSchema.omit({ clientId: true }).extend({
   name: z.string().trim().min(1, "Enter your name."),
-  phone: z
-    .string()
-    .refine(
-      (value) => normalizePhone(value) !== null,
-      "Enter a valid Philippine mobile number.",
-    ),
+  phone: phoneSchema,
 });
 export type WebBookingInput = z.infer<typeof webBookingSchema>;
 
@@ -66,3 +68,23 @@ export const moveBookingSchema = cancelSmsSchema.extend({
   flexDays: bookingSchema.shape.flexDays,
 });
 export type MoveBookingInput = z.infer<typeof moveBookingSchema>;
+
+/** Public /track: the booking ref (spaces and dashes allowed) and the client's or booker's phone. */
+export const trackLookupSchema = z.object({
+  ref: z
+    .string()
+    .refine(
+      (value) => /^[A-Z0-9]{6}$/.test(cleanRef(value)),
+      "Enter the 6-character ref from your text.",
+    ),
+  phone: phoneSchema,
+});
+export type TrackLookupInput = z.infer<typeof trackLookupSchema>;
+
+export const trackMoveSchema = trackLookupSchema.extend({
+  date: bookingSchema.shape.preferredDate,
+  flexDays: bookingSchema.shape.flexDays,
+});
+export type TrackMoveInput = z.infer<typeof trackMoveSchema>;
+
+export const trackAnswerSchema = trackLookupSchema.extend({ yes: z.boolean() });
