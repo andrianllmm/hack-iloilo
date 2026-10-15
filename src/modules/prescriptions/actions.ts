@@ -46,7 +46,7 @@ export async function decidePrescription(
       for (const r of prescription.recipients)
         await send(r.phone, prescription.message);
     }
-    revalidatePath("/");
+    revalidatePath("/capacity");
     revalidatePath("/suggestions");
     revalidatePath("/bookings");
     revalidatePath("/sms");

@@ -84,6 +84,7 @@ See `.env.example`. Validated in `src/lib/env.ts`.
 | `SMS_GATEWAY_WEBHOOK_SIGNING_KEY`                                 | Webhook relay: verifying inbound webhooks                         |
 | `SMS_RELAY_SECRET`                                                | Shared by the app and relay; authenticates `/api/sms/process`     |
 | `SMS_GATEWAY_DEVICE_ID`, `SMS_GATEWAY_SIM_NUMBER`                 | Optional; pick the gateway phone and SIM slot                     |
+| `SMS_GATEWAY_PHONE_NUMBER`                                        | Optional; the gateway number shown on the landing page            |
 | `SMS_GATEWAY_WEBHOOK_PORT`                                        | Validated; defaults to 3000, not yet consumed                     |
 | `GOOGLE_GENERATIVE_AI_API_KEY`                                    | Gemini (optional; falls back to templates)                        |
 

@@ -300,7 +300,7 @@ export async function moveBooking(
   if (!data) return { status: "not_movable" };
   await expirePrompt(found.ref);
   revalidatePath("/bookings");
-  revalidatePath("/");
+  revalidatePath("/capacity");
   revalidatePath("/suggestions");
   return { status: "moved", booking: data, clientPhone: found.client.phone };
 }

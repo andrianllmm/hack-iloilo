@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // /api/sms/process authenticates the webhook relay with SMS_RELAY_SECRET.
 // /book is client self-service booking.
 const PUBLIC_PATHS = ["/login", "/book", "/api/sms/process"];
+const DASHBOARD = "/capacity";
 
 /** Refreshes the Supabase session and sends signed-out visitors to /login. */
 export async function proxy(request: NextRequest) {
@@ -33,16 +34,20 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  // Whole segments only, so /book does not expose /bookings.
-  const isPublic = PUBLIC_PATHS.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`),
-  );
+  // The landing page is an exact match; others match whole segments only,
+  // so /book does not expose /bookings.
+  const isPublic =
+    pathname === "/" ||
+    PUBLIC_PATHS.some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`),
+    );
 
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
-  if (user && pathname === "/login") {
-    return NextResponse.redirect(new URL("/", request.url));
+  // Only staff sign in, so signed-in visitors skip the landing page.
+  if (user && (pathname === "/" || pathname === "/login")) {
+    return NextResponse.redirect(new URL(DASHBOARD, request.url));
   }
 
   return response;

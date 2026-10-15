@@ -13,6 +13,8 @@ const schema = z
     SMS_GATEWAY_PASSWORD: z.string().min(1).optional(),
     SMS_GATEWAY_DEVICE_ID: z.string().min(1).optional(),
     SMS_GATEWAY_SIM_NUMBER: z.coerce.number().int().positive().optional(),
+    // Gateway phone's number, shown to clients on the landing page.
+    SMS_GATEWAY_PHONE_NUMBER: z.string().min(1).optional(),
     // Used by the webhook relay (services/sms-webhook), not this app.
     SMS_GATEWAY_WEBHOOK_SIGNING_KEY: z.string().min(1).optional(),
     // Shared with the webhook relay; authenticates POST /api/sms/process.

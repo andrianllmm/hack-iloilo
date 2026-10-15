@@ -32,7 +32,7 @@ export async function signIn(
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) return { error: "Wrong email or password." };
 
-  redirect("/");
+  redirect("/capacity");
 }
 
 export async function signOut() {
