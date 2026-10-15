@@ -27,6 +27,22 @@ const schema = z
       .default(3000),
     // Optional: AI features fall back to templates without it.
     GOOGLE_GENERATIVE_AI_API_KEY: z.string().optional(),
+    GOOGLE_GENERATIVE_AI_API_KEYS: z.string().optional(),
+    GOOGLE_GENERATIVE_AI_RPM_LIMIT: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(10),
+    GOOGLE_GENERATIVE_AI_RPD_LIMIT: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(250),
+    GOOGLE_GENERATIVE_AI_QUOTA_THRESHOLD: z.coerce
+      .number()
+      .gt(0)
+      .max(1)
+      .default(0.9),
   })
   .refine(
     (env) =>
@@ -40,12 +56,22 @@ const schema = z
     },
   )
   // Keep existing gateway consumers working with the renamed environment inputs.
-  .transform((env) => ({
-    ...env,
-    SMSGATE_USERNAME: env.SMS_GATEWAY_USERNAME,
-    SMSGATE_PASSWORD: env.SMS_GATEWAY_PASSWORD,
-    SMSGATE_SIGNING_KEY: env.SMS_GATEWAY_WEBHOOK_SIGNING_KEY,
-  }));
+  .transform((env) => {
+    const keys =
+      env.GOOGLE_GENERATIVE_AI_API_KEYS?.split(",")
+        .map((key) => key.trim())
+        .filter(Boolean) ?? [];
+    const legacy = env.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
+    return {
+      ...env,
+      GOOGLE_GENERATIVE_AI_API_KEYS: [
+        ...new Set(keys.length ? keys : legacy ? [legacy] : []),
+      ],
+      SMSGATE_USERNAME: env.SMS_GATEWAY_USERNAME,
+      SMSGATE_PASSWORD: env.SMS_GATEWAY_PASSWORD,
+      SMSGATE_SIGNING_KEY: env.SMS_GATEWAY_WEBHOOK_SIGNING_KEY,
+    };
+  });
 
 export type Env = z.infer<typeof schema>;
 

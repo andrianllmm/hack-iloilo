@@ -17,12 +17,51 @@ beforeEach(() => {
     "SMS_GATEWAY_WEBHOOK_SIGNING_KEY",
     "SMS_GATEWAY_WEBHOOK_PORT",
     "SMS_RELAY_SECRET",
+    "GOOGLE_GENERATIVE_AI_API_KEY",
+    "GOOGLE_GENERATIVE_AI_API_KEYS",
+    "GOOGLE_GENERATIVE_AI_RPM_LIMIT",
+    "GOOGLE_GENERATIVE_AI_RPD_LIMIT",
+    "GOOGLE_GENERATIVE_AI_QUOTA_THRESHOLD",
   ])
     vi.stubEnv(key, "");
 });
 afterEach(() => vi.unstubAllEnvs());
 
 describe("env", () => {
+  it("defaults to no AI keys and configurable local quota budgets", async () => {
+    const { env } = await import("./env");
+    expect(env()).toMatchObject({
+      GOOGLE_GENERATIVE_AI_API_KEYS: [],
+      GOOGLE_GENERATIVE_AI_RPM_LIMIT: 10,
+      GOOGLE_GENERATIVE_AI_RPD_LIMIT: 250,
+      GOOGLE_GENERATIVE_AI_QUOTA_THRESHOLD: 0.9,
+    });
+  });
+
+  it("uses a trimmed legacy key when the list is empty", async () => {
+    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", " legacy ");
+    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEYS", " , ");
+    const { env } = await import("./env");
+    expect(env().GOOGLE_GENERATIVE_AI_API_KEYS).toEqual(["legacy"]);
+  });
+
+  it("prefers the comma-separated list and deduplicates keys", async () => {
+    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", "legacy");
+    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEYS", " first , second, ,first ");
+    const { env } = await import("./env");
+    expect(env().GOOGLE_GENERATIVE_AI_API_KEYS).toEqual(["first", "second"]);
+  });
+
+  it.each([
+    ["GOOGLE_GENERATIVE_AI_RPM_LIMIT", "0"],
+    ["GOOGLE_GENERATIVE_AI_RPD_LIMIT", "1.5"],
+    ["GOOGLE_GENERATIVE_AI_QUOTA_THRESHOLD", "0"],
+    ["GOOGLE_GENERATIVE_AI_QUOTA_THRESHOLD", "1.1"],
+  ])("rejects invalid AI quota setting %s=%s", async (key, value) => {
+    vi.stubEnv(key, value);
+    const { env } = await import("./env");
+    expect(() => env()).toThrow();
+  });
   it("accepts empty optional SMS values in simulator mode", async () => {
     const { env } = await import("./env");
     expect(env().SMS_GATEWAY_WEBHOOK_PORT).toBe(3000);

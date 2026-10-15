@@ -102,6 +102,8 @@ interface SmsGateway {
 
 - `extract(schema, text)` turns free-text SMS into data matching a command's Zod schema (P1).
 - On failure, fall back to the help text or an empty form.
+- A comma-separated `GOOGLE_GENERATIVE_AI_API_KEYS` pool overrides the legacy single key. Per-instance counters skip a key at 90% of configurable minute/day budgets (the local day is Asia/Manila); cold starts reset the counters. These are local estimates, not Google's remaining quota, and keys in the same Google project share limits.
+- A `429`/`RESOURCE_EXHAUSTED` response cools that key until its `retryDelay`, or the next minute/day window when absent. Retry once with another available key inside the same 8-second total budget; otherwise return `null`. Log switches by index only and omit raw provider errors.
 
 ## Data model
 
@@ -352,15 +354,18 @@ No tables. **Export:** `capacityByDay(from, to)` returns per day and pool (`drye
 
 ## Environment variables
 
-| Name                                                              | Used by                   |
-| ----------------------------------------------------------------- | ------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`       | App                       |
-| `SUPABASE_SERVICE_ROLE_KEY`                                       | Server, SMS relay, seed   |
-| `SMS_GATEWAY`                                                     | `simulator` or `smsgate`  |
-| `SMS_GATEWAY_URL`, `SMS_GATEWAY_USERNAME`, `SMS_GATEWAY_PASSWORD` | Sending and webhook setup |
-| `SMS_GATEWAY_WEBHOOK_SIGNING_KEY`                                 | Relay: verifying webhooks |
-| `SMS_RELAY_SECRET`                                                | App and relay             |
-| `GOOGLE_GENERATIVE_AI_API_KEY`                                    | Gemini                    |
+| Name                                                               | Used by                                                              |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`        | App                                                                  |
+| `SUPABASE_SERVICE_ROLE_KEY`                                        | Server, SMS relay, seed                                              |
+| `SMS_GATEWAY`                                                      | `simulator` or `smsgate`                                             |
+| `SMS_GATEWAY_URL`, `SMS_GATEWAY_USERNAME`, `SMS_GATEWAY_PASSWORD`  | Sending and webhook setup                                            |
+| `SMS_GATEWAY_WEBHOOK_SIGNING_KEY`                                  | Relay: verifying webhooks                                            |
+| `SMS_RELAY_SECRET`                                                 | App and relay                                                        |
+| `GOOGLE_GENERATIVE_AI_API_KEY`                                     | Gemini                                                               |
+| `GOOGLE_GENERATIVE_AI_API_KEYS`                                    | Gemini key pool; overrides the single key                            |
+| `GOOGLE_GENERATIVE_AI_RPM_LIMIT`, `GOOGLE_GENERATIVE_AI_RPD_LIMIT` | Local per-key request budgets (10/minute, 250/Manila day by default) |
+| `GOOGLE_GENERATIVE_AI_QUOTA_THRESHOLD`                             | Fraction of either budget at which to switch keys (default `0.9`)    |
 
 ## Costs and limits
 

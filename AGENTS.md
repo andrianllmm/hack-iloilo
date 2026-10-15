@@ -75,20 +75,25 @@ After changing the schema: add a migration, `pnpm db:reset`, `pnpm db:types`, an
 
 See `.env.example`. Validated in `src/lib/env.ts`.
 
-| Name                                                              | Used by                                                           |
-| ----------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`       | App, auth                                                         |
-| `SUPABASE_SERVICE_ROLE_KEY`                                       | Server data access, SMS relay, seed                               |
-| `SMS_GATEWAY`                                                     | `simulator` (default) or `smsgate`                                |
-| `SMS_GATEWAY_URL`, `SMS_GATEWAY_USERNAME`, `SMS_GATEWAY_PASSWORD` | Sending SMS, webhook setup; URL defaults to the SMSGate cloud API |
-| `SMS_GATEWAY_WEBHOOK_SIGNING_KEY`                                 | Webhook relay: verifying inbound webhooks                         |
-| `SMS_RELAY_SECRET`                                                | Shared by the app and relay; authenticates `/api/sms/process`     |
-| `SMS_GATEWAY_DEVICE_ID`, `SMS_GATEWAY_SIM_NUMBER`                 | Optional; pick the gateway phone and SIM slot                     |
-| `SMS_GATEWAY_PHONE_NUMBER`                                        | Optional; the gateway number shown on the landing page            |
-| `SMS_GATEWAY_WEBHOOK_PORT`                                        | Validated; defaults to 3000, not yet consumed                     |
-| `GOOGLE_GENERATIVE_AI_API_KEY`                                    | Gemini (optional; falls back to templates)                        |
+| Name                                                               | Used by                                                             |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`        | App, auth                                                           |
+| `SUPABASE_SERVICE_ROLE_KEY`                                        | Server data access, SMS relay, seed                                 |
+| `SMS_GATEWAY`                                                      | `simulator` (default) or `smsgate`                                  |
+| `SMS_GATEWAY_URL`, `SMS_GATEWAY_USERNAME`, `SMS_GATEWAY_PASSWORD`  | Sending SMS, webhook setup; URL defaults to the SMSGate cloud API   |
+| `SMS_GATEWAY_WEBHOOK_SIGNING_KEY`                                  | Webhook relay: verifying inbound webhooks                           |
+| `SMS_RELAY_SECRET`                                                 | Shared by the app and relay; authenticates `/api/sms/process`       |
+| `SMS_GATEWAY_DEVICE_ID`, `SMS_GATEWAY_SIM_NUMBER`                  | Optional; pick the gateway phone and SIM slot                       |
+| `SMS_GATEWAY_PHONE_NUMBER`                                         | Optional; the gateway number shown on the landing page              |
+| `SMS_GATEWAY_WEBHOOK_PORT`                                         | Validated; defaults to 3000, not yet consumed                       |
+| `GOOGLE_GENERATIVE_AI_API_KEY`                                     | Gemini (optional; falls back to templates)                          |
+| `GOOGLE_GENERATIVE_AI_API_KEYS`                                    | Comma-separated Gemini key pool; overrides the single key           |
+| `GOOGLE_GENERATIVE_AI_RPM_LIMIT`, `GOOGLE_GENERATIVE_AI_RPD_LIMIT` | Local per-key request budgets (defaults: 10/minute, 250/Manila day) |
+| `GOOGLE_GENERATIVE_AI_QUOTA_THRESHOLD`                             | Switch keys at this share of either budget (default: `0.9`)         |
 
 `env()` maps the renamed SMS credentials to `SMSGATE_USERNAME`, `SMSGATE_PASSWORD`, and `SMSGATE_SIGNING_KEY` for internal consumers. Configure the `SMS_GATEWAY_*` input names shown above.
+
+Gemini quotas are shared by keys from the same Google project. Set the request budgets to match the model and tier in AI Studio; these defaults are local budgets. Counters are per server instance and reset on cold starts. `extract()` reserves requests before I/O, retries quota failures once on another available key within the existing 8-second total budget, and returns `null` when none is available. Keep credentials and raw provider errors out of logs.
 
 ## Code Conventions
 
