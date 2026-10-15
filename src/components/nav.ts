@@ -43,7 +43,7 @@ export const nav: NavGroup[] = [
   {
     label: "Operate",
     items: [
-      { title: "Gate queue", href: "/queue", icon: DoorOpen },
+      { title: "Queue", href: "/queue", icon: DoorOpen },
       { title: "Batches", href: "/batches", icon: Boxes },
       { title: "Bookings", href: "/bookings", icon: ClipboardList },
       { title: "Buying", href: "/buying", icon: Wheat },

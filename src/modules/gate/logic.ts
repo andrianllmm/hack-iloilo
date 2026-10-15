@@ -3,6 +3,7 @@
 
 import { formatKg, formatMoneySms } from "@/lib/format";
 import { daysBetween } from "@/lib/dates";
+import type { StatusTone } from "@/lib/status";
 import type {
   Batch,
   BatchOwnership,
@@ -84,6 +85,27 @@ export const stageLabels: Record<Batch["stage"], string> = {
   milling: "Milling",
   milled: "Milled",
   dispatched: "Dispatched",
+};
+export const stageTones: Record<Batch["stage"], StatusTone> = {
+  received: "neutral",
+  drying: "info",
+  stored: "info",
+  milling: "info",
+  milled: "info",
+  dispatched: "success",
+};
+
+/** A weight check the client answers by SMS or in person. */
+export type WeightStatus = "pending" | "confirmed" | "disputed";
+export const weightStatusLabels: Record<WeightStatus, string> = {
+  pending: "Pending",
+  confirmed: "Confirmed",
+  disputed: "Disputed, re-weigh",
+};
+export const weightStatusTones: Record<WeightStatus, StatusTone> = {
+  pending: "warning",
+  confirmed: "success",
+  disputed: "danger",
 };
 
 /** What staff do to move a batch through drying and milling. */
