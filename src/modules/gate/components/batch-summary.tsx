@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { formatKg } from "@/lib/format";
 import { requireRole } from "@/modules/accounts/auth";
-import { listMachines } from "@/modules/setup/queries";
+import { listMachines, listVarieties } from "@/modules/setup/queries";
 import {
   ownershipLabels,
   recoveryPct,
@@ -49,9 +49,10 @@ export async function BatchSummaryCard({ id }: { id: string }) {
   if (!z.guid().safeParse(id).success) notFound();
   const batch = await batchSummary(id);
   if (!batch) notFound();
-  const [dryers, mills] = await Promise.all([
+  const [dryers, mills, varieties] = await Promise.all([
     listMachines("dryer"),
     listMachines("mill"),
+    listVarieties(),
   ]);
   const recovery = recoveryPct(batch.rice_kg, batch.mill_in_kg);
   const skippedDrying = !batch.dry_start && batch.stage !== "received";
@@ -64,6 +65,7 @@ export async function BatchSummaryCard({ id }: { id: string }) {
   ];
   const showDrying = batch.dry_start || skippedDrying;
   const showMilling = batch.mill_start !== null;
+  const showReceiving = batch.net_kg != null;
 
   return (
     <section className="flex min-w-0 flex-col gap-6 font-sans [--font-sans:var(--font-geist-sans)]">
@@ -86,6 +88,41 @@ export async function BatchSummaryCard({ id }: { id: string }) {
           <FieldList rows={rows} />
         </CardContent>
       </Card>
+
+      {showReceiving ? (
+        <Card className="max-w-xl">
+          <CardHeader>
+            <CardTitle>Receiving</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <FieldList
+              rows={[
+                ["Sacks", batch.bags != null ? String(batch.bags) : "—"],
+                ["Net weight", batch.net_kg ? formatKg(batch.net_kg) : "—"],
+                [
+                  "Variety",
+                  batch.variety
+                    ? `${batch.variety.code} — ${batch.variety.name}`
+                    : "—",
+                ],
+                ["Moisture", batch.mc != null ? `${batch.mc}%` : "—"],
+                [
+                  "Damaged",
+                  batch.damaged_pct != null ? `${batch.damaged_pct}%` : "—",
+                ],
+                [
+                  "Immature",
+                  batch.immature_pct != null ? `${batch.immature_pct}%` : "—",
+                ],
+                [
+                  "Foreign matter",
+                  batch.foreign_pct != null ? `${batch.foreign_pct}%` : "—",
+                ],
+              ]}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
       {showDrying ? (
         <Card className="max-w-xl">
@@ -150,6 +187,11 @@ export async function BatchSummaryCard({ id }: { id: string }) {
               batch={{ id: batch.id, stage: batch.stage }}
               dryers={dryers.map((m) => ({ id: m.id, code: m.code }))}
               mills={mills.map((m) => ({ id: m.id, code: m.code }))}
+              varieties={varieties.map((v) => ({
+                id: v.id,
+                code: v.code,
+                name: v.name,
+              }))}
             />
           </CardContent>
         </Card>

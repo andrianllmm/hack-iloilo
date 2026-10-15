@@ -368,11 +368,45 @@ export async function batchSummary(id: string): Promise<BatchSummary | null> {
   const { data, error } = await db()
     .from("batches")
     .select(
-      "*, client:clients(name, phone, kind), entry:queue_entries(service, started_at, est_kg)",
+      "*, client:clients(name, phone, kind), entry:queue_entries(service, started_at, est_kg), variety:varieties(code, name)",
     )
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
+  return data;
+}
+
+/**
+ * Fills a batch's Receiving Report fields while it is still `received`, without
+ * advancing the stage. Guarded on `received` so a page that has moved on can't
+ * rewrite the receiving after drying has started. The IRPC pricing happens in
+ * the buying module off these saved fields (see `createPurchase`).
+ */
+export async function recordReceiving(
+  batchId: string,
+  fields: {
+    bags: number;
+    net_kg: number;
+    variety_id: string | null;
+    mc: number;
+    damaged_pct: number;
+    immature_pct: number;
+    foreign_pct: number;
+  },
+): Promise<Batch> {
+  const { data, error } = await db()
+    .from("batches")
+    .update(fields)
+    .eq("id", batchId)
+    .eq("stage", "received")
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  if (!data)
+    throw new GateError(
+      "stale_stage",
+      "This batch has moved on. Refresh the page.",
+    );
   return data;
 }
 

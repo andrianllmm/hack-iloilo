@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PurchaseCard } from "@/modules/buying/components/purchase-card";
 import { BatchDispatch } from "@/modules/gate/components/batch-dispatch";
 import { BatchSummaryCard } from "@/modules/gate/components/batch-summary";
 
@@ -11,6 +12,7 @@ async function Batch({ params }: Pick<PageProps<"/batches/[id]">, "params">) {
   return (
     <div className="flex flex-col gap-6">
       <BatchSummaryCard id={id} />
+      <PurchaseCard id={id} />
       <BatchDispatch id={id} />
     </div>
   );
