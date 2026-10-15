@@ -6,7 +6,7 @@ How we build the [PRD](PRD.md). Module numbers (M1–M10) match.
 
 - One Next.js app on Vercel, with Supabase for the database and auth. All free tiers.
 - One folder per module.
-- Clients use SMS through a self-hosted SMS Gateway for Android server (SMSGate), with a simulator for the demo.
+- Clients use SMS through SMS Gateway for Android (SMSGate) on its cloud server, with a simulator for the demo.
 - AI (Gemini) explains prescriptions in plain language and reads free-text SMS. It never computes numbers.
 - The forecast is trained offline in Python. The app imports its output.
 - Single facility (IRPC) and crop (rice). Operations tables keep a `facility_id` for later.
@@ -20,7 +20,7 @@ How we build the [PRD](PRD.md). Module numbers (M1–M10) match.
 | Database, auth    | Supabase: Postgres, Auth                                      |
 | Data access       | supabase-js, `supabase gen types`, Supabase CLI migrations    |
 | Validation        | Zod, for forms, SMS commands and AI results                   |
-| SMS               | SMSGate private server, plus a web simulator                  |
+| SMS               | SMSGate cloud, a webhook relay, plus a web simulator          |
 | AI                | Vercel AI SDK with `@ai-sdk/google` (Gemini Flash, free tier) |
 | Hosting           | Vercel Hobby, Supabase `ap-southeast-1`                       |
 | Forecast training | Python (pandas, openpyxl, SciPy), offline                     |
@@ -31,15 +31,18 @@ How we build the [PRD](PRD.md). Module numbers (M1–M10) match.
 ```mermaid
 flowchart LR
   farmer["Farmer<br/>(basic phone)"] <-->|SMS| phone["Android phone + SIM<br/>SMSGate app"]
-  phone <-->|"push / sync"| gw["SMSGate private server<br/>(Docker + MariaDB)"]
-  gw -->|"sms:received webhook"| app
-  app -->|"POST /api/3rdparty/v1/messages"| gw
+  phone <-->|"push / sync"| gw["SMSGate cloud<br/>api.sms-gate.app"]
+  gw -->|"sms:received webhook"| relay
+  relay -->|"POST /api/sms/process"| app
+  app -->|"POST /3rdparty/v1/messages"| gw
   staff["Staff<br/>(browser)"] --> app
   sim["SMS simulator page"] --> app
   subgraph vercel["Vercel"]
     app["Next.js app"]
+    relay["sms-webhook relay"]
   end
   app <--> db[("Supabase")]
+  relay -->|"log inbound"| db
   app -->|"explanations, text parsing"| ai["Gemini API"]
 ```
 
@@ -52,7 +55,8 @@ src/
   lib/              Supabase client, SMS gateway, AI helper
 supabase/migrations/
 data/forecast/      Python: parse OPA data, train, export arrivals
-infra/sms-gateway/  Docker Compose for SMSGate and MariaDB
+services/sms-webhook/  Vercel project: SMSGate webhook relay
+infra/sms-gateway/  Optional self-hosted SMSGate (Docker Compose + MariaDB)
 ```
 
 Modules import each other directly. No event bus, queue or cron.
@@ -83,17 +87,16 @@ interface SmsGateway {
 
 - `SimulatorGateway` stores messages and shows a phone screen per number. Staff-only, disabled when `SMS_GATEWAY=smsgate`.
 - `SmsGateGateway`:
-  - Sends with `POST {SMS_GATEWAY_URL}/api/3rdparty/v1/messages`, HTTP Basic auth.
-  - Receives at `POST /api/sms/inbound` from an `sms:received` webhook, registered with `POST /3rdparty/v1/webhooks`.
+  - Sends with `POST {SMS_GATEWAY_URL}/messages`, HTTP Basic auth. `SMS_GATEWAY_URL` defaults to the cloud API, `https://api.sms-gate.app/3rdparty/v1`.
+  - Optional `SMS_GATEWAY_DEVICE_ID` and `SMS_GATEWAY_SIM_NUMBER` pick the phone and SIM.
+- **Webhook relay** (`services/sms-webhook/`, its own Vercel project; see [0002](docs/decisions/0002-sms-gateway-cloud-and-relay.md)):
+  - Receives `POST /api/inbound` from an `sms:received` webhook, registered with `POST /3rdparty/v1/webhooks`.
   - Verifies `X-Signature` (HMAC-SHA256 of raw body + `X-Timestamp`), rejecting timestamps over 5 minutes off.
-  - Dedupes on `payload.messageId`, and replies 2xx within 30 s.
+  - Logs the text to `sms_messages` (`received`), deduping on `payload.messageId`, and replies 2xx within 30 s.
+  - Then forwards the row id to the app's `POST /api/sms/process`, authenticated with `SMS_RELAY_SECRET`.
 - Templates are GSM-7, max 320 characters.
 
-**Server setup** (`infra/sms-gateway/`):
-
-- `ghcr.io/android-sms-gateway/server` with MariaDB via Docker Compose, `gateway.mode: private` and a `private_token`.
-- HTTPS: a team laptop behind a Cloudflare Tunnel for the event, a small VPS for the pilot.
-- Phone: **Settings → Cloud Server** set to `https://<host>/api/mobile/v1` with the private token.
+**Optional private server** (`infra/sms-gateway/`): `ghcr.io/android-sms-gateway/server` with MariaDB, if texts must not pass through the SMSGate cloud. Set `SMS_GATEWAY_URL=https://<host>/api/3rdparty/v1`.
 
 ### AI helper (`lib`)
 
@@ -153,7 +156,11 @@ Every table has `id` (UUID), `created_at` and `updated_at`.
 - `sms_messages`: `direction`, `phone`, `body`, `gateway_id` (unique), `parsed` (jsonb), `via_ai`, `status`.
 - `sms_prompts`: `phone`, `ref`, `kind` (`ai_confirm`, `reschedule`), `payload` (jsonb), `expires_at`, `status`.
 
-**Exports:** `registerCommand({ keywords, schema, handle })`, `send(phone, template, vars)`.
+**Exports:** `registerCommand({ keywords, schema, parse, handle })`, `send(phone, template, vars)`, `openPrompt({ phone, kind, payload, ref? })`, `onPromptAnswer(kind, fn)`, `handleInbound({ phone, body, gatewayId? })`, `parseDayMonth(token, today)`.
+
+- Modules register commands from their `sms.ts`; `src/modules/sms/queries.ts` imports each one.
+- The first word is the keyword. A trailing `FOR <phone>` is stripped into `ctx.forPhone`.
+- A prompt handler throws `PromptRefusal(reply)` to refuse an answer (e.g. from the wrong phone); the prompt stays open.
 
 **Inbound flow:**
 
@@ -165,7 +172,7 @@ sequenceDiagram
   participant AI as Gemini
   participant H as Owning module
   P->>G: SMS
-  G->>S: POST /api/sms/inbound
+  G->>S: webhook relay, then POST /api/sms/process
   S->>S: dedupe, findOrRegisterByPhone
   alt keyword matches
     S->>H: handle(command)
@@ -179,7 +186,7 @@ sequenceDiagram
 
 `YES <ref>` / `NO <ref>` answers an open prompt. Prompts expire after 24 hours.
 
-**Tests:** keyword parsing.
+**Tests:** keyword parsing, `FOR`, dd/mm dates; the relay's signature check and dedupe.
 
 ### M4. Booking
 
@@ -336,25 +343,26 @@ No tables. **Export:** `capacityByDay(from, to)` returns per day and pool (`drye
 
 ## Environment variables
 
-| Name                                                              | Used by                    |
-| ----------------------------------------------------------------- | -------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`       | App                        |
-| `SUPABASE_SERVICE_ROLE_KEY`                                       | Server, SMS webhook, seed  |
-| `SMS_GATEWAY`                                                     | `simulator` or `smsgate`   |
-| `SMS_GATEWAY_URL`, `SMS_GATEWAY_USERNAME`, `SMS_GATEWAY_PASSWORD` | Sending and webhook setup  |
-| `SMS_GATEWAY_WEBHOOK_SIGNING_KEY`                                 | Verifying inbound webhooks |
-| `GOOGLE_GENERATIVE_AI_API_KEY`                                    | Gemini                     |
+| Name                                                              | Used by                   |
+| ----------------------------------------------------------------- | ------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`       | App                       |
+| `SUPABASE_SERVICE_ROLE_KEY`                                       | Server, SMS relay, seed   |
+| `SMS_GATEWAY`                                                     | `simulator` or `smsgate`  |
+| `SMS_GATEWAY_URL`, `SMS_GATEWAY_USERNAME`, `SMS_GATEWAY_PASSWORD` | Sending and webhook setup |
+| `SMS_GATEWAY_WEBHOOK_SIGNING_KEY`                                 | Relay: verifying webhooks |
+| `SMS_RELAY_SECRET`                                                | App and relay             |
+| `GOOGLE_GENERATIVE_AI_API_KEY`                                    | Gemini                    |
 
 ## Costs and limits
 
 Everything is free except prepaid load for the gateway SIM.
 
-| Service       | Limit                                      | Handling                                          |
-| ------------- | ------------------------------------------ | ------------------------------------------------- |
-| Supabase Free | Pauses after 7 idle days                   | Seeded staff, no auth emails                      |
-| Vercel Hobby  | Non-commercial only                        | A pilot needs Pro or another host                 |
-| SMSGate       | Needs a Docker host with HTTPS             | Laptop + Cloudflare Tunnel; simulator as fallback |
-| Gemini Free   | Rate limits; prompts may be used by Google | Non-AI fallback                                   |
+| Service       | Limit                                      | Handling                                     |
+| ------------- | ------------------------------------------ | -------------------------------------------- |
+| Supabase Free | Pauses after 7 idle days                   | Seeded staff, no auth emails                 |
+| Vercel Hobby  | Non-commercial only                        | A pilot needs Pro or another host            |
+| SMSGate cloud | Texts pass through a third-party server    | Private server option; simulator as fallback |
+| Gemini Free   | Rate limits; prompts may be used by Google | Non-AI fallback                              |
 
 ## Appendix: OPA spreadsheet notes
 
