@@ -26,16 +26,13 @@ export type { Prescription } from "./types";
 
 /**
  * Suggestions over the capacity window, recomputed on each call, with any
- * saved decision. Only decisions are stored. Pass the window's `capacityByDay`
- * when the caller already has it.
+ * saved decision. Only decisions are stored.
  */
-export async function prescriptions(
-  capacity?: DayPool[],
-): Promise<Prescription[]> {
+export async function prescriptions(): Promise<Prescription[]> {
   const today = todayManila();
   const to = addDays(today, WINDOW_DAYS - 1);
   const [days, rows] = await Promise.all([
-    capacity ?? capacityByDay(today, to),
+    capacityByDay(today, to),
     bookingList(today, to),
   ]);
   const bookings: OpenBooking[] = rows.flatMap((b) =>

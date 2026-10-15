@@ -384,25 +384,6 @@ export function millFullLoads(input: {
   ];
 }
 
-/**
- * Days whose capacity day panel shows the card: the overloaded day, every day
- * of an idle stretch, or the full-load milling days.
- */
-export function cardDates(p: Suggestion): string[] {
-  switch (p.kind) {
-    case "move_bookings":
-      return [p.date];
-    case "fill_idle":
-      return Array.from({ length: daysBetween(p.from, p.to) + 1 }, (_, i) =>
-        addDays(p.from, i),
-      );
-    case "mill_full_loads":
-      return p.fullDates;
-    case "store_mill_later":
-      return [p.date];
-  }
-}
-
 /** One pool on one day: capacity and firm load (confirmed + offer), kg. */
 export type PoolDay = {
   date: string;
@@ -485,22 +466,22 @@ export function templateNote(p: Suggestion): string {
       const n = Number(f.bookings_moved);
       const moving = `Moving ${n} flexible ${n === 1 ? "booking" : "bookings"} to ${f.new_days}`;
       return p.remainderKg === 0
-        ? `${f.day} is ${f.overflow} over. ${moving} clears it without turning anyone away.`
-        : `${f.day} is ${f.overflow} over. ${moving} leaves ${f.remainder} over.`;
+        ? `${moving} clears it without turning anyone away.`
+        : `${moving} leaves ${f.remainder} over.`;
     }
     case "mill_full_loads": {
-      const n = Number(f.full_days);
-      return `Milling the ${f.stock} of stored palay in ${n} full ${n === 1 ? "day" : "days"} (${f.full_dates}) instead of ${f.spread_days} partial days cuts electricity from ${f.spread_per_kg}/kg to ${f.full_per_kg}/kg, since base load runs fewer days. That saves ${f.saving_per_kg}/kg.`;
+      const n = Number(f.spread_days) - Number(f.full_days);
+      return `Base load runs ${n} fewer ${n === 1 ? "day" : "days"}, saving ${f.saving_per_kg}/kg in electricity.`;
     }
     case "store_mill_later": {
-      const store = `Storing ${f.stored} of dried palay and milling it on ${f.mill_days}, when the mill is quiet,`;
+      const store = `Store ${f.stored} of dried palay and mill it on ${f.mill_days}, when the mill is quiet`;
       return p.remainderKg === 0
-        ? `The mill is ${f.overflow} over on ${f.day}. ${store} clears it.`
-        : `The mill is ${f.overflow} over on ${f.day}. ${store} leaves ${f.remainder} over.`;
+        ? `${store}.`
+        : `${store}. That leaves ${f.remainder} over.`;
     }
     case "fill_idle": {
       const n = Number(f.recipients);
-      return `The dryers have room ${f.days}. Texting today's rates and buying price to ${n} ${n === 1 ? "farmer or co-op" : "farmers and co-ops"} with no booking can bring palay in to fill it.`;
+      return `Text today's rates and buying price to ${n} ${n === 1 ? "farmer or co-op" : "farmers and co-ops"} with no booking.`;
     }
   }
 }

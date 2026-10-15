@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { electricityPerKg } from "@/modules/pricing/logic";
 import { isGsm7, SMS_MAX_CHARS } from "@/modules/sms/logic";
 import {
-  cardDates,
   dayList,
   daySpan,
   fillIdle,
@@ -175,14 +174,14 @@ describe("templateNote", () => {
       booking("BBBBBB", 10_000, "2026-10-19", 1),
     ]);
     expect(templateNote(p)).toBe(
-      "Oct 19 is 30 t over. Moving 2 flexible bookings to Oct 18–20 clears it without turning anyone away.",
+      "Moving 2 flexible bookings to Oct 18–20 clears it without turning anyone away.",
     );
   });
 
   it("states what is left over", () => {
     const p = rx([booking("AAAAAA", 20_000, "2026-10-19", 1)]);
     expect(templateNote(p)).toBe(
-      "Oct 19 is 30 t over. Moving 1 flexible booking to Oct 20 leaves 10 t over.",
+      "Moving 1 flexible booking to Oct 20 leaves 10 t over.",
     );
   });
 });
@@ -332,6 +331,9 @@ describe("millFullLoads", () => {
       full_per_kg: "₱0.38",
       saving_per_kg: "₱0.17",
     });
+    expect(templateNote(rx)).toBe(
+      "Base load runs 4 fewer days, saving ₱0.17/kg in electricity.",
+    );
   });
 
   it("fills around milling bookings", () => {
@@ -349,33 +351,6 @@ describe("millFullLoads", () => {
       millFullLoads({ days: mill([0, 49_600], [0, 30_000]), perKg }),
     ).toEqual([]);
     expect(millFullLoads({ days: mill([0, 10_000]), perKg })).toEqual([]);
-  });
-});
-
-describe("cardDates", () => {
-  it("covers every day of an idle stretch", () => {
-    const [rx] = fillIdle({
-      stretches: [{ from: "2026-10-30", to: "2026-11-01" }],
-      candidates: [
-        {
-          clientId: "a",
-          name: "A",
-          phone: "+639170000001",
-          municipality: null,
-          pastKg: 0,
-          kind: "farmer",
-          hasOpenBooking: false,
-        },
-      ],
-      rates: {
-        dryingMinorPerKg: 160,
-        millingMinorPerKg: 330,
-        buyBaseMinorPerKg: 2100,
-        buyReferenceMc: 25,
-      },
-      today: "2026-10-15",
-    });
-    expect(cardDates(rx)).toEqual(["2026-10-30", "2026-10-31", "2026-11-01"]);
   });
 });
 
@@ -411,7 +386,7 @@ describe("storeMillLater", () => {
     ]);
     expect(rx.remainderKg).toBe(0);
     expect(templateNote(rx)).toBe(
-      "The mill is 60 t over on Oct 20. Storing 60 t of dried palay and milling it on Oct 22–23, when the mill is quiet, clears it.",
+      "Store 60 t of dried palay and mill it on Oct 22–23, when the mill is quiet.",
     );
   });
 
