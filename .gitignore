@@ -52,3 +52,10 @@ __pycache__/
 infra/sms-gateway/config.yml
 data/forecast/out/*
 !data/forecast/out/.gitkeep
+
+# agent skills: symlinks to .agents/skills (pnpm agents:setup)
+/.claude/skills
+/.codex/skills
+/.gemini/skills
+/.cursor/skills
+/.opencode/skills

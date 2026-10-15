@@ -42,7 +42,7 @@ Module folders: `setup` (M1), `accounts` (M2), `sms` (M3), `booking` (M4), `buyi
 Requires Node 24, pnpm, Docker and (for the forecast) uv.
 
 ```sh
-pnpm install
+pnpm install                   # also links agent skills (pnpm agents:setup)
 pnpm db:start                  # local Supabase in Docker
 cp .env.example .env.local     # fill keys from `pnpm db:status`
 pnpm dev
@@ -55,6 +55,7 @@ Sign in at http://localhost:3000 with `manager@irpc.test` or `encoder@irpc.test`
 | Command                    | Does                                            |
 | -------------------------- | ----------------------------------------------- |
 | `pnpm dev`                 | Start the app                                   |
+| `pnpm agents:setup`        | Symlink agent skill folders to `.agents/skills` |
 | `pnpm build`               | Production build                                |
 | `pnpm lint`                | ESLint                                          |
 | `pnpm format`              | Prettier write (`format:check` to verify)       |
@@ -154,6 +155,8 @@ Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-
 Single-context: glossary in `PRD.md` (or `GLOSSARY.md` if created), decisions in `docs/decisions/`. See `docs/agents/domain.md`.
 
 ## Skills & Docs Reference
+
+Project skills live in `.agents/skills/` (tracked in `skills-lock.json`). Agent folders like `.claude/skills` and `.codex/skills` are gitignored symlinks to it, created by `pnpm install` or `pnpm agents:setup [claude codex ...]`. Add or edit skills only in `.agents/skills/`.
 
 [insert later]
 
