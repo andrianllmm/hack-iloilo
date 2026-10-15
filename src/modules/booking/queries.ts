@@ -12,6 +12,7 @@ import type {
   BookingChannel,
   BookingClient,
   BookingRow,
+  BookingStatus,
   Service,
 } from "./types";
 export type { Booking, BookingRow } from "./types";
@@ -65,6 +66,35 @@ export async function findByRef(ref: string): Promise<Booking | null> {
     .maybeSingle();
   if (error) throw error;
   return data;
+}
+
+/**
+ * Marks an open booking (`confirmed` or `reschedule_proposed`) `arrived` when
+ * the client checks in at the gate. Null if it is no longer open.
+ */
+export async function markArrived(bookingId: string): Promise<Booking | null> {
+  const { data, error } = await db()
+    .from("bookings")
+    .update({ status: "arrived" })
+    .eq("id", bookingId)
+    .in("status", ["confirmed", "reschedule_proposed"])
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/** Undoes `markArrived` when the check-in that caused it fails. */
+export async function unmarkArrived(
+  bookingId: string,
+  status: BookingStatus,
+): Promise<void> {
+  const { error } = await db()
+    .from("bookings")
+    .update({ status })
+    .eq("id", bookingId)
+    .eq("status", "arrived");
+  if (error) throw error;
 }
 
 export type CancelResult =

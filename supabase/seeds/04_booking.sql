@@ -14,6 +14,9 @@ select
   v.status::public.booking_status
 from (
   values
+  -- Due today, for checking in by ref at the gate.
+  ('G4TD7Z', 'drying',  'c1000000-0000-0000-0000-000000000007', null,            'sms',    2800, 0, 0, 0, 'confirmed'),
+  ('V3NB8H', 'milling', 'c1000000-0000-0000-0000-000000000009', null,            'staff',  5000, 0, 1, 0, 'confirmed'),
   ('K7P2QX', 'drying',  'c0000000-0000-0000-0000-000000000002', null,            'sms',   12000, 1, 3, 1, 'confirmed'),
   ('M4RT8B', 'drying',  'c0000000-0000-0000-0000-000000000001', null,            'sms',   10000, 1, 2, 1, 'confirmed'),
   ('H3WN6C', 'drying',  'c1000000-0000-0000-0000-000000000003', null,            'sms',    8500, 1, 3, 1, 'confirmed'),
