@@ -3,6 +3,7 @@
 import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { DatePicker } from "@/components/date-picker";
+import { InfoIcon } from "@/components/hint-icons";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -49,7 +50,10 @@ export function BudgetForm({
         />
       </Field>
       <Field>
-        <FieldLabel htmlFor={startId}>Period start</FieldLabel>
+        <FieldLabel htmlFor={startId}>
+          Period start
+          <InfoIcon text="Purchases from this date count against the budget. Leave it empty to count all purchases." />
+        </FieldLabel>
         <DatePicker
           id={startId}
           value={from}
