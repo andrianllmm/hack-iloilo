@@ -37,13 +37,17 @@ const usages = [
   "STATUS",
 ];
 
-const texts: [string, string][] = [
-  ...Object.entries({ ...bookingSms, ...buyingSms, ...smsReplies }).map(
-    ([key, template]): [string, string] => [
-      key,
+// Kept per module: spreading them into one object would drop shared keys.
+const templates = Object.entries({ bookingSms, buyingSms, smsReplies }).flatMap(
+  ([group, replies]) =>
+    Object.entries(replies).map(([key, template]): [string, string] => [
+      `${group}.${key}`,
       fillTemplate(template, longVars),
-    ],
-  ),
+    ]),
+);
+
+const texts: [string, string][] = [
+  ...templates,
   ["help", helpText(usages)],
   ["help (AI)", helpText(usages, true)],
   [

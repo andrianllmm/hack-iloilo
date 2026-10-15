@@ -17,9 +17,10 @@ vi.mock("@/lib/sms", () => ({ smsGateway: () => ({ send: gatewaySend }) }));
 import * as dates from "@/lib/dates";
 import { db } from "@/lib/supabase/admin";
 import { findClientByPhone } from "@/modules/accounts/queries";
-import { isGsm7, SMS_MAX_CHARS } from "@/modules/sms/logic";
+import { fillTemplate, isGsm7, SMS_MAX_CHARS } from "@/modules/sms/logic";
 import * as sms from "@/modules/sms/queries";
 import { bookForClient, moveBookingByStaff } from "./actions";
+import { bookingSms, formatDay } from "./logic";
 import {
   bookingsBetween,
   findByRef,
@@ -260,7 +261,12 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
         scheduled_date: booking.scheduled_date,
         proposed_date: null,
       });
-      expect((await lastReply()).body).toContain("gihapon");
+      expect((await lastReply()).body).toBe(
+        fillTemplate(bookingSms.rescheduleKept, {
+          ref: booking.ref,
+          date: formatDay(booking.scheduled_date),
+        }),
+      );
       expect((await lastReply(beneficiary)).body).toBe(
         (await lastReply()).body,
       );

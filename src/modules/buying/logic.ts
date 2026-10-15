@@ -107,8 +107,8 @@ export const buyingSms = {
  */
 export function formatVarietiesSms(codes: string[], maxChars: number): string {
   if (codes.length === 0)
-    return "IRPC rice varieties: wala pa. Para magbaligya: SELL <kg> <variety> <dd/mm>";
-  const prefix = `IRPC rice varieties (${codes.length}): `;
+    return "IRPC: Wala pa sang nalista nga variety sang humay. Para magbaligya: SELL <kg> <variety> <dd/mm>";
+  const prefix = `IRPC mga variety sang humay (${codes.length}): `;
   const suffix = ". Para magbaligya: SELL <kg> <variety> <dd/mm>";
 
   const full = `${prefix}${codes.join(", ")}${suffix}`;
