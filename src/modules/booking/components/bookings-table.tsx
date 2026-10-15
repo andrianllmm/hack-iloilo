@@ -3,6 +3,7 @@
 import { StatusBadge } from "@/components/status-badge";
 import { ServiceLabel } from "@/components/service-icon";
 import { Fragment, useMemo, useState, useTransition } from "react";
+import { MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -15,6 +16,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -38,7 +45,7 @@ import type { BookingClient, BookingRow } from "../types";
 
 /** Rows shown per day before `+ N more`. */
 const GROUP_PREVIEW = 6;
-const COLUMNS = 8;
+const COLUMNS = 6;
 const kgFormat = new Intl.NumberFormat("en-US");
 
 export function BookingsTable({
@@ -67,10 +74,8 @@ export function BookingsTable({
             <TableRow>
               <TableHead>Ref</TableHead>
               <TableHead>Client</TableHead>
-              <TableHead>Booked by</TableHead>
               <TableHead className="text-right">Est. kg</TableHead>
               <TableHead>Date</TableHead>
-              <TableHead>Flex</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>
                 <span className="sr-only">Actions</span>
@@ -108,16 +113,25 @@ export function BookingsTable({
                   {rows.map((row) => (
                     <TableRow key={row.id}>
                       <TableCell className="font-mono">{row.ref}</TableCell>
-                      <TableCell>{row.client.name}</TableCell>
-                      <TableCell>{bookedByLabel(row, namesByPhone)}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span>{row.client.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {bookedByLabel(row, namesByPhone)}
+                          </span>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {kgFormat.format(row.est_kg)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
                         {formatShortDate(row.scheduled_date)}
-                      </TableCell>
-                      <TableCell>
-                        {row.flex_days ? `${row.flex_days} d` : "—"}
+                        {row.flex_days ? (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            ±{row.flex_days} d
+                          </span>
+                        ) : null}
                       </TableCell>
                       <TableCell>
                         <StatusBadge tone={statusTones[row.status]}>
@@ -127,24 +141,34 @@ export function BookingsTable({
                       <TableCell className="text-right">
                         {row.status === "confirmed" ||
                         row.status === "reschedule_proposed" ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={`Reschedule booking ${row.ref}`}
-                            onClick={() => onReschedule(row)}
-                          >
-                            Reschedule
-                          </Button>
-                        ) : null}
-                        {row.status === "confirmed" ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={`Cancel booking ${row.ref}`}
-                            onClick={() => setCancelling(row)}
-                          >
-                            Cancel
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  aria-label={`Actions for booking ${row.ref}`}
+                                />
+                              }
+                            >
+                              <MoreHorizontal />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => onReschedule(row)}
+                              >
+                                Reschedule
+                              </DropdownMenuItem>
+                              {row.status === "confirmed" ? (
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onClick={() => setCancelling(row)}
+                                >
+                                  Cancel
+                                </DropdownMenuItem>
+                              ) : null}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         ) : null}
                       </TableCell>
                     </TableRow>
