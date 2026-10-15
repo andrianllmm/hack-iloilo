@@ -50,6 +50,7 @@ import {
   refKindLabels,
   refLine,
   riceStockKg,
+  traceOrigin,
   traceSteps,
 } from "./logic";
 import type {
@@ -701,7 +702,7 @@ export async function publicBatchTrail(
   const { data, error } = await db()
     .from("batches")
     .select(
-      "batch_no, dry_end, mill_end, variety:varieties(name), client:clients(municipality:municipalities(name))",
+      "batch_no, dry_end, mill_end, variety:varieties(name), client:clients(kind, name, coop:coop_id(name), municipality:municipalities(name))",
     )
     .eq("batch_no", batchNo)
     .maybeSingle();
@@ -709,7 +710,12 @@ export async function publicBatchTrail(
   if (!data) return null;
   return {
     batchNo: data.batch_no,
-    municipality: data.client.municipality?.name ?? null,
+    origin: traceOrigin({
+      kind: data.client.kind,
+      name: data.client.name,
+      coopName: data.client.coop?.name ?? null,
+      municipality: data.client.municipality?.name ?? null,
+    }),
     variety: data.variety?.name ?? null,
     steps: traceSteps({
       batchNo: data.batch_no,

@@ -28,6 +28,7 @@ import {
   refLine,
   remainingKg,
   riceStockKg,
+  traceOrigin,
   traceSteps,
   waitMinutes,
 } from "./logic";
@@ -561,5 +562,37 @@ describe("traceSteps", () => {
         millEnd: "2026-10-21T03:00:00Z",
       }).map((s) => s.label),
     ).toEqual(["Received", "Milled"]);
+  });
+});
+
+describe("traceOrigin", () => {
+  const farmer = {
+    kind: "farmer",
+    name: "Merlinda Tayco",
+    coopName: null,
+    municipality: "Pototan",
+  };
+
+  it("names a co-op client", () => {
+    expect(
+      traceOrigin({ ...farmer, kind: "coop", name: "Lumbo Rice Growers" }),
+    ).toBe("Lumbo Rice Growers");
+  });
+
+  it("shows a member's co-op, not their name", () => {
+    expect(traceOrigin({ ...farmer, coopName: "Amamaros Farmers MPC" })).toBe(
+      "Amamaros Farmers MPC",
+    );
+  });
+
+  it("falls back to the municipality, never a person or trader's name", () => {
+    expect(traceOrigin(farmer)).toBe("Pototan farmers");
+    expect(
+      traceOrigin({ ...farmer, kind: "trader", name: "Nonoy Palay Trading" }),
+    ).toBe("Pototan farmers");
+  });
+
+  it("is null with nothing safe to show", () => {
+    expect(traceOrigin({ ...farmer, municipality: null })).toBeNull();
   });
 });

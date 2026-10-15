@@ -116,9 +116,7 @@ async function Trace({
               {trail.variety ? ` · ${trail.variety}` : ""}
             </p>
             <p className="text-muted-foreground">
-              {trail.municipality
-                ? `From ${trail.municipality} farmers`
-                : "Municipality not recorded"}
+              {trail.origin ? `From ${trail.origin}` : "Origin not recorded"}
             </p>
             <dl className="divide-y">
               {trail.steps.map((step) => (

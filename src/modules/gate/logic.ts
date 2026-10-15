@@ -524,3 +524,18 @@ export function traceSteps(batch: {
     ),
   ];
 }
+
+/**
+ * Where a batch came from, safe to show the public (Data Privacy Act): a co-op
+ * by name, a co-op member as their co-op, anyone else by municipality only.
+ */
+export function traceOrigin(client: {
+  kind: string;
+  name: string;
+  coopName: string | null;
+  municipality: string | null;
+}): string | null {
+  if (client.kind === "coop") return client.name;
+  if (client.coopName) return client.coopName;
+  return client.municipality ? `${client.municipality} farmers` : null;
+}
