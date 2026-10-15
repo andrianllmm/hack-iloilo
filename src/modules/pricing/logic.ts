@@ -329,3 +329,45 @@ export function electricityPerKg({
   const totalKwh = machineKwh + baseLoadKw * hoursPerDay * daysRun;
   return Math.round((totalKwh * tariffMinorPerKwh) / kg);
 }
+
+/** One effective date on the price trend, in pesos per kg. */
+export type PricePoint = {
+  date: string;
+  buyBase: number;
+  drying: number;
+  milling: number;
+  rice: number;
+};
+
+/**
+ * The price trend: the newest save for each effective date, oldest first,
+ * keeping the most recent `limit` dates.
+ */
+export function priceTrend(
+  rows: {
+    effective_date: string;
+    created_at: string;
+    buy_base_minor_per_kg: number;
+    drying_fee_minor_per_kg: number;
+    milling_fee_minor_per_kg: number;
+    rice_minor_per_kg: number;
+  }[],
+  limit = 12,
+): PricePoint[] {
+  const newest = new Map<string, (typeof rows)[number]>();
+  for (const row of rows) {
+    const kept = newest.get(row.effective_date);
+    if (!kept || row.created_at > kept.created_at)
+      newest.set(row.effective_date, row);
+  }
+  return [...newest.values()]
+    .sort((a, b) => a.effective_date.localeCompare(b.effective_date))
+    .slice(-limit)
+    .map((row) => ({
+      date: row.effective_date,
+      buyBase: row.buy_base_minor_per_kg / 100,
+      drying: row.drying_fee_minor_per_kg / 100,
+      milling: row.milling_fee_minor_per_kg / 100,
+      rice: row.rice_minor_per_kg / 100,
+    }));
+}

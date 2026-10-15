@@ -10,8 +10,14 @@ import {
 } from "@/components/ui/table";
 import { splitManila, todayManila } from "@/lib/dates";
 import { formatMoney } from "@/lib/format";
-import { livePrice } from "../logic";
+import { livePrice, priceTrend } from "../logic";
 import { listPrices } from "../queries";
+import { PriceTrendChart } from "./price-trend-chart";
+
+/** The recent price trend, one point per effective date. */
+export async function PriceTrend() {
+  return <PriceTrendChart points={priceTrend(await listPrices())} />;
+}
 
 export async function PricesView() {
   const prices = await listPrices();
@@ -24,7 +30,7 @@ export async function PricesView() {
 
   return (
     <Table>
-      <TableHeader>
+      <TableHeader className="sticky top-0 z-10 bg-card">
         <TableRow>
           <TableHead>Effective</TableHead>
           <TableHead>Saved</TableHead>
