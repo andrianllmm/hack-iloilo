@@ -19,6 +19,7 @@ import type {
   Decision,
   FillIdlePrescription,
   MillFullLoadsPrescription,
+  StoreMillLaterPrescription,
   MoveBookingsPrescription,
   Prescription,
 } from "../types";
@@ -27,6 +28,7 @@ const kindLabels: Record<Prescription["kind"], string> = {
   move_bookings: "Move bookings",
   fill_idle: "Fill idle days",
   mill_full_loads: "Mill in full loads",
+  store_mill_later: "Store now, mill later",
 };
 
 /** Recipients listed by name before "and N more". */
@@ -58,6 +60,7 @@ export function PrescriptionCard({
         {p.kind === "move_bookings" && <Moves p={p} />}
         {p.kind === "fill_idle" && <Recipients p={p} />}
         {p.kind === "mill_full_loads" && <MillPlans p={p} />}
+        {p.kind === "store_mill_later" && <MillLater p={p} />}
       </CardContent>
       <CardFooter className="gap-2">
         <Button size="sm" disabled={pending} onClick={() => decide("accepted")}>
@@ -156,6 +159,11 @@ function acceptCopy(p: Prescription): { accept: string; accepted: string } {
         accept: "Plan full loads",
         accepted: "Full-load plan accepted.",
       };
+    case "store_mill_later":
+      return {
+        accept: "Store and mill later",
+        accepted: "Storage plan accepted.",
+      };
   }
 }
 
@@ -197,6 +205,32 @@ function MillPlans({ p }: { p: MillFullLoadsPrescription }) {
         Saves {formatMoney(p.spreadMinorPerKg - p.fullMinorPerKg)}/kg on{" "}
         {formatTonnes(p.kg)}
       </Badge>
+    </>
+  );
+}
+
+function MillLater({ p }: { p: StoreMillLaterPrescription }) {
+  return (
+    <>
+      <ul className="divide-y rounded-lg border text-sm">
+        {p.millDays.map((m) => (
+          <li
+            key={m.date}
+            className="flex items-center justify-between gap-3 p-2.5"
+          >
+            <span className="font-medium">Mill on {shortDay(m.date)}</span>
+            <span className="shrink-0 tabular-nums">{formatTonnes(m.kg)}</span>
+          </li>
+        ))}
+      </ul>
+      {p.remainderKg > 0 ? (
+        <Badge variant="warning">
+          {formatTonnes(p.remainderKg)} still over: no storage room or quiet
+          mill day
+        </Badge>
+      ) : (
+        <Badge variant="success">Clears the overflow</Badge>
+      )}
     </>
   );
 }

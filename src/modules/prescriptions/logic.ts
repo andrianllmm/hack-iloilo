@@ -9,6 +9,7 @@ import type {
   Move,
   MoveBookingsPrescription,
   Recipient,
+  StoreMillLaterPrescription,
   Suggestion,
 } from "./types";
 
@@ -397,7 +398,83 @@ export function cardDates(p: Suggestion): string[] {
       );
     case "mill_full_loads":
       return p.fullDates;
+    case "store_mill_later":
+      return [p.date];
   }
+}
+
+/** One pool on one day: capacity and firm load (confirmed + offer), kg. */
+export type PoolDay = {
+  date: string;
+  capacityKg: number;
+  firmKg: number;
+  idle: boolean;
+};
+
+/**
+ * For each overloaded mill day, stores the overflow and mills it on the
+ * nearest idle mill days after it, as long as storage has room every day it
+ * waits. Reports any remainder. Days with nothing to move get no card.
+ */
+export function storeMillLater(input: {
+  mill: PoolDay[];
+  storage: PoolDay[];
+}): Omit<StoreMillLaterPrescription, "decision">[] {
+  const mill = [...input.mill].sort((a, b) => a.date.localeCompare(b.date));
+  const millRoom = new Map(mill.map((d) => [d.date, d.capacityKg - d.firmKg]));
+  const storeRoom = new Map(
+    input.storage.map((d) => [d.date, d.capacityKg - d.firmKg]),
+  );
+
+  const out: Omit<StoreMillLaterPrescription, "decision">[] = [];
+  for (const day of mill) {
+    const overflowKg = day.firmKg - day.capacityKg;
+    if (overflowKg <= 0) continue;
+    const millDays: { date: string; kg: number }[] = [];
+    let left = overflowKg;
+    for (const t of mill) {
+      if (left <= 0) break;
+      if (t.date <= day.date || !t.idle) continue;
+      // It waits in storage from the overloaded day until the day before.
+      const waits = mill
+        .filter((w) => w.date >= day.date && w.date < t.date)
+        .map((w) => w.date);
+      const kg = Math.min(
+        left,
+        millRoom.get(t.date) ?? 0,
+        ...waits.map((w) => storeRoom.get(w) ?? 0),
+      );
+      if (kg <= 0) continue;
+      left -= kg;
+      millRoom.set(t.date, (millRoom.get(t.date) ?? 0) - kg);
+      for (const w of waits) storeRoom.set(w, (storeRoom.get(w) ?? 0) - kg);
+      millDays.push({ date: t.date, kg });
+    }
+    if (!millDays.length) continue;
+
+    const storedKg = overflowKg - left;
+    out.push({
+      kind: "store_mill_later",
+      key: hashKey([
+        "store_mill_later",
+        day.date,
+        overflowKg,
+        millDays.map((m) => [m.date, m.kg]),
+      ]),
+      title: `Mill is ${formatTonnes(overflowKg)} over on ${shortDay(day.date)}`,
+      facts: {
+        day: shortDay(day.date),
+        overflow: formatTonnes(overflowKg),
+        stored: formatTonnes(storedKg),
+        mill_days: dayList(millDays.map((m) => m.date)),
+        remainder: formatTonnes(left),
+      },
+      date: day.date,
+      millDays,
+      remainderKg: left,
+    });
+  }
+  return out;
 }
 
 /** The card's plain-language note on why and what it gains, from its facts only. */
@@ -414,6 +491,12 @@ export function templateNote(p: Suggestion): string {
     case "mill_full_loads": {
       const n = Number(f.full_days);
       return `Milling the ${f.stock} of stored palay in ${n} full ${n === 1 ? "day" : "days"} (${f.full_dates}) instead of ${f.spread_days} partial days cuts electricity from ${f.spread_per_kg}/kg to ${f.full_per_kg}/kg, since base load runs fewer days. That saves ${f.saving_per_kg}/kg.`;
+    }
+    case "store_mill_later": {
+      const store = `Storing ${f.stored} of dried palay and milling it on ${f.mill_days}, when the mill is quiet,`;
+      return p.remainderKg === 0
+        ? `The mill is ${f.overflow} over on ${f.day}. ${store} clears it.`
+        : `The mill is ${f.overflow} over on ${f.day}. ${store} leaves ${f.remainder} over.`;
     }
     case "fill_idle": {
       const n = Number(f.recipients);

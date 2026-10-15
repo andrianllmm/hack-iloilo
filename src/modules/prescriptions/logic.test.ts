@@ -12,7 +12,9 @@ import {
   millFullLoads,
   type MillDay,
   moveBookings,
+  storeMillLater,
   templateNote,
+  type PoolDay,
   type DryerDay,
   type OpenBooking,
 } from "./logic";
@@ -374,5 +376,61 @@ describe("cardDates", () => {
       today: "2026-10-15",
     });
     expect(cardDates(rx)).toEqual(["2026-10-30", "2026-10-31", "2026-11-01"]);
+  });
+});
+
+describe("storeMillLater", () => {
+  const MILL = 49_600;
+  /** Mill days from Oct 20 by firm load; idle under 30% of capacity. */
+  const mill = (...loads: number[]): PoolDay[] =>
+    loads.map((firmKg, i) => ({
+      date: `2026-10-${20 + i}`,
+      capacityKg: MILL,
+      firmKg,
+      idle: firmKg < 0.3 * MILL,
+    }));
+  const storage = (...room: number[]): PoolDay[] =>
+    room.map((r, i) => ({
+      date: `2026-10-${20 + i}`,
+      capacityKg: 1_100_000,
+      firmKg: 1_100_000 - r,
+      idle: false,
+    }));
+
+  it("stores the overflow and mills it on the nearest idle mill days", () => {
+    // Oct 20 is 60 t over; Oct 21 is busy, Oct 22 and 23 are idle.
+    const [rx, ...rest] = storeMillLater({
+      mill: mill(109_600, 40_000, 10_000, 0),
+      storage: storage(500_000, 500_000, 500_000, 500_000),
+    });
+    expect(rest).toEqual([]);
+    expect(rx.title).toBe("Mill is 60 t over on Oct 20");
+    expect(rx.millDays).toEqual([
+      { date: "2026-10-22", kg: 39_600 },
+      { date: "2026-10-23", kg: 20_400 },
+    ]);
+    expect(rx.remainderKg).toBe(0);
+    expect(templateNote(rx)).toBe(
+      "The mill is 60 t over on Oct 20. Storing 60 t of dried palay and milling it on Oct 22–23, when the mill is quiet, clears it.",
+    );
+  });
+
+  it("stores only what fits every day it waits", () => {
+    // Storage has 5 t room on Oct 21, so only 5 t can wait until Oct 22.
+    const [rx] = storeMillLater({
+      mill: mill(59_600, 40_000, 0),
+      storage: storage(500_000, 5_000, 500_000),
+    });
+    expect(rx.millDays).toEqual([{ date: "2026-10-22", kg: 5_000 }]);
+    expect(rx.remainderKg).toBe(5_000);
+  });
+
+  it("gives no card without a later idle mill day", () => {
+    expect(
+      storeMillLater({
+        mill: mill(40_000, 59_600, 40_000),
+        storage: storage(500_000, 500_000, 500_000),
+      }),
+    ).toEqual([]);
   });
 });

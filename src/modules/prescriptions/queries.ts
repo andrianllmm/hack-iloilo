@@ -16,6 +16,8 @@ import {
   fillIdle,
   millFullLoads,
   moveBookings,
+  storeMillLater,
+  type PoolDay,
   type Candidate,
   type OpenBooking,
 } from "./logic";
@@ -79,7 +81,7 @@ export async function prescriptions(
     idleSuggestions(days, today),
     millSuggestions(days, milling),
   ]);
-  suggested.push(...idle, ...mill);
+  suggested.push(...idle, ...mill, ...storeMillLater(poolInputs(days)));
   const decisions = await decisionsByKey(suggested.map((s) => s.key));
   return suggested.map((s) => ({
     ...s,
@@ -159,6 +161,18 @@ async function millSuggestions(
         tariffMinorPerKwh: facility.tariff_minor_per_kwh,
       }),
   });
+}
+
+/** Mill and storage days with their firm load, for store-now-mill-later. */
+function poolInputs(days: DayPool[]): { mill: PoolDay[]; storage: PoolDay[] } {
+  const firm = (pool: "mill" | "storage") =>
+    poolDays(days, pool).map((d) => ({
+      date: d.date,
+      capacityKg: d.capacityKg,
+      firmKg: d.load.confirmed.mid + d.load.offer.mid,
+      idle: d.idle,
+    }));
+  return { mill: firm("mill"), storage: firm("storage") };
 }
 
 async function decisionsByKey(keys: string[]): Promise<Map<string, Decision>> {
