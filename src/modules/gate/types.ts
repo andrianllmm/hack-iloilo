@@ -5,6 +5,7 @@ type Enums = Database["public"]["Enums"];
 
 export type QueueEntry = Tables["queue_entries"]["Row"];
 export type Batch = Tables["batches"]["Row"];
+export type Dispatch = Tables["dispatches"]["Row"];
 export type QueueStatus = Enums["queue_status"];
 export type BatchOwnership = Enums["batch_ownership"];
 export type Service = Enums["service"];
@@ -47,4 +48,16 @@ export type BatchListRow = Pick<
 > & {
   client: Pick<Tables["clients"]["Row"], "name">;
   entry: Pick<QueueEntry, "service"> | null;
+};
+/** A dispatch with the buyer (or owner, for a pickup) it went to. */
+export type DispatchRow = Dispatch & {
+  buyer: Pick<Tables["clients"]["Row"], "name">;
+};
+/** A batch with its origin and every dispatch, for the trail from gate to buyers. */
+export type BatchTrail = Batch & {
+  client: Pick<Tables["clients"]["Row"], "name" | "phone" | "kind"> & {
+    municipality: Pick<Tables["municipalities"]["Row"], "name"> | null;
+  };
+  entry: Pick<QueueEntry, "service" | "started_at"> | null;
+  dispatches: DispatchRow[];
 };

@@ -14,8 +14,10 @@ import {
   startMillingSchema,
 } from "./batch-schema";
 import { checkInSchema, type CheckInInput } from "./checkin-schema";
+import { dispatchSchema } from "./dispatch-schema";
 import {
   checkIn,
+  dispatch,
   finish,
   finishDrying,
   finishMilling,
@@ -279,5 +281,15 @@ export async function finishMillingBatch(
         rice_kg: data.rice_kg,
         byproducts: { bran_kg: data.bran_kg, husk_kg: data.husk_kg },
       }),
+  );
+}
+
+/** Records a dispatch (sale or owner pickup), checking kg against what's left. */
+export async function dispatchBatch(
+  batchId: string,
+  input: unknown,
+): Promise<StageResult> {
+  return record(batchId, "record dispatch", dispatchSchema, input, (id, data) =>
+    dispatch({ batchId: id, ...data }),
   );
 }

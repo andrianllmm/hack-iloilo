@@ -6,6 +6,7 @@ import type {
   Batch,
   BatchOwnership,
   BookingStatus,
+  Dispatch,
   OfferStatus,
   QueueEntry,
   QueueRow,
@@ -68,6 +69,48 @@ export function nextStage(
       `Cannot ${action} a batch that is ${batch.stage}; it must be ${transition.from}.`,
     );
   return transition.to;
+}
+
+/** A dispatch is a sale of IRPC rice, or a custom owner collecting their own. */
+export type DispatchMode = "sale" | "pickup";
+
+/** IRPC-owned rice is sold to buyers; custom batches are picked up by their owner. */
+export function dispatchMode(ownership: BatchOwnership): DispatchMode {
+  return ownership === "irpc" ? "sale" : "pickup";
+}
+
+/**
+ * Kilograms a batch can dispatch: the milled rice once it's milled, otherwise
+ * the custom-dried palay its owner picks up. IRPC palay isn't dispatchable
+ * until it has been milled, so its pre-mill weight counts as nothing.
+ */
+export function dispatchableKg(
+  batch: Pick<Batch, "ownership" | "rice_kg" | "dried_kg">,
+): number {
+  if (batch.rice_kg != null) return batch.rice_kg;
+  if (batch.ownership === "custom" && batch.dried_kg != null)
+    return batch.dried_kg;
+  return 0;
+}
+
+/** Total kilograms already dispatched from a batch. */
+export function dispatchedKg(
+  dispatches: readonly Pick<Dispatch, "kg">[],
+): number {
+  return dispatches.reduce((sum, d) => sum + d.kg, 0);
+}
+
+/** Kilograms still available to dispatch, never negative. */
+export function remainingKg(dispatchable: number, dispatched: number): number {
+  return Math.max(0, dispatchable - dispatched);
+}
+
+/** A batch is fully dispatched once all of its dispatchable kg have left. */
+export function isFullyDispatched(
+  dispatchable: number,
+  dispatched: number,
+): boolean {
+  return dispatchable > 0 && dispatched >= dispatchable;
 }
 
 /** Milling recovery as a percent (rice ÷ mill-in), or null before milling. */

@@ -99,3 +99,57 @@ values
    (select id from d1), now() - interval '30 hours', now() - interval '22 hours', 13.5, 1920,
    (select id from m1), now() - interval '16 hours', now() - interval '15 hours', 1900, 1245,
    '{"bran_kg": 190, "husk_kg": 420}');
+
+-- Dispatched and part-dispatched batches, two Manila days back so their numbers
+-- don't clash. Fixed ids so the dispatches below can reference them.
+--   b..01 IRPC, milled, sold out (5,400 kg rice) -> stage 'dispatched'
+--   b..02 IRPC, milled, part-sold (1,800 of 3,000 kg) -> stays 'milled'
+--   b..03 custom, dried, picked up by its owner (2,300 kg) -> stage 'dispatched'
+with d1 as (
+  select id from public.machines
+  where facility_id = 'f0000000-0000-0000-0000-000000000001' and code = 'D1'
+),
+m1 as (
+  select id from public.machines
+  where facility_id = 'f0000000-0000-0000-0000-000000000001' and code = 'M1'
+),
+yday2 as (
+  select to_char((now() at time zone 'Asia/Manila') - interval '2 days', 'YYMMDD') as ymd
+)
+insert into public.batches (
+  id, facility_id, batch_no, client_id, ownership, stage, bags, net_kg, mc,
+  dryer_id, dry_start, dry_end, mc_out, dried_kg,
+  mill_id, mill_start, mill_end, mill_in_kg, rice_kg, byproducts
+)
+values
+  ('b6000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001',
+   (select ymd from yday2) || '-001',
+   'c1000000-0000-0000-0000-000000000006', 'irpc', 'dispatched', 180, 9000, 24.5,
+   (select id from d1), now() - interval '54 hours', now() - interval '46 hours', 14.0, 7800,
+   (select id from m1), now() - interval '40 hours', now() - interval '39 hours', 7800, 5400,
+   '{"bran_kg": 780, "husk_kg": 1560}'),
+  ('b6000000-0000-0000-0000-000000000002', 'f0000000-0000-0000-0000-000000000001',
+   (select ymd from yday2) || '-002',
+   'c2000000-0000-0000-0000-000000000001', 'irpc', 'milled', 100, 5000, 23.0,
+   (select id from d1), now() - interval '52 hours', now() - interval '44 hours', 14.0, 4300,
+   (select id from m1), now() - interval '38 hours', now() - interval '37 hours', 4300, 3000,
+   '{"bran_kg": 430, "husk_kg": 850}'),
+  ('b6000000-0000-0000-0000-000000000003', 'f0000000-0000-0000-0000-000000000001',
+   (select ymd from yday2) || '-003',
+   'c1000000-0000-0000-0000-000000000008', 'custom', 'dispatched', 56, 2800, 22.0,
+   (select id from d1), now() - interval '50 hours', now() - interval '42 hours', 13.8, 2300,
+   null, null, null, null, null, '{}');
+
+-- Sales to buyers and the owner's pickup. Price is centavos per kg.
+insert into public.dispatches (
+  id, batch_id, buyer_id, kg, price_minor_per_kg, or_ref, dispatched_at
+)
+values
+  ('d6000000-0000-0000-0000-000000000001', 'b6000000-0000-0000-0000-000000000001',
+   'c3000000-0000-0000-0000-000000000001', 3000, 3800, '4471', now() - interval '3 hours'),
+  ('d6000000-0000-0000-0000-000000000002', 'b6000000-0000-0000-0000-000000000001',
+   'c3000000-0000-0000-0000-000000000002', 2400, 3750, '4472', now() - interval '2 hours'),
+  ('d6000000-0000-0000-0000-000000000003', 'b6000000-0000-0000-0000-000000000002',
+   'c3000000-0000-0000-0000-000000000006', 1800, 3900, '4480', now() - interval '90 minutes'),
+  ('d6000000-0000-0000-0000-000000000004', 'b6000000-0000-0000-0000-000000000003',
+   'c1000000-0000-0000-0000-000000000008', 2300, 0, null, now() - interval '30 minutes');

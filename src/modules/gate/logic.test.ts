@@ -4,8 +4,12 @@ import {
   arrivalLabel,
   batchNo,
   batchOwnership,
+  dispatchableKg,
+  dispatchedKg,
+  dispatchMode,
   formatDay,
   formatWait,
+  isFullyDispatched,
   maskPhone,
   nextBatchNo,
   nextStage,
@@ -15,6 +19,7 @@ import {
   recoveryPct,
   refCheckInError,
   refLine,
+  remainingKg,
   waitMinutes,
 } from "./logic";
 import type { QueueRow } from "./types";
@@ -127,6 +132,67 @@ describe("recoveryPct", () => {
     expect(recoveryPct(null, null)).toBeNull();
     expect(recoveryPct(650, null)).toBeNull();
     expect(recoveryPct(650, 0)).toBeNull();
+  });
+});
+
+describe("dispatchMode", () => {
+  it("sells IRPC rice and hands custom batches back to their owner", () => {
+    expect(dispatchMode("irpc")).toBe("sale");
+    expect(dispatchMode("custom")).toBe("pickup");
+  });
+});
+
+describe("dispatchableKg", () => {
+  it("is the milled rice once a batch is milled, either ownership", () => {
+    expect(
+      dispatchableKg({ ownership: "irpc", rice_kg: 5400, dried_kg: 7800 }),
+    ).toBe(5400);
+    expect(
+      dispatchableKg({ ownership: "custom", rice_kg: 1200, dried_kg: 1800 }),
+    ).toBe(1200);
+  });
+
+  it("is the dried palay for custom batches not yet milled", () => {
+    expect(
+      dispatchableKg({ ownership: "custom", rice_kg: null, dried_kg: 2300 }),
+    ).toBe(2300);
+  });
+
+  it("is nothing for IRPC palay before it is milled", () => {
+    expect(
+      dispatchableKg({ ownership: "irpc", rice_kg: null, dried_kg: 9000 }),
+    ).toBe(0);
+  });
+
+  it("is nothing when neither rice nor dried weight is recorded", () => {
+    expect(
+      dispatchableKg({ ownership: "custom", rice_kg: null, dried_kg: null }),
+    ).toBe(0);
+  });
+});
+
+describe("dispatched and remaining kg", () => {
+  it("sums what has been dispatched", () => {
+    expect(dispatchedKg([])).toBe(0);
+    expect(dispatchedKg([{ kg: 1800 }, { kg: 1200 }])).toBe(3000);
+  });
+
+  it("is the dispatchable weight less what has left, never negative", () => {
+    expect(remainingKg(5400, 1800)).toBe(3600);
+    expect(remainingKg(5400, 5400)).toBe(0);
+    expect(remainingKg(5400, 6000)).toBe(0);
+  });
+});
+
+describe("isFullyDispatched", () => {
+  it("is true once every dispatchable kg has left", () => {
+    expect(isFullyDispatched(5400, 5400)).toBe(true);
+    expect(isFullyDispatched(5400, 5401)).toBe(true);
+  });
+
+  it("is false while weight remains or nothing is dispatchable", () => {
+    expect(isFullyDispatched(5400, 3600)).toBe(false);
+    expect(isFullyDispatched(0, 0)).toBe(false);
   });
 });
 
