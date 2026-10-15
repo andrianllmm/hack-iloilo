@@ -411,6 +411,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"track_attempts": {
+                  Row: {
+                    "created_at": string,"id": string,"phone": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"phone": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"phone"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"varieties": {
                   Row: {
                     "code": string,"created_at": string,"id": string,"name": string,"updated_at": string
