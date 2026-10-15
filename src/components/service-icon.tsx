@@ -1,8 +1,17 @@
-import { Cog, Sun, type LucideProps } from "lucide-react";
+import { Cog, Sun, Warehouse, type LucideProps } from "lucide-react";
 import { cn } from "cn";
 
-/** Drying is the sun, milling the cog, wherever a service, pool or machine shows. */
-const icons = { drying: Sun, dryer: Sun, milling: Cog, mill: Cog };
+/**
+ * Drying is the sun, milling the cog and storage the warehouse, wherever a
+ * service, pool or machine shows.
+ */
+const icons = {
+  drying: Sun,
+  dryer: Sun,
+  milling: Cog,
+  mill: Cog,
+  storage: Warehouse,
+};
 
 export type ServiceIconKind = keyof typeof icons;
 
