@@ -3,6 +3,7 @@
 import { ServiceIcon, isServiceIconKind } from "@/components/service-icon";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { InfoIcon } from "@/components/hint-icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -251,6 +252,7 @@ function Headline({
     >
       <Tile
         label={`${poolNames[pool]} use`}
+        info="Expected load over capacity for these weeks: bookings and offers plus the harvest forecast."
         value={h.utilizationPct === null ? "—" : `${h.utilizationPct}%`}
         note={`${plainTonnes(h.expectedKg)} of ${formatTonnes(h.capacityKg)}`}
       />
@@ -287,18 +289,21 @@ function Headline({
 
 function Tile({
   label,
+  info,
   value,
   note,
 }: {
   label: string;
+  info?: string;
   value: string;
   note: string;
 }) {
   return (
     <Card>
       <CardContent className="flex flex-col gap-4">
-        <span className="text-sm font-semibold text-muted-foreground">
+        <span className="flex items-center gap-1 text-sm font-semibold text-muted-foreground">
           {label}
+          {info ? <InfoIcon text={info} /> : null}
         </span>
         <span className="text-4xl font-bold tracking-tight tabular-nums">
           {value}

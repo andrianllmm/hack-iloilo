@@ -4,6 +4,7 @@ import { ServiceIcon, isServiceIconKind } from "@/components/service-icon";
 import { ArrowUpRight } from "lucide-react";
 import { useState } from "react";
 import { StatusBadge } from "@/components/status-badge";
+import { InfoIcon } from "@/components/hint-icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -276,8 +277,12 @@ function PoolUnit({
                 {formatTonnes(firm)}
               </span>
               <span className="text-sm text-muted-foreground">
-                {forecast > 0 && ` + ${formatTonnes(forecast)} fcst`} of{" "}
+                {forecast > 0 && ` + ${formatTonnes(forecast)} forecast`} of{" "}
                 {formatTonnes(day.capacityKg)}
+              </span>
+              {/* Above the card's stretched link, so it can be tapped. */}
+              <span className="relative z-20 ml-1 inline-flex align-middle">
+                <InfoIcon text="The big figure is firm: bookings and offers. Forecast is palay the harvest forecast expects that isn't booked yet." />
               </span>
             </div>
             <Chip status={status}>
