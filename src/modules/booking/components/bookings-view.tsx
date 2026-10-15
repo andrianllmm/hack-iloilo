@@ -150,7 +150,7 @@ export function BookingsView({
             </SelectContent>
           </Select>
         </Field>
-        <Field className="max-w-sm min-w-48 flex-1">
+        <Field className="min-w-48 flex-1">
           <FieldLabel htmlFor="bookings-search">Search</FieldLabel>
           <Input
             id="bookings-search"
