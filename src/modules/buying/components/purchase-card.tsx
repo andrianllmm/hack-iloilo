@@ -6,9 +6,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatKg, formatMoney } from "@/lib/format";
-import { requireRole } from "@/modules/accounts/auth";
+import { getStaff, requireRole } from "@/modules/accounts/auth";
 import type { Deductions } from "@/modules/pricing/logic";
 import { purchaseByBatch } from "../queries";
+import { OverrideForm } from "./override-form";
 import { VoucherForm } from "./voucher-form";
 
 /**
@@ -18,9 +19,14 @@ import { VoucherForm } from "./voucher-form";
  */
 export async function PurchaseCard({ id }: { id: string }) {
   await requireRole();
-  const purchase = await purchaseByBatch(id);
+  const [staff, purchase] = await Promise.all([
+    getStaff(),
+    purchaseByBatch(id),
+  ]);
   if (!purchase) return null;
   const deductions = purchase.deductions as Deductions;
+  const isManager = staff?.role === "manager";
+  const overridden = purchase.override_reason != null;
 
   return (
     <Card className="max-w-xl">
@@ -48,6 +54,14 @@ export async function PurchaseCard({ id }: { id: string }) {
               <dd className="font-medium">{value}</dd>
             </div>
           ))}
+          {overridden && deductions.original_minor_per_kg != null ? (
+            <div className="contents">
+              <dt className="text-muted-foreground">Original price</dt>
+              <dd className="font-medium text-muted-foreground line-through">
+                {formatMoney(deductions.original_minor_per_kg)}/kg
+              </dd>
+            </div>
+          ) : null}
           <div className="contents">
             <dt className="text-muted-foreground">Total</dt>
             <dd className="text-base font-semibold">
@@ -55,7 +69,16 @@ export async function PurchaseCard({ id }: { id: string }) {
             </dd>
           </div>
         </dl>
+        {overridden ? (
+          <p className="text-sm">
+            <span className="text-muted-foreground">Override reason: </span>
+            {purchase.override_reason}
+          </p>
+        ) : null}
         <VoucherForm batchId={id} current={purchase.voucher_ref} />
+        {isManager ? (
+          <OverrideForm batchId={id} reason={purchase.override_reason} />
+        ) : null}
       </CardContent>
     </Card>
   );
