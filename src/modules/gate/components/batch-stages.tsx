@@ -5,6 +5,7 @@ import { Controller, type FieldValues, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { DateTimePicker } from "@/components/date-time-picker";
+import { OptionSelect } from "@/components/option-select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,10 +15,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Spinner } from "@/components/ui/spinner";
 import { joinManila, splitManila } from "@/lib/dates";
@@ -244,20 +241,26 @@ function ReceivingForm({
       </Field>
       <Field data-invalid={!!errors.variety_id}>
         <FieldLabel htmlFor={`${formId}-variety`}>Variety</FieldLabel>
-        <NativeSelect
-          id={`${formId}-variety`}
-          className="w-full"
-          aria-invalid={!!errors.variety_id}
-          disabled={pending}
-          {...form.register("variety_id")}
-        >
-          <NativeSelectOption value="">Not recorded</NativeSelectOption>
-          {varieties.map((v) => (
-            <NativeSelectOption key={v.id} value={v.id}>
-              {v.code} — {v.name}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+        <Controller
+          control={form.control}
+          name="variety_id"
+          render={({ field }) => (
+            <OptionSelect
+              id={`${formId}-variety`}
+              options={varieties.map((v) => ({
+                value: v.id,
+                label: `${v.code} — ${v.name}`,
+              }))}
+              none="Not recorded"
+              value={field.value ?? ""}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              triggerRef={field.ref}
+              invalid={!!errors.variety_id}
+              disabled={pending}
+            />
+          )}
+        />
         <FieldError errors={[errors.variety_id]} />
       </Field>
       <Field data-invalid={!!errors.mc}>
@@ -331,20 +334,26 @@ function ReceivedForms({
     >
       <Field data-invalid={!!errors.dryer_id}>
         <FieldLabel htmlFor={`${formId}-dryer`}>Dryer</FieldLabel>
-        <NativeSelect
-          id={`${formId}-dryer`}
-          className="w-full"
-          aria-invalid={!!errors.dryer_id}
-          disabled={pending}
-          {...form.register("dryer_id")}
-        >
-          <NativeSelectOption value="">Choose a dryer…</NativeSelectOption>
-          {dryers.map((d) => (
-            <NativeSelectOption key={d.id} value={d.id}>
-              {d.code}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+        <Controller
+          control={form.control}
+          name="dryer_id"
+          render={({ field }) => (
+            <OptionSelect
+              id={`${formId}-dryer`}
+              options={dryers.map((d) => ({
+                value: d.id,
+                label: d.code,
+              }))}
+              none="Choose a dryer…"
+              value={field.value ?? ""}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              triggerRef={field.ref}
+              invalid={!!errors.dryer_id}
+              disabled={pending}
+            />
+          )}
+        />
         <FieldError errors={[errors.dryer_id]} />
       </Field>
       <Controller
@@ -506,20 +515,26 @@ function StartMillingForm({
     >
       <Field data-invalid={!!errors.mill_id}>
         <FieldLabel htmlFor={`${formId}-mill`}>Mill</FieldLabel>
-        <NativeSelect
-          id={`${formId}-mill`}
-          className="w-full"
-          aria-invalid={!!errors.mill_id}
-          disabled={pending}
-          {...form.register("mill_id")}
-        >
-          <NativeSelectOption value="">Choose a mill…</NativeSelectOption>
-          {mills.map((m) => (
-            <NativeSelectOption key={m.id} value={m.id}>
-              {m.code}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+        <Controller
+          control={form.control}
+          name="mill_id"
+          render={({ field }) => (
+            <OptionSelect
+              id={`${formId}-mill`}
+              options={mills.map((m) => ({
+                value: m.id,
+                label: m.code,
+              }))}
+              none="Choose a mill…"
+              value={field.value ?? ""}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              triggerRef={field.ref}
+              invalid={!!errors.mill_id}
+              disabled={pending}
+            />
+          )}
+        />
         <FieldError errors={[errors.mill_id]} />
       </Field>
       <Controller

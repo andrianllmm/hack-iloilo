@@ -2,6 +2,7 @@
 
 import { Pencil, Plus } from "lucide-react";
 import { useActionState, useState, useTransition } from "react";
+import { OptionSelect } from "@/components/option-select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,10 +20,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -41,6 +38,11 @@ import {
 import type { Machine } from "../queries";
 import { NumberField } from "./facility-form";
 import { UnconfirmedIcon } from "./hint-icons";
+
+const machineTypes = [
+  { value: "dryer", label: "Dryer" },
+  { value: "mill", label: "Mill" },
+];
 
 const t = (kg: number | null) => (kg == null ? "" : String(kg / 1000));
 
@@ -189,16 +191,13 @@ function MachineForm({
         <div className="grid grid-cols-2 gap-3">
           <Field>
             <FieldLabel htmlFor="type">Type</FieldLabel>
-            <NativeSelect
+            <OptionSelect
               id="type"
               name="type"
-              className="w-full"
+              options={machineTypes}
               value={type}
-              onChange={(e) => setType(e.target.value as Machine["type"])}
-            >
-              <NativeSelectOption value="dryer">Dryer</NativeSelectOption>
-              <NativeSelectOption value="mill">Mill</NativeSelectOption>
-            </NativeSelect>
+              onChange={(value) => setType(value as Machine["type"])}
+            />
           </Field>
           <Field>
             <FieldLabel htmlFor="code">Code</FieldLabel>

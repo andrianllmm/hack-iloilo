@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { OptionSelect } from "@/components/option-select";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -10,10 +11,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
 import { submitOffer, type OfferFormState } from "../actions";
 
 type ClientOption = { id: string; name: string; phone: string };
@@ -63,43 +60,32 @@ function OfferFields({
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="clientId">Client</FieldLabel>
-          <NativeSelect
+          <OptionSelect
             id="clientId"
             name="clientId"
-            className="w-full"
             required
             defaultValue=""
-            onChange={(e) => {
-              const client = clients.find((c) => c.id === e.target.value);
+            placeholder="Select a client"
+            options={clients.map((c) => ({ value: c.id, label: c.name }))}
+            onChange={(id) => {
+              const client = clients.find((c) => c.id === id);
               setPhone(client?.phone ?? "");
             }}
-          >
-            <NativeSelectOption value="" disabled>
-              Select a client
-            </NativeSelectOption>
-            {clients.map((c) => (
-              <NativeSelectOption key={c.id} value={c.id}>
-                {c.name}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
+          />
         </Field>
 
         <Field>
           <FieldLabel htmlFor="varietyId">Variety</FieldLabel>
-          <NativeSelect
+          <OptionSelect
             id="varietyId"
             name="varietyId"
-            className="w-full"
             defaultValue=""
-          >
-            <NativeSelectOption value="">Unknown</NativeSelectOption>
-            {varieties.map((v) => (
-              <NativeSelectOption key={v.id} value={v.id}>
-                {v.code} — {v.name}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
+            none="Unknown"
+            options={varieties.map((v) => ({
+              value: v.id,
+              label: `${v.code} — ${v.name}`,
+            }))}
+          />
           <FieldDescription>Optional.</FieldDescription>
         </Field>
 
