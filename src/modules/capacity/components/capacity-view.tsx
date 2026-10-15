@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -121,9 +120,9 @@ export function CapacityView({
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">Capacity</h1>
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
+            {range.from === today && "Today, "}
             {span(range.from, range.to)}
-            <Badge>Today, {shortDay(today)}</Badge>
           </p>
         </div>
         <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
