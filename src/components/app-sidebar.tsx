@@ -4,6 +4,7 @@ import { ChevronsUpDown, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/brand";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -86,6 +87,11 @@ export function AppSidebar({ staff }: { staff: Staff }) {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger render={<SidebarMenuButton size="lg" />}>
+                <Avatar className="size-8 rounded-lg">
+                  <AvatarFallback className="rounded-lg bg-primary/10 font-semibold text-primary">
+                    {initials(staff.name)}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="grid flex-1 text-left leading-tight">
                   <span className="truncate font-medium">{staff.name}</span>
                   <span className="truncate text-xs text-muted-foreground capitalize">
@@ -107,4 +113,12 @@ export function AppSidebar({ staff }: { staff: Staff }) {
       <SidebarRail />
     </Sidebar>
   );
+}
+
+/** `MM` from "Maria Manager": the first letters of the first and last names. */
+function initials(name: string) {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  return [words[0], words.length > 1 ? words.at(-1) : undefined]
+    .map((word) => word?.[0]?.toUpperCase() ?? "")
+    .join("");
 }
