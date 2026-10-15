@@ -1,9 +1,16 @@
 "use client";
 
-import { ArrowRight, ChevronRight } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarClock,
+  ChevronRight,
+  MessageSquareText,
+} from "lucide-react";
 import { useTransition } from "react";
 import { toast } from "sonner";
+import { ServiceIcon } from "@/components/service-icon";
 import { StatusBadge } from "@/components/status-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -37,6 +44,13 @@ const kindLabels: Record<Prescription["kind"], string> = {
   store_mill_later: "Store now, mill later",
 };
 
+const kindIcons: Record<Prescription["kind"], React.ReactNode> = {
+  move_bookings: <CalendarClock aria-hidden />,
+  fill_idle: <MessageSquareText aria-hidden />,
+  mill_full_loads: <ServiceIcon kind="mill" />,
+  store_mill_later: <ServiceIcon kind="storage" />,
+};
+
 /** Recipients listed by name before "+N". */
 const SHOWN_RECIPIENTS = 3;
 
@@ -56,29 +70,29 @@ export function PrescriptionCard({
     });
 
   return (
-    <Card size="sm" className="h-full">
-      <CardHeader>
-        <span className="text-xs font-medium text-muted-foreground">
+    <Card className="h-full">
+      <CardHeader className="gap-2">
+        <Badge variant="secondary">
+          {kindIcons[p.kind]}
           {kindLabels[p.kind]}
-        </span>
-        <CardTitle>{p.title}</CardTitle>
+        </Badge>
+        <CardTitle className="text-lg leading-snug">{p.title}</CardTitle>
         <CardDescription className="text-pretty">
           {templateNote(p)}
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-1 flex-col gap-2">
+      <CardContent className="flex flex-1 flex-col gap-3">
         {p.kind === "move_bookings" && <Moves p={p} />}
         {p.kind === "fill_idle" && <Recipients p={p} />}
         {p.kind === "mill_full_loads" && <MillPlans p={p} />}
         {p.kind === "store_mill_later" && <MillLater p={p} />}
       </CardContent>
       <CardFooter className="gap-2">
-        <Button size="sm" disabled={pending} onClick={() => decide("accepted")}>
+        <Button disabled={pending} onClick={() => decide("accepted")}>
           {accept}
         </Button>
         <Button
-          size="sm"
-          variant="ghost"
+          variant="outline"
           disabled={pending}
           onClick={() => decide("dismissed")}
         >
@@ -110,13 +124,9 @@ function Rows({
   );
 }
 
-function Remainder({ kg, why }: { kg: number; why: string }) {
+function Remainder({ kg }: { kg: number }) {
   if (kg <= 0) return null;
-  return (
-    <StatusBadge tone="danger">
-      {formatTonnes(kg)} still over: {why}
-    </StatusBadge>
-  );
+  return <StatusBadge tone="danger">{formatTonnes(kg)} still over</StatusBadge>;
 }
 
 function Moves({ p }: { p: MoveBookingsPrescription }) {
@@ -140,10 +150,10 @@ function Moves({ p }: { p: MoveBookingsPrescription }) {
       />
       {p.incomingKg > 0 && (
         <p className="text-xs text-muted-foreground">
-          Includes {formatTonnes(p.incomingKg)} already asked to move here.
+          +{formatTonnes(p.incomingKg)} already asked to move here
         </p>
       )}
-      <Remainder kg={p.remainderKg} why="no flexible booking fits" />
+      <Remainder kg={p.remainderKg} />
     </>
   );
 }
@@ -211,7 +221,7 @@ function MillLater({ p }: { p: StoreMillLaterPrescription }) {
           value: formatTonnes(m.kg),
         }))}
       />
-      <Remainder kg={p.remainderKg} why="no storage room or quiet mill day" />
+      <Remainder kg={p.remainderKg} />
     </>
   );
 }
