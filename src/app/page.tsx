@@ -4,7 +4,6 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { Wordmark } from "@/components/brand";
-import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -94,7 +93,7 @@ export default function LandingPage() {
           Iloilo Rice Processing Complex
         </h1>
         <p className="text-muted-foreground">
-          Dry, mill or sell your palay at IRPC. Book a slot here, or send us a
+          Dry, mill or sell your palay at IRPC. Book or sell here, or send us a
           text if you have no data.
         </p>
       </section>
@@ -116,25 +115,19 @@ export default function LandingPage() {
           <ArrowRight className="size-5 shrink-0" aria-hidden />
         </Link>
 
-        {/* /sell is not built yet (#97); point to SMS until it is. */}
-        <div
-          aria-disabled
-          className="flex items-center gap-4 rounded-xl border border-dashed p-4"
+        <Link
+          href="/sell"
+          className="flex items-center gap-4 rounded-xl border p-4"
         >
-          <Wheat
-            className="size-8 shrink-0 text-muted-foreground"
-            aria-hidden
-          />
+          <Wheat className="size-8 shrink-0 text-primary" aria-hidden />
           <span className="flex flex-1 flex-col">
-            <span className="flex items-center gap-2 text-lg font-semibold">
-              Sell palay
-              <Badge variant="secondary">Soon</Badge>
-            </span>
+            <span className="text-lg font-semibold">Sell palay</span>
             <span className="text-sm text-muted-foreground">
-              For now, text <code>QUOTE</code> or <code>SELL</code> below.
+              Get a quote, then offer your harvest.
             </span>
           </span>
-        </div>
+          <ArrowRight className="size-5 shrink-0" aria-hidden />
+        </Link>
       </nav>
 
       <Suspense fallback={<Skeleton className="h-40" />}>
