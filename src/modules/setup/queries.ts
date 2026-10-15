@@ -7,6 +7,14 @@ import { db } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
 
 export type Facility = Database["public"]["Tables"]["facilities"]["Row"];
+export type Variety = Database["public"]["Tables"]["varieties"]["Row"];
+
+/** All rice varieties, ordered by code, for pickers. */
+export async function listVarieties(): Promise<Variety[]> {
+  const { data, error } = await db().from("varieties").select().order("code");
+  if (error) throw new Error(`Varieties: ${error.message}`);
+  return data;
+}
 
 /** The single IRPC facility. Memoized per request; never hard-code its id. */
 export const currentFacility = cache(async (): Promise<Facility> => {
