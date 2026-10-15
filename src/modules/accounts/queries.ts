@@ -120,6 +120,11 @@ export async function registerClientRecord(
   if (error) throw error;
   return { client: data!, created: true };
 }
+/** The client with this phone, without registering one. */
+export async function findClientByPhone(phone: string): Promise<Client | null> {
+  const normalized = normalizePhone(phone);
+  return normalized ? byPhone(normalized) : null;
+}
 export async function findOrRegisterByPhone(
   phone: string,
   defaults?: ClientDefaults,
