@@ -67,7 +67,7 @@ describe("directory table pagination and sorting", () => {
     );
   });
 
-  it("returns to page one when filters shrink the result set", () => {
+  it("returns to page one when filters shrink the result set", async () => {
     const table = model();
     table.getRowModel();
     table.nextPage();
@@ -75,6 +75,8 @@ describe("directory table pagination and sorting", () => {
     expect(table.getRowModel().rows).toHaveLength(3);
     table.setOptions((previous) => ({ ...previous, data: data.slice(0, 1) }));
     table.getRowModel();
+    // The page index reset is scheduled as a microtask after the row model updates.
+    await Promise.resolve();
     expect(table.store.state.pagination.pageIndex).toBe(0);
     expect(table.getRowModel().rows.map((row) => row.id)).toEqual([data[0].id]);
   });
