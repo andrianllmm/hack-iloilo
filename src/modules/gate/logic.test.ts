@@ -10,7 +10,10 @@ import {
   nextBatchNo,
   nextStage,
   normalizeRef,
+  NOT_IN_LINE_REPLY,
   queueLines,
+  queuePositions,
+  queueStatusReply,
   recordDateNote,
   recoveryPct,
   refCheckInError,
@@ -85,6 +88,80 @@ describe("queueLines", () => {
     expect(lines.drying.serving.map((r) => r.id)).toEqual(["serving"]);
     expect(lines.drying.waiting.map((r) => r.id)).toEqual(["early", "late"]);
     expect(lines.milling.waiting.map((r) => r.id)).toEqual(["mill"]);
+  });
+});
+
+describe("queuePositions", () => {
+  const lines = queueLines([
+    row({
+      id: "a",
+      client_id: "other",
+      checked_in_at: "2026-10-15T08:00:00+08:00",
+    }),
+    row({
+      id: "b",
+      client_id: "c1",
+      checked_in_at: "2026-10-15T08:30:00+08:00",
+    }),
+    row({
+      id: "c",
+      client_id: "c1",
+      checked_in_at: "2026-10-15T09:30:00+08:00",
+    }),
+    row({
+      id: "d",
+      client_id: "c1",
+      service: "milling",
+      status: "serving",
+      started_at: "2026-10-15T09:00:00+08:00",
+    }),
+    row({ id: "e", client_id: "c2", status: "done" }),
+    row({ id: "f", client_id: "c3", service: "milling" }),
+    row({
+      id: "g",
+      client_id: "c3",
+      status: "serving",
+      started_at: "2026-10-15T09:00:00+08:00",
+    }),
+  ]);
+
+  it("gives the earliest waiting place per line, or serving", () => {
+    expect(queuePositions(lines, "c1")).toEqual([
+      { service: "drying", serving: false, position: 2 },
+      { service: "milling", serving: true },
+    ]);
+  });
+
+  it("prefers serving over a later waiting entry", () => {
+    expect(queuePositions(lines, "c3")).toEqual([
+      { service: "drying", serving: true },
+      { service: "milling", serving: false, position: 1 },
+    ]);
+  });
+
+  it("skips done and left entries", () => {
+    expect(queuePositions(lines, "c2")).toEqual([]);
+  });
+});
+
+describe("queueStatusReply", () => {
+  const gsm7 = /^[A-Za-z0-9 @$_!"#%&'()*+,\-./:;<=>?\n]*$/;
+
+  it("lists each line", () => {
+    const reply = queueStatusReply([
+      { service: "drying", serving: false, position: 3 },
+      { service: "milling", serving: true },
+    ]);
+    expect(reply).toBe(
+      "IRPC: Drying: you are #3 in line. Milling: being served now.",
+    );
+    expect(reply).toMatch(gsm7);
+    expect(reply.length).toBeLessThanOrEqual(160);
+  });
+
+  it("is short when not in line", () => {
+    expect(queueStatusReply([])).toBe(NOT_IN_LINE_REPLY);
+    expect(NOT_IN_LINE_REPLY).toMatch(gsm7);
   });
 });
 
