@@ -78,6 +78,12 @@ describe("parseInbound", () => {
     expect(parseInbound("\uFEFFprice").keyword).toBe("PRICE");
   });
 
+  it("marks a question", () => {
+    expect(parseInbound("pwede pa dry?").question).toBe(true);
+    expect(parseInbound("¿oo").question).toBe(true);
+    expect(parseInbound("oo sige").question).toBeUndefined();
+  });
+
   it("gives punctuation-only and emoji-only texts an empty keyword", () => {
     expect(parseInbound("???").keyword).toBe("");
     expect(parseInbound("🙂").keyword).toBe("");
@@ -140,6 +146,26 @@ describe("parseAnswer", () => {
       expect(answer(text)).toEqual({ yes: true });
     for (const text of ["NOOO", "nah", "inde", "👎", "Hindeee"])
       expect(answer(text)).toEqual({ yes: false });
+  });
+
+  it("ignores questions and replies that add content", () => {
+    for (const text of [
+      "pwede pa dry?",
+      "pwede",
+      "oo?",
+      "yes, pila presyo?",
+      "oo pero 25 ka sako",
+      "ok pa dry",
+      "indi anay buas na lang",
+      "sige book dry",
+    ])
+      expect(answer(text)).toBeNull();
+  });
+
+  it("keeps polite filler and a ref after the answer", () => {
+    expect(answer("oo sige salamat")).toEqual({ yes: true });
+    expect(answer("ayaw na lang")).toEqual({ yes: false });
+    expect(answer("yes po K7P2QX")).toEqual({ yes: true, ref: "K7P2QX" });
   });
 
   it("keeps a word that looks like a ref for the caller to check", () => {

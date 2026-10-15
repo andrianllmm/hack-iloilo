@@ -274,6 +274,24 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
       expect(errorLog).toHaveBeenCalled();
     });
 
+    it("doesn't take a question or a longer reply as YES to a reschedule", async () => {
+      const booking = await book("BOOK DRY 700 20/10 ±3");
+      const to = dates.addDays(booking.scheduled_date, 2);
+      await proposeReschedule(booking.id, to);
+      for (const body of ["pwede pa dry?", "pwede", "oo pero sa 22/10"])
+        await inbound(body);
+      expect(await findByRef(booking.ref)).toMatchObject({
+        status: "reschedule_proposed",
+        scheduled_date: booking.scheduled_date,
+      });
+      // A plain yes still answers it.
+      await inbound("oo sige");
+      expect(await findByRef(booking.ref)).toMatchObject({
+        status: "confirmed",
+        scheduled_date: to,
+      });
+    });
+
     it("texts a reschedule and moves the booking on YES", async () => {
       const booking = await book("BOOK DRY 700 20/10 ±3");
       const to = dates.addDays(booking.scheduled_date, 2);

@@ -32,6 +32,8 @@ export type ParsedInbound = {
   args: string[];
   /** Raw phone from a trailing `FOR <phone>`; normalize before use. */
   forPhone?: string;
+  /** The text asks something ("pwede pa dry?"), so it answers no prompt. */
+  question?: true;
 };
 
 /** Longest text worth reading with AI (three SMS segments). */
@@ -83,7 +85,12 @@ export function parseInbound(body: string): ParsedInbound {
     forPhone = rest.at(-1);
     rest.splice(-2);
   }
-  return { keyword: first.toUpperCase(), args: rest, forPhone };
+  return {
+    keyword: first.toUpperCase(),
+    args: rest,
+    forPhone,
+    ...(/[?¿]/.test(body) && { question: true as const }),
+  };
 }
 
 const HELP_WORDS = new Set("HELP TABANG BULIG INFO MENU".split(" "));
@@ -94,9 +101,10 @@ export const isHelp = (keyword: string): boolean =>
 
 // English, Hiligaynon and Tagalog, with common texting spellings.
 const YES_WORDS = new Set(
+  // Not "pwede"/"puede" (can), which starts questions: "pwede pa dry?"
   (
     "YES Y YEP YUP YEAH YA OK OKAY OKS OKI OKIE K KK SURE GO CONFIRM " +
-    "CONFIRMED OO HUO HO OPO SIGE TAMA CORRECT PWEDE PUEDE AYOS GAME"
+    "CONFIRMED OO HUO HO OPO SIGE TAMA CORRECT"
   ).split(" "),
 );
 const NO_WORDS = new Set(
@@ -114,18 +122,42 @@ const answerWord = (word: string, words: Set<string>): boolean =>
 /** Words that can follow an answer, e.g. "oo sige salamat". */
 const MAX_ANSWER_WORDS = 4;
 
+// Polite filler after an answer; anything else ("pa dry", "pero 25 sako")
+// means the text says more than yes or no.
+const ANSWER_FILLER = new Set(
+  (
+    "PO SIGE SALAMAT THANKS THANK YOU TY PLEASE PLS PLZ NA LANG GID MAN " +
+    "GANI KO KAMI ANAY TALAGA"
+  ).split(" "),
+);
+
+/** A word that may follow an answer: filler, another answer, or a ref. */
+const answerTail = (arg: string): boolean => {
+  const word = arg.toUpperCase();
+  return (
+    ANSWER_FILLER.has(word) ||
+    answerWord(word, YES_WORDS) ||
+    answerWord(word, NO_WORDS) ||
+    /^[A-Z0-9]{6}$/.test(word)
+  );
+};
+
 /**
- * A short yes/no reply ("oo sige", "no thanks", "YES K7P2QX"); null otherwise.
- * `ref` is any 6-character token, which may just be a word like "please".
+ * A short yes/no reply ("oo sige", "no thanks", "YES K7P2QX"); null otherwise,
+ * including questions and replies that add content. `ref` is any 6-character
+ * token, which may just be a word like "please".
  */
 export function parseAnswer({
   keyword,
   args,
+  question,
 }: ParsedInbound): { yes: boolean; ref?: string } | null {
+  if (question) return null;
   const word = keyword.replace(/[^A-Z]/g, "");
   const yes = answerWord(word, YES_WORDS);
   if (!yes && !answerWord(word, NO_WORDS)) return null;
-  if (args.length > MAX_ANSWER_WORDS - 1) return null;
+  if (args.length > MAX_ANSWER_WORDS - 1 || !args.every(answerTail))
+    return null;
   const ref = args.find((a) => /^[A-Z0-9]{6}$/i.test(a))?.toUpperCase();
   return { yes, ...(ref && { ref }) };
 }

@@ -194,7 +194,7 @@ sequenceDiagram
   S->>G: send(reply)
 ```
 
-A short yes or no ("oo sige", "indi", "ok po", "yesss", "👍") answers the sender's latest open prompt; `YES <ref>` / `NO <ref>` picks one. Prompts expire after 24 hours. `HELP`, `TABANG`, `BULIG`, `INFO`, or a text of only punctuation or emoji, gets the help reply.
+A short yes or no ("oo sige", "indi", "ok po", "yesss", "👍") answers the sender's latest open prompt; `YES <ref>` / `NO <ref>` picks one. Only polite filler (`po`, `sige`, `salamat`, `na lang`) or a ref may follow the answer, and a text with `?` is never one, so "pwede pa dry?" or "oo pero 25 sako" can't confirm a reschedule. Prompts expire after 24 hours. `HELP`, `TABANG`, `BULIG`, `INFO`, or a text of only punctuation or emoji, gets the help reply.
 
 **Tests:** keyword parsing, normalization, `FOR`, dd/mm dates, the flood guard; the relay's signature check and dedupe.
 
