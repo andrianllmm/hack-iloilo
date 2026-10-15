@@ -15,7 +15,7 @@
   );
   --on-grain: var(--brand-secondary);
   --flame: #e8762c;
-  --grid: color-mix(in oklch, var(--border) 45%, transparent);
+  --grid: color-mix(in oklch, var(--border) 25%, transparent);
 }
 
 .plant-view [data-s="ok"] {
