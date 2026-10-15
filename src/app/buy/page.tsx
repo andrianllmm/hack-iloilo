@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 import { Wordmark } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,19 +17,35 @@ import { todayManila } from "@/lib/dates";
 import { env } from "@/lib/env";
 import { formatDate, formatKg, formatMoney } from "@/lib/format";
 import { normalizeBatchNo } from "@/modules/gate/logic";
-import { publicBatchTrail, riceStock } from "@/modules/gate/queries";
+import { publicBatchTrail } from "@/modules/gate/queries";
 import { WebOrderForm } from "@/modules/orders/components/web-order-form";
+import { freeKg } from "@/modules/orders/logic";
+import { orderStock } from "@/modules/orders/queries";
 import { priceOn } from "@/modules/pricing/queries";
 
 export const metadata: Metadata = { title: "Buy rice" };
 
-/** Today's rice price and IRPC rice on hand; read fresh per request. */
+// Shared by the price card and the request form, so one view reads it once.
+const todaysPrices = cache(() => priceOn(todayManila()).catch(() => null));
+
+/**
+ * Rice buyers can still ask for: on hand minus what accepted requests already
+ * hold, never below 0. Null when stock can't be read, so only the figure hides.
+ */
+async function freeRiceKg(): Promise<number | null> {
+  try {
+    const { onHandKg, acceptedKg } = await orderStock();
+    return Math.max(0, freeKg(onHandKg, acceptedKg));
+  } catch (error) {
+    console.error("Unable to read rice stock", error);
+    return null;
+  }
+}
+
+/** Today's rice price and free rice; read fresh per request. */
 async function RiceToday() {
   await connection();
-  const [prices, stockKg] = await Promise.all([
-    priceOn(todayManila()).catch(() => null),
-    riceStock(),
-  ]);
+  const [prices, stockKg] = await Promise.all([todaysPrices(), freeRiceKg()]);
   const number = env().SMS_GATEWAY_PHONE_NUMBER;
 
   return (
@@ -44,9 +60,13 @@ async function RiceToday() {
           </dd>
         </div>
         <div className="flex justify-between gap-4 py-2">
-          <dt className="text-muted-foreground">Rice on hand</dt>
+          <dt className="text-muted-foreground">Rice available</dt>
           <dd className="font-semibold tabular-nums">
-            {stockKg > 0 ? formatKg(stockKg) : "None available today"}
+            {stockKg === null
+              ? "Ask at the plant"
+              : stockKg > 0
+                ? formatKg(stockKg)
+                : "None available today"}
           </dd>
         </div>
       </dl>
@@ -74,7 +94,7 @@ async function RiceToday() {
 /** The request form, with today's rice price for its estimate. */
 async function RequestForm() {
   await connection();
-  const prices = await priceOn(todayManila()).catch(() => null);
+  const prices = await todaysPrices();
   return (
     <WebOrderForm
       today={todayManila()}
@@ -150,7 +170,7 @@ export default function BuyPage({ searchParams }: PageProps<"/buy">) {
         <CardHeader>
           <CardTitle>Buy rice</CardTitle>
           <CardDescription>
-            Today&apos;s price and rice on hand.
+            Today&apos;s price and rice available.
           </CardDescription>
         </CardHeader>
         <CardContent>
