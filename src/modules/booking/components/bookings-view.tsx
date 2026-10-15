@@ -44,7 +44,7 @@ const statusItems = [
   ...bookingStatuses.map((value) => ({ value, label: statusLabels[value] })),
 ];
 const initialFilters: BookingFilters = {
-  service: "drying",
+  service: "all",
   status: "all",
   search: "",
 };
@@ -90,9 +90,9 @@ export function BookingsView({
           }
         >
           <TabsList aria-label="Service">
+            <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="drying">Drying</TabsTrigger>
             <TabsTrigger value="milling">Milling</TabsTrigger>
-            <TabsTrigger value="all">All</TabsTrigger>
           </TabsList>
         </Tabs>
         <Field className="w-56">
