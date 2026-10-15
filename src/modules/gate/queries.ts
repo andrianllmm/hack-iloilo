@@ -49,6 +49,9 @@ import {
   refCheckInError,
   refKindLabels,
   refLine,
+  dispatchableKg,
+  dispatchedKg,
+  remainingKg,
   riceStockKg,
   traceOrigin,
   traceSteps,
@@ -693,6 +696,28 @@ export async function riceStock(): Promise<number> {
     .not("rice_kg", "is", null);
   if (error) throw error;
   return riceStockKg(data);
+}
+
+/** IRPC batches with rice left to sell, oldest first, for recording a rice pickup. */
+export async function riceBatchesForSale(): Promise<
+  { id: string; batchNo: string; remainingKg: number }[]
+> {
+  const facility = await currentFacility();
+  const { data, error } = await db()
+    .from("batches")
+    .select("id, batch_no, ownership, stage, rice_kg, dried_kg, dispatches(kg)")
+    .eq("facility_id", facility.id)
+    .eq("ownership", "irpc")
+    .not("rice_kg", "is", null)
+    .order("batch_no");
+  if (error) throw error;
+  return data
+    .map((b) => ({
+      id: b.id,
+      batchNo: b.batch_no,
+      remainingKg: remainingKg(dispatchableKg(b), dispatchedKg(b.dispatches)),
+    }))
+    .filter((b) => b.remainingKg > 0);
 }
 
 /**

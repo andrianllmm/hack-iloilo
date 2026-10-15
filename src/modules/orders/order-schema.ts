@@ -26,3 +26,18 @@ export const webOrderSchema = z.object({
 });
 export type WebOrderFormValues = z.input<typeof webOrderSchema>;
 export type WebOrderInput = z.output<typeof webOrderSchema>;
+
+/** Staff recording a rice pickup: the sale from one batch (M6 dispatch). */
+export const pickupSchema = z.object({
+  batchId: z.guid("Choose the batch the rice comes from."),
+  kg: z
+    .number("Enter the weight in kg.")
+    .int("Enter whole kilograms.")
+    .positive("Enter more than 0 kg."),
+  priceMinorPerKg: z
+    .number("Enter the price per kg.")
+    .int()
+    .nonnegative("Price can't be negative."),
+  orRef: z.string().trim().max(50, "Keep the receipt number short.").nullable(),
+});
+export type PickupInput = z.infer<typeof pickupSchema>;

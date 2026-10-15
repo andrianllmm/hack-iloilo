@@ -385,14 +385,14 @@ isOneToOne: false
                   ]
                 },"rice_orders": {
                   Row: {
-                    "booked_by_phone": string,"client_id": string,"created_at": string,"facility_id": string,"id": string,"kg": number,"pickup_date": string,"ref": string,"status": Database["public"]['Enums']["rice_order_status"],"updated_at": string
+                    "booked_by_phone": string,"client_id": string,"created_at": string,"dispatch_id": string | null,"facility_id": string,"id": string,"kg": number,"pickup_date": string,"ref": string,"status": Database["public"]['Enums']["rice_order_status"],"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "booked_by_phone": string,"client_id": string,"created_at"?: string,"facility_id": string,"id"?: string,"kg": number,"pickup_date": string,"ref": string,"status"?: Database["public"]['Enums']["rice_order_status"],"updated_at"?: string
+                    "booked_by_phone": string,"client_id": string,"created_at"?: string,"dispatch_id"?: string | null,"facility_id": string,"id"?: string,"kg": number,"pickup_date": string,"ref": string,"status"?: Database["public"]['Enums']["rice_order_status"],"updated_at"?: string
                   }
                   Update: {
-                    "booked_by_phone"?: string,"client_id"?: string,"created_at"?: string,"facility_id"?: string,"id"?: string,"kg"?: number,"pickup_date"?: string,"ref"?: string,"status"?: Database["public"]['Enums']["rice_order_status"],"updated_at"?: string
+                    "booked_by_phone"?: string,"client_id"?: string,"created_at"?: string,"dispatch_id"?: string | null,"facility_id"?: string,"id"?: string,"kg"?: number,"pickup_date"?: string,"ref"?: string,"status"?: Database["public"]['Enums']["rice_order_status"],"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -400,6 +400,12 @@ isOneToOne: false
       columns: ["client_id"]
 isOneToOne: false
       referencedRelation: "clients"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "rice_orders_dispatch_id_fkey"
+      columns: ["dispatch_id"]
+isOneToOne: false
+      referencedRelation: "dispatches"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "rice_orders_facility_id_fkey"

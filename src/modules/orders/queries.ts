@@ -6,7 +6,7 @@ import { formatDate, formatKg } from "@/lib/format";
 import { newRef } from "@/lib/ref";
 import { db } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
-import { riceStock } from "@/modules/gate/queries";
+import { riceBatchesForSale, riceStock } from "@/modules/gate/queries";
 import { send } from "@/modules/sms/queries";
 import { currentFacility } from "@/modules/setup/queries";
 import {
@@ -146,6 +146,37 @@ export async function setOrderStatus(
     .maybeSingle();
   if (error) throw new Error(`Rice order ${to}: ${error.message}`);
   return data;
+}
+
+export async function findOrder(id: string): Promise<Order | null> {
+  const { data, error } = await db()
+    .from("rice_orders")
+    .select()
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/** Closes an accepted order with the dispatch that recorded its sale. */
+export async function closePickedUp(
+  id: string,
+  dispatchId: string,
+): Promise<Order | null> {
+  const { data, error } = await db()
+    .from("rice_orders")
+    .update({ status: "picked_up", dispatch_id: dispatchId })
+    .eq("id", id)
+    .eq("status", "accepted")
+    .select()
+    .maybeSingle();
+  if (error) throw new Error(`Rice order picked_up: ${error.message}`);
+  return data;
+}
+
+/** Batches a pickup can be sold from (M6). */
+export async function pickupBatches() {
+  return riceBatchesForSale();
 }
 
 /** Cancels an open order and texts the buyer. Null if it can no longer be cancelled. */

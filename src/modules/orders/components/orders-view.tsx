@@ -27,10 +27,12 @@ import {
 import {
   listOrders,
   orderStock,
+  pickupBatches,
   type OrderListItem,
   type OrderStatus,
 } from "../queries";
 import { OrderActions } from "./order-actions";
+import type { SaleBatch } from "./pickup-dialog";
 
 const FILTERS: { label: string; value: OrderStatus | undefined }[] = [
   { label: "All", value: undefined },
@@ -58,11 +60,12 @@ export async function OrdersView({
   await connection();
   const { status: rawStatus } = await searchParams;
   const status = asStatus(rawStatus);
-  const [staff, orders, prices, stock] = await Promise.all([
+  const [staff, orders, prices, stock, batches] = await Promise.all([
     getStaff(),
     listOrders(status),
     priceOn(todayManila()).catch(() => null),
     orderStock(),
+    pickupBatches(),
   ]);
   const isManager = staff?.role === "manager";
   const free = freeKg(stock.onHandKg, stock.acceptedKg);
@@ -138,6 +141,7 @@ export async function OrdersView({
                   isManager={isManager}
                   riceMinorPerKg={prices?.rice_minor_per_kg ?? null}
                   overFree={exceedsFree(order, free)}
+                  batches={batches}
                 />
               ))}
             </TableBody>
@@ -153,12 +157,14 @@ function OrderRow({
   isManager,
   riceMinorPerKg,
   overFree,
+  batches,
 }: {
   order: OrderListItem;
   isManager: boolean;
   riceMinorPerKg: number | null;
   /** Accepting would promise more rice than is free. */
   overFree: boolean;
+  batches: SaleBatch[];
 }) {
   const type = order.client?.buyer_type;
   return (
@@ -196,9 +202,10 @@ function OrderRow({
       <TableCell>
         {canCancel(order.status) && (
           <OrderActions
-            id={order.id}
-            status={order.status}
+            order={order}
             isManager={isManager}
+            batches={batches}
+            riceMinorPerKg={riceMinorPerKg}
           />
         )}
       </TableCell>

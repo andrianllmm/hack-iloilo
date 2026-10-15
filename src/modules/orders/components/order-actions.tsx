@@ -9,22 +9,26 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cancelOrderByStaff, decideOrder, markPickedUp } from "../actions";
+import { cancelOrderByStaff, decideOrder } from "../actions";
 import type { OrderStatus } from "../logic";
+import { PickupDialog, type SaleBatch } from "./pickup-dialog";
 
 /**
  * Row actions for an open request: the next step up front, the rest in a menu.
- * Accept and decline are manager only; any staff marks pickup or cancels.
+ * Accept and decline are manager only; any staff records pickup or cancels.
  */
 export function OrderActions({
-  id,
-  status,
+  order,
   isManager,
+  batches,
+  riceMinorPerKg,
 }: {
-  id: string;
-  status: OrderStatus;
+  order: { id: string; ref: string; kg: number; status: OrderStatus };
   isManager: boolean;
+  batches: SaleBatch[];
+  riceMinorPerKg: number | null;
 }) {
+  const { id, status } = order;
   const [pending, start] = useTransition();
   return (
     <div className="flex items-center justify-end gap-1">
@@ -38,13 +42,11 @@ export function OrderActions({
         </Button>
       ) : null}
       {status === "accepted" ? (
-        <Button
-          size="sm"
-          disabled={pending}
-          onClick={() => start(() => markPickedUp(id))}
-        >
-          Picked up
-        </Button>
+        <PickupDialog
+          order={order}
+          batches={batches}
+          riceMinorPerKg={riceMinorPerKg}
+        />
       ) : null}
       <DropdownMenu>
         <DropdownMenuTrigger

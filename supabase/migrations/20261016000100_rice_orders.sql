@@ -14,6 +14,8 @@ create table public.rice_orders (
   kg integer not null check (kg > 0),
   pickup_date date not null,
   status public.rice_order_status not null default 'requested',
+  -- The sale recorded at pickup: links the buyer to the batch the rice came from.
+  dispatch_id uuid references public.dispatches (id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

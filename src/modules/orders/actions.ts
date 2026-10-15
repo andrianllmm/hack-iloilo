@@ -16,11 +16,19 @@ import {
 } from "@/modules/booking/booking-schema";
 import { cleanRef, TRACK_WINDOW_MINUTES } from "@/modules/booking/logic";
 import { recordTrackFailure, trackLocked } from "@/modules/booking/queries";
+import { dispatch, GateError } from "@/modules/gate/queries";
 import { pickupDateError, REQUEST_LIMITS } from "./logic";
-import { webOrderSchema, type WebOrderInput } from "./order-schema";
+import {
+  pickupSchema,
+  webOrderSchema,
+  type PickupInput,
+  type WebOrderInput,
+} from "./order-schema";
 import {
   cancelOrder,
+  closePickedUp,
   createOrder,
+  findOrder,
   notifyOrder,
   recordRequest,
   requestLocked,
@@ -188,11 +196,53 @@ export async function decideOrder(id: string, accept: boolean): Promise<void> {
   revalidatePath("/rice-buying");
 }
 
-/** The buyer collected the rice. Any signed-in staff, from `accepted`. */
-export async function markPickedUp(id: string): Promise<void> {
+export type PickupResult =
+  | { status: "ok" }
+  | {
+      status: "error";
+      message?: string;
+      fieldErrors?: Partial<Record<keyof PickupInput, string>>;
+    };
+
+/**
+ * The buyer collected the rice. Records the sale as an M6 dispatch from the
+ * chosen batch (kg checked against what's left; the buyer is texted the
+ * receipt and batch no.), then closes the order with it. Any signed-in staff,
+ * from `accepted`.
+ */
+export async function pickUpOrder(
+  id: string,
+  input: unknown,
+): Promise<PickupResult> {
   await requireRole();
-  await setOrderStatus(id, ["accepted"], "picked_up");
+  const parsed = pickupSchema.safeParse(input);
+  if (!parsed.success)
+    return { status: "error", fieldErrors: fieldErrors(parsed.error) };
+  try {
+    const order = await findOrder(id);
+    if (order?.status !== "accepted")
+      return {
+        status: "error",
+        message:
+          "This request is no longer waiting for pickup. Refresh the page.",
+      };
+    const sale = await dispatch({
+      ...parsed.data,
+      buyerId: order.client_id,
+    });
+    await closePickedUp(order.id, sale.id);
+  } catch (error) {
+    if (error instanceof GateError)
+      return { status: "error", message: error.message };
+    console.error("Unable to record rice pickup", error);
+    return {
+      status: "error",
+      message: "Unable to record the pickup. Please try again.",
+    };
+  }
   revalidatePath("/rice-buying");
+  revalidatePath("/batches");
+  return { status: "ok" };
 }
 
 /** Cancel on the buyer's behalf (e.g. they called). Any signed-in staff. */
