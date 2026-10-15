@@ -355,3 +355,19 @@ export function headline(days: DayPool[]): {
     idleDays: days.filter((d) => d.idle).length,
   };
 }
+
+/** One pool's state on the plant view. */
+export type PlantStatus = "over" | "near" | "ok" | "idle";
+
+/** Expected load at or above this share of capacity is near full. */
+export const NEAR_FULL = 0.85;
+
+/** Overloaded first, then idle, then near full at `NEAR_FULL` of capacity. */
+export function plantStatus(day: DayPool): PlantStatus {
+  if (day.overloaded) return "over";
+  if (day.idle) return "idle";
+  if (day.capacityKg && expectedKg(day) / day.capacityKg >= NEAR_FULL) {
+    return "near";
+  }
+  return "ok";
+}
