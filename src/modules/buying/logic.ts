@@ -2,6 +2,30 @@
 // Pure functions only: no I/O and no imports from other modules. Unit-test here.
 
 import { z } from "zod";
+import { formatKg, formatMoneySms } from "@/lib/format";
+
+type PurchasePrice = {
+  paid_kg: number;
+  price_minor_per_kg: number;
+  total_minor: number;
+};
+
+/** Notify on the first save or when the farmer's displayed price details change. */
+export function purchasePriceChanged(
+  before: PurchasePrice | null,
+  saved: PurchasePrice,
+): boolean {
+  return (
+    !before ||
+    before.paid_kg !== saved.paid_kg ||
+    before.price_minor_per_kg !== saved.price_minor_per_kg ||
+    before.total_minor !== saved.total_minor
+  );
+}
+
+export function purchaseText(saved: PurchasePrice): string {
+  return `IRPC: Palay purchase recorded. Paid weight: ${formatKg(saved.paid_kg)} at ${formatMoneySms(saved.price_minor_per_kg)}/kg. Total: ${formatMoneySms(saved.total_minor)}.`;
+}
 
 /** Validated input for a new sell offer. Weight is integer kg. */
 export type CreateOfferInput = {

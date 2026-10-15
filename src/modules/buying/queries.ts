@@ -17,12 +17,17 @@ import {
 import { priceOn } from "@/modules/pricing/queries";
 import { helpText, parseDayMonth, SMS_MAX_CHARS } from "@/modules/sms/logic";
 import { commandUsages, type CommandContext } from "@/modules/sms/registry";
+import { send } from "@/modules/sms/queries";
 import {
   currentFacility,
   findVarietyByCode,
   listVarieties,
 } from "@/modules/setup/queries";
-import { formatVarietiesSms } from "./logic";
+import {
+  formatVarietiesSms,
+  purchasePriceChanged,
+  purchaseText,
+} from "./logic";
 import type { CreateOfferInput, QuoteSmsInput, SellSmsInput } from "./logic";
 
 export type Offer = Database["public"]["Tables"]["sell_offers"]["Row"];
@@ -126,8 +131,8 @@ export async function acceptedOffersBetween(
  * purchase. Reads the batch's receiving fields, prices them with
  * `priceReceiving` on the prices in effect today, and upserts the `purchases`
  * row keyed by batch — re-saving the receiving re-prices without disturbing a
- * voucher added later. Called by the gate receiving action; #42 texts the
- * farmer off the saved row. Custom batches are never passed here.
+ * voucher added later. Texts the farmer when the saved price details change.
+ * Custom batches are never passed here.
  */
 export async function createPurchase(batchId: string): Promise<Purchase> {
   const { data: batch, error } = await db()
@@ -159,6 +164,7 @@ export async function createPurchase(batchId: string): Promise<Purchase> {
     bags: batch.bags,
   });
 
+  const previous = await purchaseByBatch(batchId);
   // Omit voucher_ref and override_reason so an upsert update leaves them alone.
   const { data, error: upsertError } = await db()
     .from("purchases")
@@ -178,6 +184,19 @@ export async function createPurchase(batchId: string): Promise<Purchase> {
     .select()
     .single();
   if (upsertError) throw new Error(`Purchase: ${upsertError.message}`);
+  if (purchasePriceChanged(previous, data)) {
+    try {
+      const { data: client, error: clientError } = await db()
+        .from("clients")
+        .select("phone")
+        .eq("id", data.client_id)
+        .single();
+      if (clientError) throw clientError;
+      await send(client.phone, purchaseText(data));
+    } catch (error) {
+      console.error("Unable to send purchase price text", error);
+    }
+  }
   return data;
 }
 

@@ -25,6 +25,48 @@ export const ownershipLabels: Record<BatchOwnership, string> = {
   irpc: "Selling to IRPC",
 };
 
+type WaitingEntry = Pick<
+  QueueEntry,
+  "id" | "facility_id" | "service" | "status" | "checked_in_at"
+> & {
+  client: { phone: string };
+};
+
+const waitingOrder = (
+  a: Pick<QueueEntry, "id" | "checked_in_at">,
+  b: Pick<QueueEntry, "id" | "checked_in_at">,
+) =>
+  Date.parse(a.checked_in_at) - Date.parse(b.checked_in_at) ||
+  a.id.localeCompare(b.id);
+
+/** The next N entries in this facility's service line, after the start was saved. */
+export function nextInLineTexts(
+  rows: WaitingEntry[],
+  facilityId: string,
+  service: Service,
+  count: number,
+): { phone: string; body: string }[] {
+  return rows
+    .filter(
+      (row) =>
+        row.facility_id === facilityId &&
+        row.service === service &&
+        row.status === "waiting",
+    )
+    .sort(waitingOrder)
+    .slice(0, Math.max(0, count))
+    .map((row, index) => ({
+      phone: row.client.phone,
+      body: `IRPC: Your turn for ${serviceLabels[service].toLowerCase()} is near. You are ${index + 1} in the waiting line. Please be ready.`,
+    }));
+}
+
+/** Uses the saved receipt reference, including dispatches that have no receipt. */
+export function dispatchText(batchNo: string, receipt: string | null): string {
+  const ref = receipt?.trim();
+  return `IRPC: Dispatch recorded. Batch ${batchNo}. ${ref ? `Receipt: ${ref}.` : "No receipt recorded."}`;
+}
+
 export const stageLabels: Record<Batch["stage"], string> = {
   received: "Received",
   drying: "Drying",
@@ -178,11 +220,7 @@ export function queueLines(rows: QueueRow[]): Record<Service, QueueLine> {
     line.serving.sort((a, b) =>
       (a.started_at ?? "").localeCompare(b.started_at ?? ""),
     );
-    line.waiting.sort(
-      (a, b) =>
-        Date.parse(a.checked_in_at) - Date.parse(b.checked_in_at) ||
-        a.id.localeCompare(b.id),
-    );
+    line.waiting.sort(waitingOrder);
   }
   return lines;
 }
