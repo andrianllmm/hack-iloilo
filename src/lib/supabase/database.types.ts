@@ -233,6 +233,46 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"notification_reads": {
+                  Row: {
+                    "created_at": string,"id": string,"notification_id": string,"read_at": string,"staff_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"notification_id": string,"read_at"?: string,"staff_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"notification_id"?: string,"read_at"?: string,"staff_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "notification_reads_notification_id_fkey"
+      columns: ["notification_id"]
+isOneToOne: false
+      referencedRelation: "notifications"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "notification_reads_staff_id_fkey"
+      columns: ["staff_id"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"notifications": {
+                  Row: {
+                    "created_at": string,"entity_id": string,"href": string,"id": string,"kind": string,"role": Database["public"]['Enums']["staff_role"] | null,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"entity_id": string,"href": string,"id"?: string,"kind": string,"role"?: Database["public"]['Enums']["staff_role"] | null,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"entity_id"?: string,"href"?: string,"id"?: string,"kind"?: string,"role"?: Database["public"]['Enums']["staff_role"] | null,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"prescription_decisions": {
                   Row: {
                     "created_at": string,"decided_by": string,"id": string,"key": string,"kind": Database["public"]['Enums']["prescription_kind"],"status": Database["public"]['Enums']["prescription_status"],"updated_at": string
@@ -451,6 +491,12 @@ isOneToOne: false
       } },
 "import_forecast":
 { Args: { "p_arrivals": Json,"p_metrics": Json,"p_trained_on": string }; Returns: undefined
+                           },
+"read_staff_notifications":
+{ Args: { "p_notification_id"?: string,"p_staff_id": string }; Returns: undefined
+                           },
+"staff_notification_inbox":
+{ Args: { "p_staff_id": string }; Returns: Json
                            }
           }
           Enums: {

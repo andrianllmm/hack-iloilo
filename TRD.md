@@ -342,6 +342,12 @@ No tables. **Export:** `capacityByDay(from, to)` returns per day and pool (`drye
 
 ## Testing and CI
 
+### Staff notifications (P1)
+
+`notifications` stores deduplicated `(kind, entity_id)` events with title, destination and optional staff role; `notification_reads` stores read timestamps per staff member. Both use RLS with no public policies. One server-only `notify()` helper applies event roles and links and isolates notification failures from originating operations. Authenticated server actions and service-only SQL helpers apply role filtering to items, unread counts and read updates.
+
+The header bell is inside Suspense, lists the latest 20 events, and refreshes on navigation, tab visibility and every 15 seconds while visible. Manager refreshes discover undecided overload and idle-stretch prescriptions by their existing keys. SMS/web bookings, SMS cancellations, reschedule replies, new offers, failed outgoing SMS and unparsed inbound messages create events after successful processing. Read-only HELP and ignored sender numbers create none. Historical records are not backfilled; current suggestions appear at the first manager refresh. Gateway acceptance is not delivery confirmation and does not create a failure notification. No realtime push, delivery-status synchronization or automatic retries.
+
 - Vitest covers only the numbers the demo shows (listed per module). No UI or end-to-end tests.
 - GitHub Actions runs lint and typecheck per PR. Vercel builds previews.
 

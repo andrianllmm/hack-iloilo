@@ -260,6 +260,8 @@ Computed from M9. The manager accepts or dismisses each.
 
 ## Rules
 
+**P1 — Staff notifications:** a header bell shows role-scoped booking, offer, reschedule-answer, suggestion and SMS attention events, with per-staff unread state and links to the relevant page. It refreshes on navigation and a short poll.
+
 - **SMS is a channel:** every client action (booking, sell offer, quote) also works from a staff form, and SMS commands call the same actions.
 - **AI reads, rules decide:** AI reads free-text SMS. Capacity, prescription and cost numbers come from fixed rules, and people confirm every action.
 - **No official receipts:** the app only stores receipt and voucher numbers.

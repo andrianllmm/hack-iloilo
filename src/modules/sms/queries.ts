@@ -2,6 +2,7 @@
 // Server-side reads. May call other modules' queries.
 
 import "server-only";
+import { notify } from "@/modules/notifications/queries";
 import { z } from "zod";
 import { aiEnabled, extract } from "@/lib/ai";
 import { newRef } from "@/lib/ref";
@@ -70,6 +71,11 @@ export async function send(
   } catch (error) {
     console.error("[sms] send failed", error);
     await update(row.id, { status: "failed" });
+    await notify({
+      kind: "sms_failed",
+      entityId: row.id,
+      title: "Outgoing SMS failed. Check the SMS inbox.",
+    });
   }
 }
 
@@ -161,10 +167,12 @@ export async function processInbound(id: string): Promise<void> {
   }
 
   let reply: string;
+  let needsAttention = false;
   try {
     const client = await findOrRegisterByPhone(phone);
     const routed = await route(parsed, message.body, { phone, client });
     reply = routed.reply;
+    needsAttention = routed.needsAttention ?? false;
     await update(id, {
       phone,
       parsed: toJson(parsed),
@@ -174,15 +182,28 @@ export async function processInbound(id: string): Promise<void> {
     console.error("[sms] inbound failed", error);
     await update(id, { phone, parsed: toJson(parsed), status: "failed" });
     reply = smsReplies.error;
+    needsAttention = true;
   }
+  if (needsAttention)
+    await notify({
+      kind: "sms_attention",
+      entityId: id,
+      title: "Inbound SMS needs a staff response.",
+    });
   if (reply) await send(phone, reply);
 }
+
+type RouteResult = { reply: string; viaAi?: boolean; needsAttention?: boolean };
+const attentionHelp = (natural = false): RouteResult => ({
+  reply: help(natural),
+  needsAttention: true,
+});
 
 async function route(
   parsed: ParsedInbound,
   body: string,
   ctx: CommandContext,
-): Promise<{ reply: string; viaAi?: boolean }> {
+): Promise<RouteResult> {
   const answer = parseAnswer(parsed);
   if (answer) return { reply: await answerPrompt(answer, ctx) };
 
@@ -192,18 +213,18 @@ async function route(
       return { reply: help(aiEnabled()) };
     return interpret(body, ctx);
   }
-  return { reply: await runKeyword(command, parsed, ctx) };
+  return runKeyword(command, parsed, ctx);
 }
 
 async function runKeyword(
   command: Command<unknown>,
   parsed: ParsedInbound,
   ctx: CommandContext,
-): Promise<string> {
+): Promise<RouteResult> {
   let forPhone: string | undefined;
   if (parsed.forPhone) {
     const normalized = normalizePhone(parsed.forPhone);
-    if (!normalized) return help();
+    if (!normalized) return attentionHelp();
     forPhone = normalized;
   }
 
@@ -211,11 +232,11 @@ async function runKeyword(
   try {
     args = command.parse(parsed.args);
   } catch {
-    return help();
+    return attentionHelp();
   }
   const result = command.schema.safeParse(args);
-  if (!result.success) return help();
-  return command.handle(result.data, { ...ctx, forPhone });
+  if (!result.success) return attentionHelp();
+  return { reply: await command.handle(result.data, { ...ctx, forPhone }) };
 }
 
 /** An AI reading in the command's own args shape; code does any conversion. */
@@ -233,9 +254,9 @@ function fromAi(command: Command<unknown>, args: unknown): unknown {
 async function interpret(
   body: string,
   ctx: CommandContext,
-): Promise<{ reply: string; viaAi?: boolean }> {
+): Promise<RouteResult> {
   const commands = aiCommands();
-  if (!aiEnabled() || !commands.length) return { reply: help() };
+  if (!aiEnabled() || !commands.length) return attentionHelp();
 
   const options = commands.map(({ keyword, command }) =>
     z
@@ -253,17 +274,17 @@ async function interpret(
     body,
   );
   // AI down or timed out: fall back to the keyword formats.
-  if (!intent) return { reply: help() };
-  if (intent.intent.command === "NONE") return { reply: help(true) };
+  if (!intent) return attentionHelp();
+  if (intent.intent.command === "NONE") return attentionHelp(true);
 
   const { command: keyword, args } = intent.intent as {
     command: string;
     args: unknown;
   };
   const command = findCommand(keyword);
-  if (!command?.ai) return { reply: help(true) };
+  if (!command?.ai) return attentionHelp(true);
   const valid = command.schema.safeParse(fromAi(command, args));
-  if (!valid.success) return { reply: help(true) };
+  if (!valid.success) return attentionHelp(true);
 
   const { summary } = command.ai;
   if (!summary)

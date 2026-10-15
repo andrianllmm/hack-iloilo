@@ -4,3 +4,4 @@ src/lib/supabase/database.types.ts
 supabase/.temp
 .agents/skills/
 skills-lock.json
+.claude/worktrees/

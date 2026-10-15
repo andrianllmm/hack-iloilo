@@ -2,6 +2,7 @@
 // Server-side reads. May call other modules' queries.
 
 import "server-only";
+import { notify } from "@/modules/notifications/queries";
 import { todayManila } from "@/lib/dates";
 import { formatDate, formatKg, formatMoneySms } from "@/lib/format";
 import { newRef } from "@/lib/ref";
@@ -64,7 +65,14 @@ export async function createOffer(input: CreateOfferInput): Promise<Offer> {
       })
       .select()
       .single();
-    if (!error) return data;
+    if (!error) {
+      await notify({
+        kind: "sell_offer_created",
+        entityId: data.id,
+        title: `Sell offer ${data.ref} awaiting a decision`,
+      });
+      return data;
+    }
     if (error.code !== "23505")
       throw new Error(`Create offer: ${error.message}`);
   }

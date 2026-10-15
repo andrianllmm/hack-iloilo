@@ -2,6 +2,7 @@
 // Server-side reads. May call other modules' queries.
 
 import "server-only";
+import { notify } from "@/modules/notifications/queries";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase/admin";
 import { newRef } from "@/lib/ref";
@@ -76,6 +77,12 @@ export async function createBooking(input: {
     // A ref collision is the only unique violation here; draw a new ref.
     if (error?.code === "23505" && attempt < REF_ATTEMPTS) continue;
     if (error) throw error;
+    if (input.channel === "sms")
+      await notify({
+        kind: "booking_created",
+        entityId: data.id,
+        title: `New ${data.service} booking ${data.ref}`,
+      });
     return data;
   }
 }
@@ -188,6 +195,11 @@ export async function answerReschedule(
   if (error) throw error;
   if (!data) return closed;
 
+  await notify({
+    kind: yes ? "reschedule_accepted" : "reschedule_declined",
+    entityId: prompt.id,
+    title: `Booking ${data.ref}: proposed date ${yes ? "accepted" : "declined"}`,
+  });
   const reply = fillTemplate(
     yes ? bookingSms.rescheduleMoved : bookingSms.rescheduleKept,
     {
@@ -419,6 +431,11 @@ export async function cancelBySms(
   const result = await cancelBooking(ref, ctx.phone);
   switch (result.status) {
     case "cancelled":
+      await notify({
+        kind: "booking_cancelled",
+        entityId: result.booking.id,
+        title: `Booking ${result.booking.ref} cancelled by SMS`,
+      });
       return fillTemplate(bookingSms.cancelled, { ref: result.booking.ref });
     case "forbidden":
       return helpText(commandUsages());
