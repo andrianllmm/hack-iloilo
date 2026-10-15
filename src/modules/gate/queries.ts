@@ -37,6 +37,8 @@ import type {
   BatchListRow,
   BatchOwnership,
   BatchSummary,
+  BatchTrail,
+  Dispatch,
   QueueEntry,
   QueueRow,
   RefKind,
@@ -57,7 +59,10 @@ export class GateError extends Error {
       | "not_serving"
       | "stale_stage"
       | "ref_not_found"
-      | "ref_not_eligible",
+      | "ref_not_eligible"
+      | "not_dispatchable"
+      | "over_dispatch"
+      | "already_dispatched",
     message: string,
   ) {
     super(message);
@@ -401,10 +406,23 @@ export function skipDrying(batchId: string): Promise<Batch> {
   return advance(batchId, "received", "skip_drying", {});
 }
 
-export function startMilling(
+export async function startMilling(
   batchId: string,
   fields: { mill_id: string; mill_start: string },
 ): Promise<Batch> {
+  // A batch that has already dispatched dried palay can't be milled — that
+  // would mix a pickup with later rice against the same batch.
+  const { data: dispatched, error } = await db()
+    .from("dispatches")
+    .select("id")
+    .eq("batch_id", batchId)
+    .limit(1);
+  if (error) throw error;
+  if (dispatched.length > 0)
+    throw new GateError(
+      "already_dispatched",
+      "This batch has dispatches and can no longer be milled.",
+    );
   return advance(batchId, "stored", "start_milling", fields);
 }
 
@@ -456,4 +474,79 @@ export async function listBatches(
   const { data, error } = await query;
   if (error) throw error;
   return data;
+}
+
+/** Buyers (IRPC's clients that buy rice), for the dispatch picker. */
+export async function listBuyers(): Promise<{ id: string; name: string }[]> {
+  const { data, error } = await db()
+    .from("clients")
+    .select("id, name")
+    .eq("kind", "buyer")
+    .order("name");
+  if (error) throw error;
+  return data;
+}
+
+/** A batch with its origin and every dispatch, oldest first, for the trail. */
+export async function batchTrail(id: string): Promise<BatchTrail | null> {
+  const { data, error } = await db()
+    .from("batches")
+    .select(
+      "*, client:clients(name, phone, kind, municipality:municipalities(name)), entry:queue_entries(service, started_at), dispatches(*, buyer:clients(name))",
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  data.dispatches.sort((a, b) =>
+    a.dispatched_at.localeCompare(b.dispatched_at),
+  );
+  return data as BatchTrail;
+}
+
+/**
+ * Records a dispatch from a batch — a sale to a buyer or a pickup by the owner
+ * — after checking the kg against what's left. Flips the batch to `dispatched`
+ * once every dispatchable kg has gone. #42 adds the buyer receipt text.
+ */
+export async function dispatch(params: {
+  batchId: string;
+  buyerId: string;
+  kg: number;
+  priceMinorPerKg: number;
+  orRef: string | null;
+}): Promise<Dispatch> {
+  const { data, error } = await db().rpc("dispatch_from_batch", {
+    p_batch_id: params.batchId,
+    p_buyer_id: params.buyerId,
+    p_kg: params.kg,
+    p_price_minor_per_kg: params.priceMinorPerKg,
+    // The generated arg type is non-null, but the SQL `text` param takes null
+    // (a pickup has no OR ref).
+    p_or_ref: params.orRef as string,
+  });
+  if (error) throw dispatchError(error);
+  return data as Dispatch;
+}
+
+/** Maps a `dispatch_from_batch` exception to the GateError the action expects. */
+function dispatchError(error: { message: string }): Error {
+  const { message } = error;
+  if (message.includes("batch_not_found"))
+    return new GateError(
+      "not_found",
+      "This batch no longer exists. Refresh the page.",
+    );
+  if (message.includes("not_dispatchable"))
+    return new GateError(
+      "not_dispatchable",
+      "This batch isn't ready to dispatch yet.",
+    );
+  const over = message.match(/over_dispatch:(\d+)/);
+  if (over)
+    return new GateError(
+      "over_dispatch",
+      `Only ${over[1]} kg left to dispatch from this batch.`,
+    );
+  return error instanceof Error ? error : new Error(message);
 }

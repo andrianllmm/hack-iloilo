@@ -445,7 +445,25 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "import_forecast":
+            "dispatch_from_batch":
+{ Args: { "p_batch_id": string,"p_buyer_id": string,"p_kg": number,"p_or_ref": string,"p_price_minor_per_kg": number }; Returns: {
+              "batch_id": string,
+"buyer_id": string,
+"created_at": string,
+"dispatched_at": string,
+"id": string,
+"kg": number,
+"or_ref": string | null,
+"price_minor_per_kg": number,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "dispatches"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"import_forecast":
 { Args: { "p_arrivals": Json,"p_metrics": Json,"p_trained_on": string }; Returns: undefined
                            }
           }

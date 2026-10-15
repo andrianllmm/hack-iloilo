@@ -6,6 +6,7 @@ import type {
   Batch,
   BatchOwnership,
   BookingStatus,
+  Dispatch,
   OfferStatus,
   QueueEntry,
   QueueRow,
@@ -68,6 +69,55 @@ export function nextStage(
       `Cannot ${action} a batch that is ${batch.stage}; it must be ${transition.from}.`,
     );
   return transition.to;
+}
+
+/** A dispatch is a sale of IRPC rice, or a custom owner collecting their own. */
+export type DispatchMode = "sale" | "pickup";
+
+/** IRPC-owned rice is sold to buyers; custom batches are picked up by their owner. */
+export function dispatchMode(ownership: BatchOwnership): DispatchMode {
+  return ownership === "irpc" ? "sale" : "pickup";
+}
+
+/**
+ * Kilograms a batch can dispatch: the milled rice once it's milled, otherwise
+ * the dried palay a custom owner picks up once it is `stored`. IRPC palay isn't
+ * dispatchable until milled. A custom batch's dried weight is only dispatchable
+ * at `stored` (dried, not in the mill) or `dispatched` (already picked up), so
+ * staff can't pick up dried palay mid-milling. `startMilling` refuses a batch
+ * that already has dispatches, so a dried pickup never mixes with later rice.
+ */
+export function dispatchableKg(
+  batch: Pick<Batch, "ownership" | "stage" | "rice_kg" | "dried_kg">,
+): number {
+  if (batch.rice_kg != null) return batch.rice_kg;
+  if (
+    batch.ownership === "custom" &&
+    batch.dried_kg != null &&
+    (batch.stage === "stored" || batch.stage === "dispatched")
+  )
+    return batch.dried_kg;
+  return 0;
+}
+
+/** Total kilograms already dispatched from a batch. */
+export function dispatchedKg(
+  dispatches: readonly Pick<Dispatch, "kg">[],
+): number {
+  return dispatches.reduce((sum, d) => sum + d.kg, 0);
+}
+
+/** Kilograms still available to dispatch, never negative. */
+export function remainingKg(dispatchable: number, dispatched: number): number {
+  return Math.max(0, dispatchable - dispatched);
+}
+
+/** A batch is fully dispatched once all of its dispatchable kg have left. */
+export function isFullyDispatched(
+  dispatchable: number,
+  dispatched: number,
+): boolean {
+  return dispatchable > 0 && dispatched >= dispatchable;
 }
 
 /** Milling recovery as a percent (rice ÷ mill-in), or null before milling. */
