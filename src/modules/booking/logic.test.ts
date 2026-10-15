@@ -3,11 +3,13 @@ import { bookingSchema } from "./booking-schema";
 import {
   bookedByLabel,
   canCancel,
+  canMove,
   defaultRange,
   formatDay,
   formatRange,
   formatShortDate,
   groupBookings,
+  parseMoveArgs,
   rescheduleAnswer,
   type BookingFilters,
 } from "./logic";
@@ -111,6 +113,42 @@ describe("canCancel", () => {
     expect(canCancel(booking, "+6391", "+6391")).toBe("ok");
     expect(canCancel(booking, "+6391", "+6392")).toBe("ok");
     expect(canCancel(booking, "+6391", "+6393")).toBe("forbidden");
+  });
+});
+
+describe("canMove", () => {
+  const booking = { status: "confirmed" as const, booked_by_phone: "+6392" };
+  it("moves only open bookings", () => {
+    expect(canMove(booking, "+6391")).toBe("ok");
+    expect(
+      canMove({ ...booking, status: "reschedule_proposed" }, "+6391"),
+    ).toBe("ok");
+    for (const status of ["arrived", "cancelled", "no_show"] as const)
+      expect(canMove({ ...booking, status }, "+6391")).toBe("not_movable");
+  });
+  it("lets only the client or booker move by phone", () => {
+    expect(canMove(booking, "+6391", "+6391")).toBe("ok");
+    expect(canMove(booking, "+6391", "+6392")).toBe("ok");
+    expect(canMove(booking, "+6391", "+6393")).toBe("forbidden");
+  });
+});
+
+describe("parseMoveArgs", () => {
+  it("reads the ref, date and optional flex days", () => {
+    expect(parseMoveArgs(["k7p2qx", "25/10"])).toEqual({
+      ref: "K7P2QX",
+      dayMonth: "25/10",
+    });
+    expect(parseMoveArgs(["K7P2QX", "25/10", "±3"])).toEqual({
+      ref: "K7P2QX",
+      dayMonth: "25/10",
+      flexDays: 3,
+    });
+  });
+  it("rejects other shapes", () => {
+    expect(parseMoveArgs(["K7P2QX"])).toBeNull();
+    expect(parseMoveArgs(["K7P2QX", "25/10", "3"])).toBeNull();
+    expect(parseMoveArgs(["K7P2QX", "25/10", "±3", "x"])).toBeNull();
   });
 });
 

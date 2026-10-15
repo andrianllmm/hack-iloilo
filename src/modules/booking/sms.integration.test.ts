@@ -253,6 +253,72 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
       );
     });
 
+    it("moves a booking by MOVE from the client and keeps its ref and kg", async () => {
+      const booking = await book("BOOK DRY 800 20/10 ±2");
+      const to = dates.addDays(booking.scheduled_date, 3);
+      const [, month, day] = to.split("-");
+      await inbound(`move ${booking.ref.toLowerCase()} ${day}/${month}`);
+      expect(await findByRef(booking.ref)).toMatchObject({
+        id: booking.id,
+        status: "confirmed",
+        est_kg: 800,
+        preferred_date: to,
+        scheduled_date: to,
+        flex_days: 2,
+      });
+      const reply = (await lastReply()).body;
+      expect(reply).toContain(`${booking.ref} moved to`);
+      expect(isGsm7(reply)).toBe(true);
+      expect(reply.length).toBeLessThanOrEqual(SMS_MAX_CHARS);
+
+      await inbound(`MOVE ${booking.ref} ${day}/${month} ±5`);
+      expect((await findByRef(booking.ref))!.flex_days).toBe(5);
+    });
+
+    it("refuses MOVE from a stranger, for unknown refs and closed bookings", async () => {
+      const booking = await book(`BOOK DRY 100 20/10 FOR ${beneficiary}`);
+      await inbound(`MOVE ${booking.ref} 25/10 FOR ${beneficiary}`, stranger);
+      expect((await lastReply(stranger)).body).toContain("Unknown command");
+      expect((await findByRef(booking.ref))!.scheduled_date).toBe(
+        booking.scheduled_date,
+      );
+      await inbound("MOVE ZZZZZZ 25/10");
+      expect((await lastReply()).body).toContain("No booking with ref");
+      await inbound(`MOVE ${booking.ref} 31/02`);
+      expect((await lastReply()).body).toContain("Unknown command");
+      await inbound(`CANCEL ${booking.ref}`);
+      await inbound(`MOVE ${booking.ref} 25/10`);
+      expect((await lastReply()).body).toContain("cannot be moved");
+    });
+
+    it("drops a pending reschedule on MOVE from the booker and tells the client", async () => {
+      const booking = await book(`BOOK DRY 700 20/10 ±3 FOR ${beneficiary}`);
+      await proposeReschedule(
+        booking.id,
+        dates.addDays(booking.scheduled_date, 1),
+      );
+      const to = dates.addDays(booking.scheduled_date, 4);
+      const [, month, day] = to.split("-");
+      await inbound(`MOVE ${booking.ref} ${day}/${month}`);
+      expect(await findByRef(booking.ref)).toMatchObject({
+        status: "confirmed",
+        scheduled_date: to,
+        proposed_date: null,
+      });
+      expect((await lastReply(beneficiary)).body).toBe(
+        (await lastReply()).body,
+      );
+      const { data: prompts, error } = await db()
+        .from("sms_prompts")
+        .select("status")
+        .eq("ref", booking.ref);
+      if (error) throw error;
+      expect(prompts.map((p) => p.status)).toEqual(["expired"]);
+      // A late answer to the old question no longer moves the booking.
+      await inbound(`YES ${booking.ref}`, beneficiary);
+      expect((await findByRef(booking.ref))!.scheduled_date).toBe(to);
+    });
+
     it("still confirms to the sender when beneficiary notification fails", async () => {
       const original = sms.send;
       vi.spyOn(sms, "send").mockImplementation(

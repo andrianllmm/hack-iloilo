@@ -119,6 +119,23 @@ export function canCancel(
 }
 
 /**
+ * Open bookings (`confirmed` or `reschedule_proposed`) move to a new date; by
+ * SMS only the client or booker may.
+ */
+export function canMove(
+  booking: Pick<Booking, "status" | "booked_by_phone">,
+  clientPhone: string,
+  byPhone?: string,
+): "ok" | "forbidden" | "not_movable" {
+  if (byPhone !== undefined && !isClientOrBooker(booking, clientPhone, byPhone))
+    return "forbidden";
+  return booking.status === "confirmed" ||
+    booking.status === "reschedule_proposed"
+    ? "ok"
+    : "not_movable";
+}
+
+/**
  * The date a reschedule answer leaves the booking on: YES takes the proposed
  * date, NO keeps the scheduled one. Only the client or booker may answer.
  */
@@ -173,16 +190,30 @@ export function formatRange(from: string, to: string): string {
   return shortFormat.formatRange(utc(from), utc(to));
 }
 
+const FLEX_ARG = /^[±+]\d+$/;
+
 /** Strict keyword arguments; invalid shapes are rejected by the SMS schema. */
 export function parseBookingArgs(args: string[]): unknown {
   if (args.length < 3 || args.length > 4) return null;
   const [service, kg, dayMonth, flex] = args;
-  if (!/^\d+$/.test(kg) || (flex !== undefined && !/^[±+]\d+$/.test(flex)))
+  if (!/^\d+$/.test(kg) || (flex !== undefined && !FLEX_ARG.test(flex)))
     return null;
   return {
     service: { DRY: "drying", MILL: "milling" }[service.toUpperCase()],
     estKg: Number(kg),
     dayMonth,
     flexDays: flex === undefined ? 0 : Number(flex.slice(1)),
+  };
+}
+
+/** `MOVE <ref> <dd/mm> [±<days>]`; without flex days the booking keeps its own. */
+export function parseMoveArgs(args: string[]): unknown {
+  if (args.length < 2 || args.length > 3) return null;
+  const [ref, dayMonth, flex] = args;
+  if (flex !== undefined && !FLEX_ARG.test(flex)) return null;
+  return {
+    ref: ref.toUpperCase(),
+    dayMonth,
+    ...(flex !== undefined && { flexDays: Number(flex.slice(1)) }),
   };
 }
