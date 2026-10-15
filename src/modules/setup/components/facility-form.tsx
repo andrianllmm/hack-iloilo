@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { saveFacility } from "../actions";
-import { InfoIcon, UnconfirmedIcon } from "./hint-icons";
+import { InfoIcon, UnconfirmedIcon } from "@/components/hint-icons";
 
 /** Pre-filled values in display units: tonnes, pesos, percent. */
 export type FacilityFormDefaults = {

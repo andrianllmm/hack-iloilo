@@ -15,7 +15,7 @@ import {
   type FacilityFormDefaults,
 } from "@/modules/setup/components/facility-form";
 import { MachinesTable } from "@/modules/setup/components/machines-table";
-import { UnconfirmedIcon } from "@/modules/setup/components/hint-icons";
+import { UnconfirmedIcon } from "@/components/hint-icons";
 import { capacitySettings } from "@/modules/setup/queries";
 
 export const metadata: Metadata = { title: "Settings" };

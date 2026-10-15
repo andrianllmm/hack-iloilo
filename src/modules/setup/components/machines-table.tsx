@@ -38,7 +38,7 @@ import {
 } from "../actions";
 import type { Machine } from "../queries";
 import { NumberField } from "./facility-form";
-import { UnconfirmedIcon } from "./hint-icons";
+import { UnconfirmedIcon } from "@/components/hint-icons";
 
 const machineTypes = [
   { value: "dryer", label: "Dryer", icon: <ServiceIcon kind="dryer" /> },
