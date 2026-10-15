@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { parseOfferForm } from "./logic";
+import {
+  parseOfferForm,
+  parseQuoteArgs,
+  parseSellArgs,
+  quoteSmsSchema,
+  sellSmsSchema,
+} from "./logic";
 
 const valid = {
   clientId: "c3000000-0000-0000-0000-000000000001",
@@ -51,5 +57,71 @@ describe("parseOfferForm", () => {
 
   it("rejects a missing client id", () => {
     expect(parseOfferForm({ ...valid, clientId: "" }).ok).toBe(false);
+  });
+});
+
+describe("parseQuoteArgs", () => {
+  it("parses mc with a trailing % and an optional kg", () => {
+    expect(parseQuoteArgs(["23%", "5000"])).toEqual({ mc: 23, kg: 5000 });
+  });
+
+  it("parses mc without a % sign", () => {
+    expect(parseQuoteArgs(["23"])).toEqual({ mc: 23, kg: undefined });
+  });
+
+  it("parses a decimal mc", () => {
+    expect(parseQuoteArgs(["14.5%"])).toEqual({ mc: 14.5, kg: undefined });
+  });
+
+  it.each([
+    [[]],
+    [["23%", "5000", "extra"]],
+    [["abc"]],
+    [["%"]],
+    [["23%", "5.5"]],
+    [["23%", "-100"]],
+  ])("rejects malformed args: %j", (args) => {
+    expect(parseQuoteArgs(args)).toBeNull();
+  });
+
+  it("feeds the schema a value it accepts", () => {
+    const parsed = parseQuoteArgs(["23%", "5000"]);
+    expect(quoteSmsSchema.safeParse(parsed).success).toBe(true);
+  });
+
+  it("lets the schema reject a non-positive or out-of-range mc", () => {
+    expect(quoteSmsSchema.safeParse(parseQuoteArgs(["0"])).success).toBe(false);
+    expect(quoteSmsSchema.safeParse(parseQuoteArgs(["100"])).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("parseSellArgs", () => {
+  it("parses kg, variety (uppercased) and dd/mm", () => {
+    expect(parseSellArgs(["3000", "rc222", "25/10"])).toEqual({
+      estKg: 3000,
+      varietyCode: "RC222",
+      dayMonth: "25/10",
+    });
+  });
+
+  it.each([
+    [["3000", "RC222"]],
+    [["3000", "RC222", "25/10", "extra"]],
+    [["3.5", "RC222", "25/10"]],
+    [["abc", "RC222", "25/10"]],
+  ])("rejects the wrong number or shape of args: %j", (args) => {
+    expect(parseSellArgs(args)).toBeNull();
+  });
+
+  it("feeds the schema a value it accepts", () => {
+    const parsed = parseSellArgs(["3000", "RC222", "25/10"]);
+    expect(sellSmsSchema.safeParse(parsed).success).toBe(true);
+  });
+
+  it("lets the schema reject a malformed dd/mm", () => {
+    const parsed = { estKg: 3000, varietyCode: "RC222", dayMonth: "25-10" };
+    expect(sellSmsSchema.safeParse(parsed).success).toBe(false);
   });
 });
