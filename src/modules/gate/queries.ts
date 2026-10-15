@@ -472,6 +472,21 @@ export async function storageStockOn(date: string): Promise<number> {
   return data.reduce((sum, b) => sum + (b.dried_kg ?? b.net_kg ?? 0), 0);
 }
 
+/** Net kg received at the gate per client, all time (M10 ranks by it). */
+export async function receivedKgByClient(): Promise<Map<string, number>> {
+  const facility = await currentFacility();
+  const { data, error } = await db()
+    .from("batches")
+    .select("client_id, net_kg")
+    .eq("facility_id", facility.id)
+    .not("net_kg", "is", null);
+  if (error) throw error;
+  const kg = new Map<string, number>();
+  for (const b of data)
+    kg.set(b.client_id, (kg.get(b.client_id) ?? 0) + (b.net_kg ?? 0));
+  return kg;
+}
+
 /** Batches for the list page, newest first, optionally one stage only. */
 export async function listBatches(
   stage?: Batch["stage"],
