@@ -20,6 +20,7 @@ import {
   unmarkOfferArrived,
 } from "@/modules/buying/queries";
 import { currentFacility } from "@/modules/setup/queries";
+import type { CommandContext } from "@/modules/sms/registry";
 import {
   type BatchAction,
   batchOwnership,
@@ -27,6 +28,9 @@ import {
   nextBatchNo,
   nextStage,
   normalizeRef,
+  queueLines,
+  queuePositions,
+  queueStatusReply,
   REF_LENGTH,
   refCheckInError,
   refKindLabels,
@@ -333,6 +337,16 @@ export function markLeft(entryId: string): Promise<QueueEntry> {
     status: "left",
     finished_at: new Date().toISOString(),
   });
+}
+
+/** `STATUS` reply: the sender's place in each line. `FOR` is ignored. */
+export async function queueStatusBySms(
+  _args: unknown,
+  ctx: CommandContext,
+): Promise<string> {
+  return queueStatusReply(
+    queuePositions(queueLines(await liveQueue()), ctx.client.id),
+  );
 }
 
 /** Everyone waiting or being served, with their client and open batch. */

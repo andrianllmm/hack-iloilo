@@ -187,6 +187,43 @@ export function queueLines(rows: QueueRow[]): Record<Service, QueueLine> {
   return lines;
 }
 
+/** A client's place in one service line: being served, or 1-based among those waiting. */
+export type QueuePosition =
+  | { service: Service; serving: true }
+  | { service: Service; serving: false; position: number };
+
+/** Where the client stands in each line they're in; being served wins over waiting. */
+export function queuePositions(
+  lines: Record<Service, QueueLine>,
+  clientId: string,
+): QueuePosition[] {
+  const positions: QueuePosition[] = [];
+  for (const service of services) {
+    const line = lines[service];
+    if (line.serving.some((r) => r.client_id === clientId)) {
+      positions.push({ service, serving: true });
+      continue;
+    }
+    const index = line.waiting.findIndex((r) => r.client_id === clientId);
+    if (index >= 0)
+      positions.push({ service, serving: false, position: index + 1 });
+  }
+  return positions;
+}
+
+export const NOT_IN_LINE_REPLY =
+  "IRPC: You are not in line. Check in at the gate when you arrive.";
+
+/** `IRPC: Drying: you are #3 in line. Milling: being served now.` */
+export function queueStatusReply(positions: QueuePosition[]): string {
+  if (!positions.length) return NOT_IN_LINE_REPLY;
+  const parts = positions.map(
+    (p) =>
+      `${serviceLabels[p.service]}: ${p.serving ? "being served now" : `you are #${p.position} in line`}.`,
+  );
+  return `IRPC: ${parts.join(" ")}`;
+}
+
 /** Whole minutes waited, never negative. */
 export function waitMinutes(since: string, now: Date): number {
   return Math.max(0, Math.floor((now.getTime() - Date.parse(since)) / 60_000));
