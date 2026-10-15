@@ -52,3 +52,50 @@ from (
   ('a6000000-0000-0000-0000-000000000001', '003')
 ) as v (entry_id, seq)
 join public.queue_entries e on e.id = v.entry_id::uuid;
+
+-- Earlier batches partway through drying and milling, for the batches list and
+-- the storage snapshot. Numbered on the previous Manila day so they don't clash
+-- with today's queue-opened batches. No queue entry (that line is long closed).
+with d1 as (
+  select id from public.machines
+  where facility_id = 'f0000000-0000-0000-0000-000000000001' and code = 'D1'
+),
+m1 as (
+  select id from public.machines
+  where facility_id = 'f0000000-0000-0000-0000-000000000001' and code = 'M1'
+),
+yday as (
+  select to_char((now() at time zone 'Asia/Manila') - interval '1 day', 'YYMMDD') as ymd
+)
+insert into public.batches (
+  facility_id, batch_no, client_id, ownership, stage, bags, net_kg, mc,
+  dryer_id, dry_start, dry_end, mc_out, dried_kg,
+  mill_id, mill_start, mill_end, mill_in_kg, rice_kg, byproducts
+)
+values
+  -- Drying in progress (custom): in the dryer, not yet out.
+  ('f0000000-0000-0000-0000-000000000001', (select ymd from yday) || '-001',
+   'c1000000-0000-0000-0000-000000000003', 'custom', 'drying', 50, 2500, 23.4,
+   (select id from d1), now() - interval '3 hours', null, null, null,
+   null, null, null, null, null, '{}'),
+  -- Stored, IRPC-owned, dried (counts in the storage snapshot by dried kg).
+  ('f0000000-0000-0000-0000-000000000001', (select ymd from yday) || '-002',
+   'c0000000-0000-0000-0000-000000000001', 'irpc', 'stored', 180, 9000, 24.0,
+   (select id from d1), now() - interval '28 hours', now() - interval '20 hours', 13.8, 8600,
+   null, null, null, null, null, '{}'),
+  -- Stored, IRPC-owned, drying skipped (counts by net kg).
+  ('f0000000-0000-0000-0000-000000000001', (select ymd from yday) || '-003',
+   'c0000000-0000-0000-0000-000000000002', 'irpc', 'stored', 120, 6000, 13.5,
+   null, null, null, null, null,
+   null, null, null, null, null, '{}'),
+  -- Milling in progress (custom): dried, now in the mill.
+  ('f0000000-0000-0000-0000-000000000001', (select ymd from yday) || '-004',
+   'c1000000-0000-0000-0000-000000000005', 'custom', 'milling', 80, 4000, 22.0,
+   (select id from d1), now() - interval '26 hours', now() - interval '18 hours', 13.9, 3850,
+   (select id from m1), now() - interval '2 hours', null, null, null, '{}'),
+  -- Milled (custom): full trail, recovery computes to 65.5%.
+  ('f0000000-0000-0000-0000-000000000001', (select ymd from yday) || '-005',
+   'c1000000-0000-0000-0000-000000000011', 'custom', 'milled', 40, 2000, 21.5,
+   (select id from d1), now() - interval '30 hours', now() - interval '22 hours', 13.5, 1920,
+   (select id from m1), now() - interval '16 hours', now() - interval '15 hours', 1900, 1245,
+   '{"bran_kg": 190, "husk_kg": 420}');

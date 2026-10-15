@@ -33,6 +33,52 @@ export const stageLabels: Record<Batch["stage"], string> = {
   dispatched: "Dispatched",
 };
 
+/** What staff do to move a batch through drying and milling. */
+export type BatchAction =
+  | "start_drying"
+  | "finish_drying"
+  | "skip_drying"
+  | "start_milling"
+  | "finish_milling";
+
+/** Each action applies at one stage and leads to exactly one next stage. */
+const transitions: Record<
+  BatchAction,
+  { from: Batch["stage"]; to: Batch["stage"] }
+> = {
+  start_drying: { from: "received", to: "drying" },
+  skip_drying: { from: "received", to: "stored" },
+  finish_drying: { from: "drying", to: "stored" },
+  start_milling: { from: "stored", to: "milling" },
+  finish_milling: { from: "milling", to: "milled" },
+};
+
+/**
+ * The stage a batch moves to, or throws if the action doesn't apply to its
+ * current stage. Stages only move forward: `received → drying → stored →
+ * milling → milled`, with dry palay skipping straight to `stored`.
+ */
+export function nextStage(
+  batch: Pick<Batch, "stage">,
+  action: BatchAction,
+): Batch["stage"] {
+  const transition = transitions[action];
+  if (transition.from !== batch.stage)
+    throw new Error(
+      `Cannot ${action} a batch that is ${batch.stage}; it must be ${transition.from}.`,
+    );
+  return transition.to;
+}
+
+/** Milling recovery as a percent (rice ÷ mill-in), or null before milling. */
+export function recoveryPct(
+  riceKg: number | null,
+  millInKg: number | null,
+): number | null {
+  if (!riceKg || !millInKg) return null;
+  return Math.round((riceKg / millInKg) * 1000) / 10;
+}
+
 /** `YYMMDD-NNN` from a Manila `YYYY-MM-DD` date and the day's sequence. */
 export function batchNo(date: string, seq: number): string {
   const [y, m, d] = date.split("-");

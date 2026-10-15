@@ -4,17 +4,28 @@
 // Server actions. Check the staff role first with requireRole().
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import { z, type ZodType } from "zod";
 import { requireRole } from "@/modules/accounts/auth";
 import { ClientInputError } from "@/modules/accounts/queries";
+import {
+  finishDryingSchema,
+  finishMillingSchema,
+  startDryingSchema,
+  startMillingSchema,
+} from "./batch-schema";
 import { checkInSchema, type CheckInInput } from "./checkin-schema";
 import {
   checkIn,
   finish,
+  finishDrying,
+  finishMilling,
   GateError,
   markLeft,
   refPreview,
+  skipDrying,
   start,
+  startDrying,
+  startMilling,
   type CheckInParams,
 } from "./queries";
 import type { RefPreview } from "./types";
@@ -30,6 +41,14 @@ export type StartResult =
 export type MoveResult = { status: "ok" } | Failure;
 export type LookupRefResult =
   { status: "ok"; preview: RefPreview } | { status: "error"; message: string };
+export type StageResult =
+  | { status: "ok" }
+  | { status: "error"; message?: string; fieldErrors?: Record<string, string> };
+
+const invalidBatch: StageResult = {
+  status: "error",
+  message: "Invalid batch. Refresh the page.",
+};
 
 const invalidEntry: Failure = {
   status: "error",
@@ -154,4 +173,111 @@ export async function leaveEntry(id: string): Promise<MoveResult> {
     await markLeft(entryId);
     return { status: "ok" as const };
   });
+}
+
+/** Runs a batch stage write, revalidating its pages and mapping a stale stage. */
+async function commit(
+  batchId: string,
+  label: string,
+  work: () => Promise<unknown>,
+): Promise<StageResult> {
+  try {
+    await work();
+    revalidatePath(`/batches/${batchId}`);
+    revalidatePath("/batches");
+    return { status: "ok" };
+  } catch (error) {
+    if (error instanceof GateError)
+      return { status: "error", message: error.message };
+    console.error(`Unable to ${label}`, error);
+    return {
+      status: "error",
+      message: `Unable to ${label}. Please try again.`,
+    };
+  }
+}
+
+/**
+ * Validates a batch stage form and runs its write, mapping Zod issues to field
+ * errors and a stale stage to a refresh prompt.
+ */
+async function record<T>(
+  batchId: string,
+  label: string,
+  schema: ZodType<T>,
+  input: unknown,
+  write: (batchId: string, data: T) => Promise<unknown>,
+): Promise<StageResult> {
+  await requireRole();
+  if (!z.guid().safeParse(batchId).success) return invalidBatch;
+  const parsed = schema.safeParse(input);
+  if (!parsed.success)
+    return {
+      status: "error",
+      fieldErrors: Object.fromEntries(
+        parsed.error.issues.map((issue) => [
+          String(issue.path[0]),
+          issue.message,
+        ]),
+      ),
+    };
+  return commit(batchId, label, () => write(batchId, parsed.data));
+}
+
+export async function startDryingBatch(
+  batchId: string,
+  input: unknown,
+): Promise<StageResult> {
+  return record(batchId, "start drying", startDryingSchema, input, startDrying);
+}
+
+export async function finishDryingBatch(
+  batchId: string,
+  input: unknown,
+): Promise<StageResult> {
+  return record(
+    batchId,
+    "finish drying",
+    finishDryingSchema,
+    input,
+    finishDrying,
+  );
+}
+
+export async function skipDryingBatch(batchId: string): Promise<StageResult> {
+  await requireRole();
+  if (!z.guid().safeParse(batchId).success) return invalidBatch;
+  return commit(batchId, "skip drying", () => skipDrying(batchId));
+}
+
+export async function startMillingBatch(
+  batchId: string,
+  input: unknown,
+): Promise<StageResult> {
+  return record(
+    batchId,
+    "start milling",
+    startMillingSchema,
+    input,
+    startMilling,
+  );
+}
+
+export async function finishMillingBatch(
+  batchId: string,
+  input: unknown,
+): Promise<StageResult> {
+  return record(
+    batchId,
+    "finish milling",
+    finishMillingSchema,
+    input,
+    (id, data) =>
+      finishMilling(id, {
+        mill_end: data.mill_end,
+        mill_in_kg: data.mill_in_kg,
+        rice_kg: data.rice_kg,
+        byproducts: { bran_kg: data.bran_kg, husk_kg: data.husk_kg },
+      }),
+  );
 }

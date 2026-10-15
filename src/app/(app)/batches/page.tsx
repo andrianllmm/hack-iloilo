@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import { PagePlaceholder } from "@/components/page-placeholder";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BatchesList } from "@/modules/gate/components/batches-list";
 
 export const metadata: Metadata = { title: "Batches" };
 
-export default function BatchesPage() {
+export default function BatchesPage({ searchParams }: PageProps<"/batches">) {
   return (
-    <PagePlaceholder
-      title="Batches"
-      module="M6"
-      description="Batch records from receiving to dispatch."
-    />
+    <Suspense fallback={<Skeleton className="h-96" />}>
+      <BatchesList searchParams={searchParams} />
+    </Suspense>
   );
 }
