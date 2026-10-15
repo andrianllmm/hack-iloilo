@@ -106,6 +106,98 @@ export function parsePriceForm(raw: Record<string, unknown>): PriceParseResult {
 }
 
 /**
+ * The parts of a `prices` row the buy rule reads. The DB row satisfies this
+ * (cast `buy_rules` from `Json` to `BuyRules`); other tickets pass the row.
+ */
+export type PriceRule = {
+  buy_base_minor_per_kg: number;
+  buy_reference_mc: number;
+  buy_rules: BuyRules;
+};
+
+/**
+ * Buying price per kg in centavos, MC-adjusted off the base at the reference
+ * MC: base × (100 − mc) ÷ (100 − ref), the `proportional` rule (TRD M5).
+ * Clamped at 0 so extreme MC never yields a negative price.
+ */
+function buyPricePerKg(prices: PriceRule, mc: number): number {
+  const { buy_base_minor_per_kg: base, buy_reference_mc: ref } = prices;
+  const adjusted = (base * (100 - mc)) / (100 - ref);
+  return Math.max(0, Math.round(adjusted));
+}
+
+/**
+ * A quote: the MC-adjusted price per kg, and the total for `kg` if given.
+ * An estimate only — it skips the receiving deductions (TRD M5 step 4).
+ */
+export function quote(
+  prices: PriceRule,
+  mc: number,
+  kg?: number,
+): { minorPerKg: number; totalMinor?: number } {
+  const minorPerKg = buyPricePerKg(prices, mc);
+  return kg === undefined
+    ? { minorPerKg }
+    : { minorPerKg, totalMinor: minorPerKg * kg };
+}
+
+/** Receiving inputs from the Receiving Report. Deduction shares are percentages. */
+export type ReceivingInput = {
+  /** Weighed net delivery, in kg. */
+  netKg: number;
+  /** Moisture content, percent. */
+  mc: number;
+  /** Damaged grains, percent of the delivery. */
+  damagedPct: number;
+  /** Immature grains, percent of the delivery. */
+  immaturePct: number;
+  /** Foreign matter, percent of the delivery. */
+  foreignPct: number;
+  /** Number of sacks, for the per-sack weight deduction. */
+  bags: number;
+};
+
+/** Kilos deducted by category, as stored in `purchases.deductions`. */
+export type Deductions = {
+  damaged: number;
+  immature: number;
+  foreign: number;
+  sack: number;
+};
+
+/**
+ * Prices a full receiving like the paper Receiving Report (TRD M5): the same
+ * MC-adjusted price as a quote, then kg deductions — each a percentage of the
+ * delivery times its factor, plus the sack weight per bag — off the net weight.
+ * Total is paid kg × price.
+ */
+export function priceReceiving(
+  prices: PriceRule,
+  { netKg, mc, damagedPct, immaturePct, foreignPct, bags }: ReceivingInput,
+): {
+  paidKg: number;
+  minorPerKg: number;
+  totalMinor: number;
+  deductions: Deductions;
+} {
+  const { damaged, immature, foreign, sack_kg } = prices.buy_rules;
+  const deductions: Deductions = {
+    damaged: Math.round((netKg * damagedPct * damaged) / 100),
+    immature: Math.round((netKg * immaturePct * immature) / 100),
+    foreign: Math.round((netKg * foreignPct * foreign) / 100),
+    sack: Math.round(bags * sack_kg),
+  };
+  const paidKg =
+    netKg -
+    deductions.damaged -
+    deductions.immature -
+    deductions.foreign -
+    deductions.sack;
+  const minorPerKg = buyPricePerKg(prices, mc);
+  return { paidKg, minorPerKg, totalMinor: paidKg * minorPerKg, deductions };
+}
+
+/**
  * The price row in effect on `today`, from rows sorted newest effective date
  * first: the first row with `effective_date <= today`. Shared by the page
  * prefill and the History "In effect" tag.
