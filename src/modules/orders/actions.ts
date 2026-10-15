@@ -131,7 +131,7 @@ const TRACK_LOCKED = `Too many tries. Wait ${TRACK_WINDOW_MINUTES} minutes and t
 /**
  * Runs a public /buy/track request. `run` returns the order, an error message,
  * or null when the ref is unknown or not the phone's: both read "not found"
- * and count toward the same lock as /track.
+ * and count toward the same lock as /book/track.
  */
 async function trackRequest(
   input: unknown,
