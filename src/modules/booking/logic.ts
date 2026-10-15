@@ -25,6 +25,25 @@ export const statusLabels: Record<BookingStatus, string> = {
   no_show: "No-show",
 };
 export const MAX_FLEX_DAYS = 7;
+
+/** Shared move validation; `today` is the Manila calendar date supplied by the caller. */
+export function validateMove(
+  date: string,
+  flexDays: number,
+  today: string,
+): string | null {
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+    !Number.isFinite(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== date
+  )
+    return "Choose a valid date.";
+  if (date < today) return "Choose today or a later date.";
+  if (!Number.isInteger(flexDays) || flexDays < 0 || flexDays > MAX_FLEX_DAYS)
+    return `Flex days must be a whole number from 0 to ${MAX_FLEX_DAYS}.`;
+  return null;
+}
 /** Days shown by default on the bookings page, today included. */
 export const DEFAULT_RANGE_DAYS = 16;
 

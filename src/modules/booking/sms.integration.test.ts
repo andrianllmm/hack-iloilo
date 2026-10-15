@@ -19,8 +19,13 @@ import { db } from "@/lib/supabase/admin";
 import { findClientByPhone } from "@/modules/accounts/queries";
 import { isGsm7, SMS_MAX_CHARS } from "@/modules/sms/logic";
 import * as sms from "@/modules/sms/queries";
-import { bookForClient } from "./actions";
-import { findByRef, proposeReschedule } from "./queries";
+import { bookForClient, moveBookingByStaff } from "./actions";
+import {
+  bookingsBetween,
+  findByRef,
+  moveBooking,
+  proposeReschedule,
+} from "./queries";
 
 // Opt in with an existing local Supabase environment; no database reset required.
 describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
@@ -218,7 +223,7 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
       expect(await proposeReschedule(booking.id, to)).toBeNull();
 
       await inbound(`YES ${booking.ref}`, stranger);
-      expect((await lastReply(stranger)).body).toContain("Unknown command");
+      expect((await lastReply(stranger)).body).toContain("didn't get that");
       expect((await findByRef(booking.ref))!.status).toBe(
         "reschedule_proposed",
       );
@@ -278,14 +283,14 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
     it("refuses MOVE from a stranger, for unknown refs and closed bookings", async () => {
       const booking = await book(`BOOK DRY 100 20/10 FOR ${beneficiary}`);
       await inbound(`MOVE ${booking.ref} 25/10 FOR ${beneficiary}`, stranger);
-      expect((await lastReply(stranger)).body).toContain("Unknown command");
+      expect((await lastReply(stranger)).body).toContain("didn't get that");
       expect((await findByRef(booking.ref))!.scheduled_date).toBe(
         booking.scheduled_date,
       );
       await inbound("MOVE ZZZZZZ 25/10");
-      expect((await lastReply()).body).toContain("No booking with ref");
+      expect((await lastReply()).body).toContain("didn't get that");
       await inbound(`MOVE ${booking.ref} 31/02`);
-      expect((await lastReply()).body).toContain("Unknown command");
+      expect((await lastReply()).body).toContain("Choose a valid date");
       await inbound(`CANCEL ${booking.ref}`);
       await inbound(`MOVE ${booking.ref} 25/10`);
       expect((await lastReply()).body).toContain("cannot be moved");
@@ -315,6 +320,72 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
       if (error) throw error;
       expect(prompts.map((p) => p.status)).toEqual(["expired"]);
       // A late answer to the old question no longer moves the booking.
+      await inbound(`YES ${booking.ref}`, beneficiary);
+      expect((await findByRef(booking.ref))!.scheduled_date).toBe(to);
+    });
+
+    it("rejects past dates, excess flex and every closed status without changing the booking", async () => {
+      const booking = await book();
+      expect(
+        await moveBooking(booking.ref, dates.addDays(dates.todayManila(), -1)),
+      ).toMatchObject({
+        status: "invalid",
+        message: "Choose today or a later date.",
+      });
+      await inbound(`MOVE ${booking.ref} 25/10 +8`);
+      expect((await lastReply()).body).toContain("whole number from 0 to 7");
+      expect(await findByRef(booking.ref)).toEqual(booking);
+      for (const status of ["arrived", "cancelled", "no_show"] as const) {
+        const { error } = await db()
+          .from("bookings")
+          .update({ status })
+          .eq("id", booking.id);
+        if (error) throw error;
+        await inbound(`MOVE ${booking.ref} 25/10`);
+        expect((await lastReply()).body).toContain("cannot be moved");
+        expect((await findByRef(booking.ref))!.status).toBe(status);
+      }
+    });
+
+    it("staff move clears the proposal, notifies both phones, and updates capacity inputs", async () => {
+      const booking = await book(`BOOK MILL 700 20/10 +3 FOR ${beneficiary}`);
+      await proposeReschedule(
+        booking.id,
+        dates.addDays(booking.scheduled_date, 1),
+      );
+      const to = dates.addDays(booking.scheduled_date, 4);
+      expect(
+        await moveBookingByStaff({ ref: booking.ref, date: to, flexDays: 1 }),
+      ).toEqual({ status: "moved" });
+      expect(await findByRef(booking.ref)).toMatchObject({
+        id: booking.id,
+        ref: booking.ref,
+        service: booking.service,
+        est_kg: booking.est_kg,
+        scheduled_date: to,
+        preferred_date: to,
+        flex_days: 1,
+        proposed_date: null,
+        status: "confirmed",
+      });
+      expect((await lastReply()).body).toBe(
+        (await lastReply(beneficiary)).body,
+      );
+      expect((await lastReply()).body).toContain(`${booking.ref} moved to`);
+      expect(
+        (
+          await bookingsBetween(booking.scheduled_date, booking.scheduled_date)
+        ).some((b) => b.id === booking.id),
+      ).toBe(false);
+      expect(
+        (await bookingsBetween(to, to)).some((b) => b.id === booking.id),
+      ).toBe(true);
+      const { data, error } = await db()
+        .from("sms_prompts")
+        .select("status")
+        .eq("ref", booking.ref);
+      if (error) throw error;
+      expect(data.map((p) => p.status)).toEqual(["expired"]);
       await inbound(`YES ${booking.ref}`, beneficiary);
       expect((await findByRef(booking.ref))!.scheduled_date).toBe(to);
     });

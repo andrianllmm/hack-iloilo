@@ -11,17 +11,80 @@ vi.mock("./queries", () => ({
   createBooking: vi.fn(),
   cancelBooking: vi.fn(),
   notifyBookingConfirmation: vi.fn(),
+  moveBooking: vi.fn(),
+  notifyBookingMoved: vi.fn(),
 }));
 import { requireRole } from "@/modules/accounts/auth";
 import { findOrRegisterByPhone } from "@/modules/accounts/queries";
-import { bookForClient, bookOnline } from "./actions";
+import { bookForClient, bookOnline, moveBookingByStaff } from "./actions";
+import { revalidatePath } from "next/cache";
 import {
   bookingClient,
   createBooking,
   notifyBookingConfirmation,
+  moveBooking,
+  notifyBookingMoved,
 } from "./queries";
 
 beforeEach(() => vi.resetAllMocks());
+
+it("requires staff auth before moving and tells both client and booker", async () => {
+  const booking = {
+    ref: "ABC123",
+    booked_by_phone: "+639181234567",
+  } as Awaited<ReturnType<typeof createBooking>>;
+  vi.mocked(moveBooking).mockResolvedValue({
+    status: "moved",
+    booking,
+    clientPhone: "+639171234567",
+  });
+  expect(
+    await moveBookingByStaff({
+      ref: "ABC123",
+      date: "2026-10-25",
+      flexDays: 3,
+    }),
+  ).toEqual({ status: "moved" });
+  expect(requireRole).toHaveBeenCalledOnce();
+  expect(vi.mocked(requireRole).mock.invocationCallOrder[0]).toBeLessThan(
+    vi.mocked(moveBooking).mock.invocationCallOrder[0],
+  );
+  expect(moveBooking).toHaveBeenCalledWith("ABC123", "2026-10-25", 3);
+  expect(notifyBookingMoved).toHaveBeenCalledWith(booking, [
+    "+639171234567",
+    "+639181234567",
+  ]);
+});
+it("cannot move through the staff path without authentication", async () => {
+  vi.mocked(requireRole).mockRejectedValue(new Error("Unauthorized"));
+  await expect(moveBookingByStaff({})).rejects.toThrow("Unauthorized");
+  expect(moveBooking).not.toHaveBeenCalled();
+});
+it("rejects invalid staff move input before writing", async () => {
+  expect(
+    await moveBookingByStaff({
+      ref: "ABC123",
+      date: "2026-10-25",
+      flexDays: 8,
+    }),
+  ).toMatchObject({ status: "error" });
+  expect(moveBooking).not.toHaveBeenCalled();
+});
+it("reports shared rule failures without notifying", async () => {
+  vi.mocked(moveBooking).mockResolvedValue({
+    status: "invalid",
+    message: "Choose today or a later date.",
+  });
+  expect(
+    await moveBookingByStaff({
+      ref: "ABC123",
+      date: "2026-10-14",
+      flexDays: 0,
+    }),
+  ).toEqual({ status: "error", message: "Choose today or a later date." });
+  expect(notifyBookingMoved).not.toHaveBeenCalled();
+  expect(revalidatePath).not.toHaveBeenCalled();
+});
 it("authenticates staff, saves, and confirms to the selected client", async () => {
   const client = {
     id: "11111111-1111-4111-8111-111111111111",

@@ -52,9 +52,11 @@ const statusVariants: Record<
 export function BookingsTable({
   groups,
   clients,
+  onReschedule,
 }: {
   groups: BookingGroup[];
   clients: BookingClient[];
+  onReschedule: (booking: BookingRow) => void;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [cancelling, setCancelling] = useState<BookingRow | null>(null);
@@ -129,6 +131,17 @@ export function BookingsTable({
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
+                        {row.status === "confirmed" ||
+                        row.status === "reschedule_proposed" ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`Reschedule booking ${row.ref}`}
+                            onClick={() => onReschedule(row)}
+                          >
+                            Reschedule
+                          </Button>
+                        ) : null}
                         {row.status === "confirmed" ? (
                           <Button
                             variant="ghost"
