@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { DatePicker } from "@/components/date-picker";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -26,18 +27,18 @@ export type PriceFormDefaults = {
 
 export function PriceForm({ defaults }: { defaults: PriceFormDefaults }) {
   const [state, action, pending] = useActionState(savePrice, undefined);
+  const [effectiveDate, setEffectiveDate] = useState(defaults.effectiveDate);
 
   return (
     <form action={action}>
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="effectiveDate">Effective date</FieldLabel>
-          <Input
+          <DatePicker
             id="effectiveDate"
             name="effectiveDate"
-            type="date"
-            required
-            defaultValue={defaults.effectiveDate}
+            value={effectiveDate}
+            onChange={(value) => setEffectiveDate(value ?? "")}
           />
           <FieldDescription>
             Reads back on this date; the newest save for a date wins.

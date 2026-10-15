@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { DatePicker } from "@/components/date-picker";
 import { OptionSelect } from "@/components/option-select";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,6 +55,7 @@ function OfferFields({
   state: OfferFormState;
 }) {
   const [phone, setPhone] = useState("");
+  const [harvestDate, setHarvestDate] = useState("");
 
   return (
     <form action={action}>
@@ -104,7 +106,12 @@ function OfferFields({
 
         <Field>
           <FieldLabel htmlFor="harvestDate">Harvest date</FieldLabel>
-          <Input id="harvestDate" name="harvestDate" type="date" required />
+          <DatePicker
+            id="harvestDate"
+            name="harvestDate"
+            value={harvestDate}
+            onChange={(value) => setHarvestDate(value ?? "")}
+          />
         </Field>
 
         <Field>

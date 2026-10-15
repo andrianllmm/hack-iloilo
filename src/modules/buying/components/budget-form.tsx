@@ -2,6 +2,7 @@
 
 import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { DatePicker } from "@/components/date-picker";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -49,12 +50,11 @@ export function BudgetForm({
       </Field>
       <Field>
         <FieldLabel htmlFor={startId}>Period start</FieldLabel>
-        <Input
+        <DatePicker
           id={startId}
-          type="date"
           value={from}
           disabled={pending}
-          onChange={(event) => setFrom(event.target.value)}
+          onChange={(value) => setFrom(value ?? "")}
         />
       </Field>
       <Button type="submit" variant="outline" disabled={pending}>
