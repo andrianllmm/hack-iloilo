@@ -19,6 +19,17 @@ export async function listVarieties(): Promise<Variety[]> {
   return data;
 }
 
+/** The variety with this code (case-insensitive), or null. Used by SMS `SELL`. */
+export async function findVarietyByCode(code: string): Promise<Variety | null> {
+  const { data, error } = await db()
+    .from("varieties")
+    .select()
+    .ilike("code", code)
+    .maybeSingle();
+  if (error) throw new Error(`Variety by code: ${error.message}`);
+  return data;
+}
+
 /** Active machines of one type (dryers or the mill), ordered by code. */
 export async function listMachines(type: MachineType): Promise<Machine[]> {
   const facility = await currentFacility();

@@ -3,17 +3,22 @@
 
 import "server-only";
 import { todayManila } from "@/lib/dates";
+import { formatDate, formatKg, formatMoneySms } from "@/lib/format";
 import { newRef } from "@/lib/ref";
 import { db } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
+import { findOrRegisterByPhone } from "@/modules/accounts/queries";
 import {
   type BuyRules,
   type PriceRule,
   priceReceiving,
+  quote,
 } from "@/modules/pricing/logic";
 import { priceOn } from "@/modules/pricing/queries";
-import { currentFacility } from "@/modules/setup/queries";
-import type { CreateOfferInput } from "./logic";
+import { helpText, parseDayMonth } from "@/modules/sms/logic";
+import { commandKeywords, type CommandContext } from "@/modules/sms/registry";
+import { currentFacility, findVarietyByCode } from "@/modules/setup/queries";
+import type { CreateOfferInput, QuoteSmsInput, SellSmsInput } from "./logic";
 
 export type Offer = Database["public"]["Tables"]["sell_offers"]["Row"];
 export type OfferStatus = Database["public"]["Enums"]["sell_offer_status"];
@@ -208,4 +213,66 @@ export async function listOffers(
   const { data, error } = await query.order("harvest_date");
   if (error) throw new Error(`Offers: ${error.message}`);
   return data;
+}
+
+// --- SMS handlers (M5). Registered from `sms.ts`; each returns the reply the
+// registry sends to the sender exactly once. See TRD M5. ---
+
+/** `PRICE`: today's buying base, drying and milling fees, and rice price. */
+export async function priceBySms(): Promise<string> {
+  const prices = await priceOn(todayManila());
+  return (
+    `IRPC prices today: palay base ${formatMoneySms(prices.buy_base_minor_per_kg)}/kg ` +
+    `at ${prices.buy_reference_mc}% MC, drying ${formatMoneySms(prices.drying_fee_minor_per_kg)}/kg, ` +
+    `milling ${formatMoneySms(prices.milling_fee_minor_per_kg)}/kg, ` +
+    `rice ${formatMoneySms(prices.rice_minor_per_kg)}/kg. For a quote: QUOTE <mc>% <kg>.`
+  );
+}
+
+/** `QUOTE <mc>% [<kg>]`: the MC-adjusted price per kg and total, as an estimate. */
+export async function quoteBySms(input: QuoteSmsInput): Promise<string> {
+  const prices = await priceOn(todayManila());
+  const rule: PriceRule = {
+    buy_base_minor_per_kg: prices.buy_base_minor_per_kg,
+    buy_reference_mc: prices.buy_reference_mc,
+    buy_rules: prices.buy_rules as BuyRules,
+  };
+  const { minorPerKg, totalMinor } = quote(rule, input.mc, input.kg);
+  const total =
+    totalMinor === undefined
+      ? ""
+      : `, ${formatKg(input.kg as number)} = ${formatMoneySms(totalMinor)}`;
+  return (
+    `IRPC estimate at ${input.mc}% MC: ${formatMoneySms(minorPerKg)}/kg${total}. ` +
+    `Estimate only; the final price is set at receiving.`
+  );
+}
+
+/** `SELL <kg> <variety> <dd/mm>` (with optional `FOR <phone>`): records an offer. */
+export async function sellBySms(
+  input: SellSmsInput,
+  ctx: CommandContext,
+): Promise<string> {
+  const variety = await findVarietyByCode(input.varietyCode);
+  if (!variety)
+    return `IRPC: We don't recognize variety "${input.varietyCode}". Please check the code and try again.`;
+  const harvestDate = parseDayMonth(input.dayMonth, todayManila());
+  if (!harvestDate) return helpText(commandKeywords());
+
+  // FOR records the offer under another client; authority is never granted by it.
+  const client =
+    ctx.forPhone && ctx.forPhone !== ctx.phone
+      ? await findOrRegisterByPhone(ctx.forPhone)
+      : ctx.client;
+  const offer = await createOffer({
+    clientId: client.id,
+    varietyId: variety.id,
+    estKg: input.estKg,
+    harvestDate,
+    bookedByPhone: ctx.phone,
+  });
+  return (
+    `IRPC: Offer recorded. Ref ${offer.ref}: ${formatKg(offer.est_kg)} ${variety.code} ` +
+    `for harvest ${formatDate(harvestDate)}. We will text you when the manager decides.`
+  );
 }

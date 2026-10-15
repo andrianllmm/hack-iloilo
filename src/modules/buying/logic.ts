@@ -45,3 +45,42 @@ export function parseOfferForm(raw: Record<string, unknown>): ParseResult {
   }
   return { ok: true, value: parsed.data };
 }
+
+// --- SMS command parsing (M5). Still pure; the registry validates with the
+// schema and the queries resolve the variety and harvest date server-side. ---
+
+/** `QUOTE <mc>% [<kg>]`. MC is a percentage (`numeric(4,1)`), kg is whole kg. */
+export const quoteSmsSchema = z.object({
+  mc: z.number().positive().max(99.9),
+  kg: z.number().int().positive().optional(),
+});
+export type QuoteSmsInput = z.infer<typeof quoteSmsSchema>;
+
+/** Tokens after `QUOTE`: `<mc>%` and an optional `<kg>`. The `%` is optional. */
+export function parseQuoteArgs(args: string[]): unknown {
+  if (args.length < 1 || args.length > 2) return null;
+  const [mcRaw, kgRaw] = args;
+  const mcToken = mcRaw.replace(/%$/, "");
+  if (!/^\d+(\.\d+)?$/.test(mcToken)) return null;
+  if (kgRaw !== undefined && !/^\d+$/.test(kgRaw)) return null;
+  return {
+    mc: Number(mcToken),
+    kg: kgRaw === undefined ? undefined : Number(kgRaw),
+  };
+}
+
+/** `SELL <kg> <variety> <dd/mm>`. The variety code resolves to an id server-side. */
+export const sellSmsSchema = z.object({
+  estKg: z.number().int().positive(),
+  varietyCode: z.string().min(1),
+  dayMonth: z.string().regex(/^\d{1,2}\/\d{1,2}$/),
+});
+export type SellSmsInput = z.infer<typeof sellSmsSchema>;
+
+/** Tokens after `SELL`: `<kg> <variety> <dd/mm>`, in that order. */
+export function parseSellArgs(args: string[]): unknown {
+  if (args.length !== 3) return null;
+  const [kg, variety, dayMonth] = args;
+  if (!/^\d+$/.test(kg)) return null;
+  return { estKg: Number(kg), varietyCode: variety.toUpperCase(), dayMonth };
+}
