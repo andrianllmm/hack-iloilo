@@ -1,0 +1,369 @@
+"use client";
+
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  MiniCalendar,
+  MiniCalendarDay,
+  MiniCalendarDays,
+  MiniCalendarNavigation,
+} from "@/components/kibo-ui/mini-calendar";
+import { addDays } from "@/lib/dates";
+import { formatTonnes } from "@/lib/format";
+import { cn } from "cn";
+import { dayLabel, expectedKg, plantStatus, type PlantStatus } from "../logic";
+import type { DayPool, Pool } from "../types";
+import {
+  DryerDrawing,
+  MillDrawing,
+  PlantDefs,
+  SiloDrawing,
+} from "./plant-drawings";
+import "./plant-view.css";
+
+const pools: Pool[] = ["dryer", "storage", "mill"];
+
+const names: Record<Pool, string> = {
+  dryer: "Dryers",
+  storage: "Storage",
+  mill: "Mill",
+};
+
+const per: Record<Pool, string> = {
+  dryer: "/ day",
+  storage: "held",
+  mill: "/ day",
+};
+
+const statusWords: Record<Exclude<PlantStatus, "ok">, string> = {
+  over: "over capacity",
+  near: "near full",
+  idle: "idle",
+};
+
+const weekday = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  weekday: "short",
+});
+const dayOfMonth = (date: string) => Number(date.slice(8));
+
+/** Days the calendar shows at a time; it pages by this many. */
+const WEEK = 7;
+
+const maxDate = (a: string, b: string) => (a > b ? a : b);
+
+// The calendar works in local `Date`s; the page in `YYYY-MM-DD`.
+const toDate = (date: string) => {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+const toIso = (date: Date) =>
+  [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+
+const firmKg = (d: DayPool) => d.load.confirmed.mid + d.load.offer.mid;
+
+/** Dryers, storage and mill on one day, drawn as the plant, with a day strip. */
+export function PlantView({
+  days,
+  today,
+  onDetails,
+}: {
+  /** Every pool, as `capacityByDay` returns it. */
+  days: DayPool[];
+  today: string;
+  onDetails: (date: string) => void;
+}) {
+  const dates = [...new Set(days.map((d) => d.date))];
+  const first = dates[0] ?? today;
+  const last = dates.at(-1) ?? today;
+  const lastWeek = maxDate(addDays(last, 1 - WEEK), first);
+  const clampWeek = (date: string) =>
+    date < first ? first : date > lastWeek ? lastWeek : date;
+  const [selected, setSelected] = useState(first);
+  const [weekStart, setWeekStart] = useState(first);
+  const byDate = (date: string) =>
+    Object.fromEntries(
+      days.filter((d) => d.date === date).map((d) => [d.pool, d]),
+    ) as Partial<Record<Pool, DayPool>>;
+  const day = byDate(selected);
+  const flagged = pools.flatMap((p) => {
+    const d = day[p];
+    const s = d && plantStatus(d);
+    return s && s !== "ok" ? [{ pool: p, status: s }] : [];
+  });
+
+  return (
+    <div className={cn("plant-view", "flex min-w-0 flex-col gap-5")}>
+      <PlantDefs />
+
+      <MiniCalendar
+        aria-label="Pick a day"
+        days={WEEK}
+        value={toDate(selected)}
+        onValueChange={(d) => d && setSelected(toIso(d))}
+        startDate={toDate(weekStart)}
+        onStartDateChange={(d) => d && setWeekStart(clampWeek(toIso(d)))}
+        className="w-fit max-w-full self-center overflow-x-auto bg-card"
+      >
+        <MiniCalendarNavigation
+          direction="prev"
+          aria-label="Previous week"
+          disabled={weekStart === first}
+        />
+        <MiniCalendarDays>
+          {(date) => {
+            const iso = toIso(date);
+            const pips = byDate(iso);
+            const inWindow = iso >= first && iso <= last;
+            return (
+              <MiniCalendarDay
+                key={iso}
+                date={date}
+                disabled={!inWindow}
+                aria-label={dayLabel(iso)}
+                aria-pressed={iso === selected}
+                className="gap-1"
+              >
+                <span className="text-[10px] font-medium tracking-wider uppercase opacity-70">
+                  {iso === today
+                    ? "Today"
+                    : weekday.format(new Date(`${iso}T00:00:00Z`))}
+                </span>
+                <span className="text-sm font-semibold tabular-nums">
+                  {dayOfMonth(iso)}
+                </span>
+                <span className="flex gap-0.5">
+                  {pools.map((p) => {
+                    const d = pips[p];
+                    return (
+                      <i
+                        key={p}
+                        data-s={d ? plantStatus(d) : "idle"}
+                        className="size-1.5 rounded-[2px] bg-(--s)"
+                      />
+                    );
+                  })}
+                </span>
+              </MiniCalendarDay>
+            );
+          }}
+        </MiniCalendarDays>
+        <MiniCalendarNavigation
+          direction="next"
+          aria-label="Next week"
+          disabled={weekStart === lastWeek}
+        />
+      </MiniCalendar>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="font-semibold">{dayLabel(selected)}</h2>
+          {flagged.length ? (
+            flagged.map((x) => (
+              <Chip key={x.pool} status={x.status}>
+                {names[x.pool]} {statusWords[x.status]}
+              </Chip>
+            ))
+          ) : (
+            <Chip status="ok">All pools within capacity</Chip>
+          )}
+        </div>
+        <Button variant="outline" size="sm" onClick={() => onDetails(selected)}>
+          Bookings and offers
+        </Button>
+      </div>
+
+      <div className="grid items-stretch gap-2.5 lg:grid-cols-[1fr_auto_1fr_auto_1fr]">
+        {pools.map((p, i) => (
+          <PoolUnit key={p} pool={p} day={day[p]} arrow={i > 0} />
+        ))}
+      </div>
+
+      <Legend />
+    </div>
+  );
+}
+
+function PoolUnit({
+  pool,
+  day,
+  arrow,
+}: {
+  pool: Pool;
+  day?: DayPool;
+  arrow: boolean;
+}) {
+  if (!day) return null;
+  const status = plantStatus(day);
+  const firm = firmKg(day);
+  const forecast = day.load.forecast.mid;
+  const level = day.capacityKg ? expectedKg(day) / day.capacityKg : 0;
+  const drawing = {
+    dryer: (
+      <DryerDrawing
+        level={level}
+        overKg={day.overflowKg}
+        capacityKg={day.capacityKg}
+      />
+    ),
+    storage: (
+      <SiloDrawing
+        level={level}
+        overKg={day.overflowKg}
+        capacityKg={day.capacityKg}
+      />
+    ),
+    mill: <MillDrawing level={level} />,
+  }[pool];
+  return (
+    <>
+      {arrow && <FlowArrow />}
+      <Card
+        data-s={status}
+        className={cn(
+          "min-w-0 transition-colors",
+          status === "over" &&
+            "ring-[color-mix(in_oklch,var(--destructive)_60%,var(--border))]",
+        )}
+      >
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-semibold">{names[pool]}</h3>
+            <span className="rounded-md border px-1.5 font-mono text-xs text-muted-foreground">
+              {formatTonnes(day.capacityKg)} {per[pool]}
+            </span>
+          </div>
+          <div className="plant-sheet">{drawing}</div>
+          <LoadBar day={day} />
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div className="tabular-nums">
+              <span className="text-xl font-semibold">
+                {formatTonnes(firm)}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                {forecast > 0 && ` + ${formatTonnes(forecast)} fcst`} of{" "}
+                {formatTonnes(day.capacityKg)}
+              </span>
+            </div>
+            <Chip status={status}>
+              {status === "over"
+                ? `${formatTonnes(day.overflowKg)} over`
+                : { near: "Near full", ok: "Normal", idle: "Idle" }[status]}
+            </Chip>
+          </div>
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
+/** Dashed arrow whose dashes flow from one pool to the next. */
+function FlowArrow() {
+  return (
+    <svg
+      viewBox="0 0 32 12"
+      aria-hidden
+      className="h-3 w-8 self-center justify-self-center text-muted-foreground max-lg:rotate-90"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path className="plant-flow" d="M1 6 H27" strokeDasharray="2 3" />
+      <path d="M24 2 L30 6 L24 10" />
+    </svg>
+  );
+}
+
+/** Firm load, then forecast, against capacity; a zone past the end shows up to +50% over. */
+function LoadBar({ day }: { day: DayPool }) {
+  const cap = day.capacityKg || 1;
+  const firm = firmKg(day);
+  const total = firm + day.load.forecast.mid;
+  const firmIn = Math.min(firm, cap);
+  const forecastIn = Math.max(Math.min(total, cap) - firmIn, 0);
+  const zone = cap * 0.5;
+  const pct = (kg: number) => `${(Math.min(kg, cap) * 100) / cap}%`;
+  const overPct = (kg: number) =>
+    `${Math.min(Math.max(kg - cap, 0) / zone, 1) * 100}%`;
+  return (
+    <div className="grid h-4 grid-cols-[1fr_22%] gap-0.5" aria-hidden>
+      <div className="relative overflow-hidden rounded-l bg-muted">
+        <div
+          className="absolute inset-y-0 left-0 bg-(--s) transition-[width] duration-300"
+          style={{ width: pct(firmIn) }}
+        />
+        <div
+          className={cn(
+            "plant-forecast",
+            "absolute inset-y-0 transition-all duration-300",
+          )}
+          style={{ left: pct(firmIn), width: pct(forecastIn) }}
+        />
+        <div className={cn("plant-segments", "absolute inset-0")} />
+      </div>
+      <div className="relative overflow-hidden rounded-r border border-l-2 border-dashed [border-left-style:solid] border-l-foreground">
+        <div
+          className={cn("plant-over-forecast", "absolute inset-y-0 left-0")}
+          style={{ width: overPct(total) }}
+        />
+        <div
+          className={cn("plant-over-firm", "absolute inset-y-0 left-0")}
+          style={{ width: overPct(firm) }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function Chip({
+  status,
+  children,
+}: {
+  status: PlantStatus;
+  children: React.ReactNode;
+}) {
+  return (
+    <Badge
+      data-s={status}
+      variant="secondary"
+      className="h-6 gap-1.5 rounded-full bg-[color-mix(in_oklch,var(--s)_16%,transparent)] px-2.5 font-semibold text-foreground"
+    >
+      <span className="size-1.5 rounded-full bg-(--s)" />
+      {children}
+    </Badge>
+  );
+}
+
+function Legend() {
+  const items: [string, string][] = [
+    ["bg-success", "Firm (bookings, accepted offers)"],
+    ["plant-forecast", "Forecast"],
+    [
+      "border border-dashed border-l-2 border-l-foreground [border-left-style:solid]",
+      "Over capacity",
+    ],
+    ["bg-warning", "Near full"],
+    ["bg-muted-foreground/50", "Idle"],
+  ];
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
+      {items.map(([swatch, label]) => (
+        <span key={label} className="flex items-center gap-1.5">
+          <i
+            data-s="idle"
+            className={cn("inline-block h-2.5 w-4 rounded-[2px]", swatch)}
+          />
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}

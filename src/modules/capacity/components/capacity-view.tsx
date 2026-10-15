@@ -40,14 +40,21 @@ import {
   shownSources,
   sourceLabels,
 } from "./load-chart";
+import { PlantView } from "./plant-view";
 
 const pools: Pool[] = ["dryer", "storage", "mill"];
+
+/** The plant view, then one tab per pool. */
+type Tab = "plant" | Pool;
+const tabs: Tab[] = ["plant", ...pools];
 
 const poolNames: Record<Pool, string> = {
   dryer: "Dryer",
   storage: "Storage",
   mill: "Mill",
 };
+
+const tabNames: Record<Tab, string> = { plant: "Plant", ...poolNames };
 
 /** Electricity per kg over the window, in centavos. */
 export type Electricity = { minorPerKg: number; daysRun: number };
@@ -78,7 +85,7 @@ const plainTonnes = (kg: number) =>
 const span = (from: string, to: string) =>
   from === to ? shortDay(from) : `${shortDay(from)} – ${shortDay(to)}`;
 
-/** Capacity page: pool tabs, headline tiles, stacked load chart, day grid and day panel. */
+/** Capacity page: plant view and pool tabs, headline tiles, stacked load chart, day grid and day panel. */
 export function CapacityView({
   days: allDays,
   bookings,
@@ -103,11 +110,11 @@ export function CapacityView({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [pool, setPool] = useState<Pool>("dryer");
+  const [tab, setTab] = useState<Tab>("plant");
   const [selected, setSelected] = useState<string | null>(null);
-  const days = allDays && poolDays(allDays, pool);
+  const pool = tab === "plant" ? null : tab;
+  const days = allDays && pool && poolDays(allDays, pool);
   const selectedDays = allDays?.filter((d) => d.date === selected) ?? [];
-  const config = loadConfig(pool);
 
   return (
     <section className="flex min-w-0 flex-col gap-6">
@@ -119,18 +126,18 @@ export function CapacityView({
             <Badge>Today, {shortDay(today)}</Badge>
           </p>
         </div>
-        <Tabs value={pool} onValueChange={(v) => setPool(v as Pool)}>
-          <TabsList aria-label="Pool">
-            {pools.map((p) => (
-              <TabsTrigger key={p} value={p}>
-                {poolNames[p]}
+        <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
+          <TabsList aria-label="View">
+            {tabs.map((t) => (
+              <TabsTrigger key={t} value={t}>
+                {tabNames[t]}
               </TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
       </header>
 
-      {days === null ? (
+      {allDays === null ? (
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>Capacity couldn&apos;t load</EmptyTitle>
@@ -146,6 +153,8 @@ export function CapacityView({
             {pending ? "Retrying…" : "Retry"}
           </Button>
         </Empty>
+      ) : !pool || !days ? (
+        <PlantView days={allDays} today={today} onDetails={setSelected} />
       ) : (
         <>
           <Headline
@@ -166,9 +175,9 @@ export function CapacityView({
                   >
                     <span
                       className="size-3 shrink-0"
-                      style={{ background: config[s].color }}
+                      style={{ background: loadConfig(pool)[s].color }}
                     />
-                    {config[s].label}
+                    {loadConfig(pool)[s].label}
                   </span>
                 ))}
               </div>

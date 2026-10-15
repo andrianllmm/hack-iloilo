@@ -8,6 +8,7 @@ import {
   exact,
   headline,
   idleStretches,
+  plantStatus,
   poolDays,
   projectPools,
   type PoolSettings,
@@ -343,5 +344,27 @@ describe("idleStretches and headline", () => {
     expect(h.utilizationPct).toBe(25);
     expect(h.overloaded.map((d) => d.date)).toEqual(["2026-10-28"]);
     expect(h.idleDays).toBe(5);
+  });
+});
+
+describe("plantStatus", () => {
+  it("puts overload ahead of everything", () => {
+    expect(plantStatus(day({ confirmed: exact(41_000) }))).toBe("over");
+  });
+
+  it("is near full from 85% expected load, forecast included", () => {
+    expect(plantStatus(day({ confirmed: exact(33_999) }))).toBe("ok");
+    expect(
+      plantStatus(
+        day({
+          confirmed: exact(30_000),
+          forecast: { low: 0, mid: 4_000, high: 8_000 },
+        }),
+      ),
+    ).toBe("near");
+  });
+
+  it("is idle below the threshold", () => {
+    expect(plantStatus(day({ confirmed: exact(5_000) }))).toBe("idle");
   });
 });
