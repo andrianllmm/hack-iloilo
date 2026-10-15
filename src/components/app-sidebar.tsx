@@ -87,8 +87,8 @@ export function AppSidebar({ staff }: { staff: Staff }) {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger render={<SidebarMenuButton size="lg" />}>
-                <Avatar className="size-8 shrink-0 rounded-lg">
-                  <AvatarFallback className="rounded-lg bg-primary/10 font-semibold text-primary">
+                <Avatar className="size-8 shrink-0 rounded-full">
+                  <AvatarFallback className="rounded-full bg-primary/10 font-semibold text-primary">
                     {initials(staff.name)}
                   </AvatarFallback>
                 </Avatar>
