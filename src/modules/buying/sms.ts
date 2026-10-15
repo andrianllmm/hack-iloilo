@@ -9,7 +9,7 @@ import {
   quoteSmsSchema,
   sellSmsSchema,
 } from "./logic";
-import { priceBySms, quoteBySms, sellBySms } from "./queries";
+import { priceBySms, quoteBySms, sellBySms, varietiesBySms } from "./queries";
 
 registerCommand({
   keywords: ["PRICE"],
@@ -31,4 +31,12 @@ registerCommand({
   schema: sellSmsSchema,
   parse: parseSellArgs,
   handle: sellBySms,
+});
+
+registerCommand({
+  keywords: ["VARIETIES", "VARIETY"],
+  schema: z.object({}),
+  // Trailing words are ignored ("VARIETIES please").
+  parse: () => ({}),
+  handle: varietiesBySms,
 });

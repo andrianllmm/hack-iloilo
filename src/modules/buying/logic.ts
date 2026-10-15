@@ -84,3 +84,27 @@ export function parseSellArgs(args: string[]): unknown {
   if (!/^\d+$/.test(kg)) return null;
   return { estKg: Number(kg), varietyCode: variety.toUpperCase(), dayMonth };
 }
+
+/**
+ * The `VARIETIES` reply: the known variety codes, in the order given, and a
+ * reminder of the `SELL` format. If the whole list would exceed `maxChars`
+ * (the SMS limit, passed in to keep this pure), it is cut to the codes that
+ * fit with a trailing `…`.
+ */
+export function formatVarietiesSms(codes: string[], maxChars: number): string {
+  const prefix = "IRPC rice varieties: ";
+  const suffix = ". To sell: SELL <kg> <variety> <dd/mm>";
+  if (codes.length === 0) return `${prefix}none yet${suffix}`;
+
+  const full = `${prefix}${codes.join(", ")}${suffix}`;
+  if (full.length <= maxChars) return full;
+
+  // Over the limit: keep as many codes as fit alongside a trailing ellipsis.
+  const kept: string[] = [];
+  for (const code of codes) {
+    const candidate = `${prefix}${[...kept, code].join(", ")} …${suffix}`;
+    if (candidate.length > maxChars) break;
+    kept.push(code);
+  }
+  return `${prefix}${kept.join(", ")} …${suffix}`;
+}
