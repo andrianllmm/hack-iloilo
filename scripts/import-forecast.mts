@@ -10,8 +10,6 @@ import {
   parseArrivalsCsv,
 } from "../src/modules/forecast/logic.ts";
 
-const BATCH = 1000;
-
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) {
@@ -32,41 +30,23 @@ const metrics: unknown = JSON.parse(
 );
 assertForecastMetrics(metrics);
 
-const { data: municipalities, error } = await db
-  .from("municipalities")
-  .select("id, psgc_code");
-if (error) throw new Error(`Municipalities: ${error.message}`);
-const idByCode = new Map(municipalities.map((m) => [m.psgc_code, m.id]));
-const unknown = [...new Set(rows.map((r) => r.psgcCode))].filter(
-  (code) => !idByCode.has(code),
-);
-if (unknown.length) {
-  throw new Error(`Unknown municipalities: ${unknown.join(", ")}`);
-}
+type Json =
+  Database["public"]["Functions"]["import_forecast"]["Args"]["p_metrics"];
 
-const records = rows.map((r) => ({
-  municipality_id: idByCode.get(r.psgcCode)!,
-  date: r.date,
-  kg_low: r.kgLow,
-  kg_mid: r.kgMid,
-  kg_high: r.kgHigh,
-  source: r.source,
-}));
-for (let i = 0; i < records.length; i += BATCH) {
-  const { error } = await db
-    .from("forecast_arrivals")
-    .upsert(records.slice(i, i + BATCH), {
-      onConflict: "source,municipality_id,date",
-    });
-  if (error) throw new Error(`Arrivals: ${error.message}`);
-}
-
-const { error: metricsError } = await db.from("forecast_metrics").insert({
-  trained_on: `${metrics.trained_on}T00:00:00+08:00`,
-  metrics:
-    metrics as unknown as Database["public"]["Tables"]["forecast_metrics"]["Insert"]["metrics"],
+// One transaction: replaces each source's rows and records the metrics.
+const { error } = await db.rpc("import_forecast", {
+  p_arrivals: rows.map((r) => ({
+    psgc_code: r.psgcCode,
+    date: r.date,
+    kg_low: r.kgLow,
+    kg_mid: r.kgMid,
+    kg_high: r.kgHigh,
+    source: r.source,
+  })),
+  p_metrics: metrics as unknown as Json,
+  p_trained_on: `${metrics.trained_on}T00:00:00+08:00`,
 });
-if (metricsError) throw new Error(`Metrics: ${metricsError.message}`);
+if (error) throw new Error(`Import failed, nothing written: ${error.message}`);
 
 const bySource = Object.groupBy(rows, (r) => r.source);
 for (const [source, list] of Object.entries(bySource)) {
