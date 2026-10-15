@@ -1,5 +1,14 @@
 "use client";
 
+import {
+  ArrowLeft,
+  CalendarCheck,
+  CalendarClock,
+  CalendarX,
+  Check,
+  RefreshCw,
+  Search,
+} from "lucide-react";
 import { ServiceLabel } from "@/components/service-icon";
 import { useId, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
@@ -171,7 +180,11 @@ export function TrackBooking({
           </Alert>
         ) : null}
         <Button type="submit" className="w-full" disabled={pending}>
-          {pending ? <Spinner data-icon="inline-start" /> : null}
+          {pending ? (
+            <Spinner data-icon="inline-start" />
+          ) : (
+            <Search data-icon="inline-start" />
+          )}
           {pending ? "Looking up…" : "Find my booking"}
         </Button>
       </FieldGroup>
@@ -255,6 +268,7 @@ function BookingDetails({
           </p>
           <div className="grid grid-cols-2 gap-2">
             <Button disabled={pending} onClick={() => onAnswer(true)}>
+              <Check data-icon="inline-start" />
               Accept
             </Button>
             <Button
@@ -288,6 +302,7 @@ function BookingDetails({
             disabled={pending}
             onClick={() => setMoving(true)}
           >
+            <CalendarClock data-icon="inline-start" />
             Change date
           </Button>
           {booking.status === "confirmed" ? (
@@ -297,6 +312,7 @@ function BookingDetails({
               disabled={pending}
               onClick={() => setCancelling(true)}
             >
+              <CalendarX data-icon="inline-start" />
               Cancel booking
             </Button>
           ) : null}
@@ -305,11 +321,16 @@ function BookingDetails({
 
       <Separator />
       <div className="grid grid-cols-2 gap-2">
-        <Button variant="ghost" disabled={pending} onClick={onRefresh}>
-          {pending ? <Spinner data-icon="inline-start" /> : null}
+        <Button variant="outline" disabled={pending} onClick={onRefresh}>
+          {pending ? (
+            <Spinner data-icon="inline-start" />
+          ) : (
+            <RefreshCw data-icon="inline-start" />
+          )}
           Refresh
         </Button>
-        <Button variant="ghost" disabled={pending} onClick={onReset}>
+        <Button variant="outline" disabled={pending} onClick={onReset}>
+          <Search data-icon="inline-start" />
           Look up another
         </Button>
       </div>
@@ -458,6 +479,7 @@ function MoveForm({
       </FieldGroup>
       <div className="grid grid-cols-2 gap-2">
         <Button type="submit" disabled={pending || !date}>
+          <CalendarCheck data-icon="inline-start" />
           Move booking
         </Button>
         <Button
@@ -466,6 +488,7 @@ function MoveForm({
           disabled={pending}
           onClick={onClose}
         >
+          <ArrowLeft data-icon="inline-start" />
           Back
         </Button>
       </div>
