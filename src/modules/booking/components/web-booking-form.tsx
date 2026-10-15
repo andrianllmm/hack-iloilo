@@ -1,5 +1,6 @@
 "use client";
 
+import { ServiceIcon } from "@/components/service-icon";
 import { useId, useState, useTransition } from "react";
 import Link from "next/link";
 import { CalendarSearch, ImageDown } from "lucide-react";
@@ -199,12 +200,22 @@ export function WebBookingForm({ today }: { today: string }) {
                   aria-invalid={!!fieldState.error}
                   className="w-full"
                 >
-                  <SelectValue />
+                  <SelectValue>
+                    {(value: (typeof services)[number] | null) =>
+                      value ? (
+                        <>
+                          <ServiceIcon kind={value} />
+                          {serviceLabels[value]}
+                        </>
+                      ) : null
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
                     {serviceItems.map((item) => (
                       <SelectItem key={item.value} value={item.value}>
+                        <ServiceIcon kind={item.value} />
                         {item.label}
                       </SelectItem>
                     ))}

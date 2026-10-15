@@ -1,3 +1,4 @@
+import { ServiceLabel } from "@/components/service-icon";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +32,7 @@ function when(iso: string | null): string {
   return iso ? started.format(new Date(iso)) : "—";
 }
 
-function FieldList({ rows }: { rows: [string, string][] }) {
+function FieldList({ rows }: { rows: [string, React.ReactNode][] }) {
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
       {rows.map(([label, value]) => (
@@ -58,9 +59,18 @@ export async function BatchSummaryCard({ id }: { id: string }) {
   ]);
   const recovery = recoveryPct(batch.rice_kg, batch.mill_in_kg);
   const skippedDrying = !batch.dry_start && batch.stage !== "received";
-  const rows: [string, string][] = [
+  const rows: [string, React.ReactNode][] = [
     ["Client", `${batch.client.name} · ${batch.client.phone}`],
-    ["Line", batch.entry ? serviceLabels[batch.entry.service] : "—"],
+    [
+      "Line",
+      batch.entry ? (
+        <ServiceLabel kind={batch.entry.service}>
+          {serviceLabels[batch.entry.service]}
+        </ServiceLabel>
+      ) : (
+        "—"
+      ),
+    ],
     ["Ownership", ownershipLabels[batch.ownership]],
     ["Est. weight", batch.entry?.est_kg ? formatKg(batch.entry.est_kg) : "—"],
     ["Started", when(batch.entry?.started_at ?? null)],
@@ -134,7 +144,9 @@ export async function BatchSummaryCard({ id }: { id: string }) {
       {showDrying ? (
         <Card className="max-w-xl">
           <CardHeader>
-            <CardTitle>Drying</CardTitle>
+            <CardTitle>
+              <ServiceLabel kind="drying">Drying</ServiceLabel>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {skippedDrying ? (
@@ -164,7 +176,9 @@ export async function BatchSummaryCard({ id }: { id: string }) {
       {showMilling ? (
         <Card className="max-w-xl">
           <CardHeader>
-            <CardTitle>Milling</CardTitle>
+            <CardTitle>
+              <ServiceLabel kind="milling">Milling</ServiceLabel>
+            </CardTitle>
             {recovery != null ? (
               <CardDescription>
                 Recovery <Badge variant="secondary">{recovery}%</Badge>

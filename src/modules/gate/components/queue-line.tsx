@@ -1,5 +1,6 @@
 "use client";
 
+import { ServiceIcon } from "@/components/service-icon";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -51,7 +52,6 @@ import {
   type QueueLine as Line,
 } from "../logic";
 import type { QueueRow, Service } from "../types";
-import { serviceIcons } from "./service-icons";
 
 const clock = new Intl.DateTimeFormat("en-PH", {
   hour: "numeric",
@@ -83,7 +83,6 @@ export function QueueLine({
   const [busy, setBusy] = useState<string | null>(null);
   const [leaving, setLeaving] = useState<QueueRow | null>(null);
   const name = serviceLabels[service];
-  const Icon = serviceIcons[service];
   const next = line.waiting[0];
 
   const act = (
@@ -112,7 +111,7 @@ export function QueueLine({
     <Card className="min-h-[32rem] lg:min-h-0">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Icon className="size-4 text-primary" aria-hidden />
+          <ServiceIcon kind={service} className="size-4 text-primary" />
           {name} line
         </CardTitle>
         <CardAction>

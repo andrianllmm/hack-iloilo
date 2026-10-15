@@ -1,5 +1,6 @@
 "use client";
 
+import { ServiceIcon, isServiceIconKind } from "@/components/service-icon";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -129,6 +130,7 @@ export function CapacityView({
           <TabsList aria-label="View">
             {tabs.map((t) => (
               <TabsTrigger key={t} value={t}>
+                {isServiceIconKind(t) ? <ServiceIcon kind={t} /> : null}
                 {tabNames[t]}
               </TabsTrigger>
             ))}

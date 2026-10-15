@@ -1,5 +1,6 @@
 "use client";
 
+import { ServiceIcon, ServiceLabel } from "@/components/service-icon";
 import { useEffect, useId, useState, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -46,7 +47,6 @@ import {
   services,
 } from "../logic";
 import type { RefPreview, Service } from "../types";
-import { serviceIcons } from "./service-icons";
 
 /** Asks the form to switch tab, preselect a line and focus the first field. */
 export type CheckInRequest = {
@@ -104,7 +104,11 @@ function RefSummary({ preview }: { preview: RefPreview }) {
           · {maskPhone(preview.client.phone)}
         </span>
       </Detail>
-      <Detail label="Service">{serviceLabels[preview.service]}</Detail>
+      <Detail label="Service">
+        <ServiceLabel kind={preview.service}>
+          {serviceLabels[preview.service]}
+        </ServiceLabel>
+      </Detail>
       {preview.kind === "offer" ? (
         <Detail label="Ownership">{ownershipLabels[preview.ownership]}</Detail>
       ) : null}
@@ -374,15 +378,12 @@ export function CheckInForm({
                       if (value) field.onChange(value);
                     }}
                   >
-                    {services.map((value) => {
-                      const Icon = serviceIcons[value];
-                      return (
-                        <ToggleGroupItem key={value} value={value}>
-                          <Icon aria-hidden />
-                          {serviceLabels[value]}
-                        </ToggleGroupItem>
-                      );
-                    })}
+                    {services.map((value) => (
+                      <ToggleGroupItem key={value} value={value}>
+                        <ServiceIcon kind={value} />
+                        {serviceLabels[value]}
+                      </ToggleGroupItem>
+                    ))}
                   </ToggleGroup>
                   <FieldError errors={[fieldState.error]} />
                 </Field>

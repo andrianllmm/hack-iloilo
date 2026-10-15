@@ -1,5 +1,6 @@
 "use client";
 
+import { ServiceIcon } from "@/components/service-icon";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { DateRangePicker } from "@/components/date-range-picker";
@@ -100,8 +101,14 @@ export function BookingsView({
         >
           <TabsList aria-label="Service">
             <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="drying">Drying</TabsTrigger>
-            <TabsTrigger value="milling">Milling</TabsTrigger>
+            <TabsTrigger value="drying">
+              <ServiceIcon kind="drying" />
+              Drying
+            </TabsTrigger>
+            <TabsTrigger value="milling">
+              <ServiceIcon kind="milling" />
+              Milling
+            </TabsTrigger>
           </TabsList>
         </Tabs>
         <Field className="w-56">

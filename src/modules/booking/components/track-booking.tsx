@@ -1,5 +1,6 @@
 "use client";
 
+import { ServiceLabel } from "@/components/service-icon";
 import { useId, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -223,8 +224,10 @@ function BookingDetails({
           {statusLabels[booking.status]}
         </Badge>
         <p>
-          {serviceLabels[booking.service]} · {formatKg(booking.est_kg)} ·{" "}
-          {formatDate(booking.scheduled_date)}
+          <ServiceLabel kind={booking.service} className="align-bottom">
+            {serviceLabels[booking.service]}
+          </ServiceLabel>{" "}
+          · {formatKg(booking.est_kg)} · {formatDate(booking.scheduled_date)}
         </p>
         {open ? (
           <p className="text-sm text-muted-foreground">
@@ -371,9 +374,12 @@ function StatusNote({ booking }: { booking: TrackedBooking }) {
         <ul className="flex flex-col gap-1 rounded-lg border p-3 text-sm">
           {booking.queue.map((place) => (
             <li key={place.service}>
-              <span className="font-semibold">
+              <ServiceLabel
+                kind={place.service}
+                className="align-bottom font-semibold"
+              >
                 {serviceLabels[place.service]}:
-              </span>{" "}
+              </ServiceLabel>{" "}
               {place.serving
                 ? "you're being served now."
                 : `#${place.position} in line.`}

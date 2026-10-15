@@ -1,5 +1,6 @@
 "use client";
 
+import { ServiceIcon, ServiceLabel } from "@/components/service-icon";
 import { Pencil, Plus } from "lucide-react";
 import { useActionState, useState, useTransition } from "react";
 import { OptionSelect } from "@/components/option-select";
@@ -40,8 +41,8 @@ import { NumberField } from "./facility-form";
 import { UnconfirmedIcon } from "./hint-icons";
 
 const machineTypes = [
-  { value: "dryer", label: "Dryer" },
-  { value: "mill", label: "Mill" },
+  { value: "dryer", label: "Dryer", icon: <ServiceIcon kind="dryer" /> },
+  { value: "mill", label: "Mill", icon: <ServiceIcon kind="mill" /> },
 ];
 
 const t = (kg: number | null) => (kg == null ? "" : String(kg / 1000));
@@ -105,7 +106,11 @@ export function MachinesTable({ machines }: { machines: Machine[] }) {
                   {!m.active && <Badge variant="secondary">Inactive</Badge>}
                 </span>
               </TableCell>
-              <TableCell className="capitalize">{m.type}</TableCell>
+              <TableCell>
+                <ServiceLabel kind={m.type}>
+                  {m.type === "dryer" ? "Dryer" : "Mill"}
+                </ServiceLabel>
+              </TableCell>
               <TableCell className="text-right">
                 {m.type === "dryer"
                   ? `${formatTonnes(m.capacity_kg ?? 0)}/load`

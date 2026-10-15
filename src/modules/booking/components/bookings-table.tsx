@@ -1,5 +1,6 @@
 "use client";
 
+import { ServiceLabel } from "@/components/service-icon";
 import { Fragment, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
@@ -97,14 +98,16 @@ export function BookingsTable({
                 <Fragment key={key}>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
                     <TableCell colSpan={COLUMNS} className="font-medium">
-                      {[
-                        formatDay(group.date),
-                        showService ? serviceLabels[group.service] : null,
-                        `${group.count} ${group.count === 1 ? "booking" : "bookings"}`,
-                        formatTonnes(group.totalKg),
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
+                      <ServiceLabel kind={group.service}>
+                        {[
+                          formatDay(group.date),
+                          showService ? serviceLabels[group.service] : null,
+                          `${group.count} ${group.count === 1 ? "booking" : "bookings"}`,
+                          formatTonnes(group.totalKg),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </ServiceLabel>
                       <span className="sr-only">
                         {" "}
                         ({formatKg(group.totalKg)})

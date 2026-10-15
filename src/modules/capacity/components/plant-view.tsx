@@ -1,5 +1,6 @@
 "use client";
 
+import { ServiceIcon, isServiceIconKind } from "@/components/service-icon";
 import { ArrowUpRight } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -260,6 +261,9 @@ function PoolUnit({
                 onClick={onOpen}
                 className="flex items-center gap-1 outline-none after:absolute after:inset-0 after:z-10"
               >
+                {isServiceIconKind(pool) ? (
+                  <ServiceIcon kind={pool} className="size-4 text-primary" />
+                ) : null}
                 {names[pool]}
                 <ArrowUpRight
                   aria-hidden

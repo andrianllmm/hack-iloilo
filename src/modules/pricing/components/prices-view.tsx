@@ -1,3 +1,4 @@
+import { ServiceLabel } from "@/components/service-icon";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -28,8 +29,12 @@ export async function PricesView() {
           <TableHead>Effective</TableHead>
           <TableHead>Saved</TableHead>
           <TableHead className="text-right">Buy base</TableHead>
-          <TableHead className="text-right">Drying</TableHead>
-          <TableHead className="text-right">Milling</TableHead>
+          <TableHead className="text-right">
+            <ServiceLabel kind="drying">Drying</ServiceLabel>
+          </TableHead>
+          <TableHead className="text-right">
+            <ServiceLabel kind="milling">Milling</ServiceLabel>
+          </TableHead>
           <TableHead className="text-right">Rice</TableHead>
         </TableRow>
       </TableHeader>

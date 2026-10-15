@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  ServiceIcon,
+  ServiceLabel,
+  isServiceIconKind,
+} from "@/components/service-icon";
 import Link from "next/link";
 import { useMemo } from "react";
 import {
@@ -63,21 +68,37 @@ const columns = columnHelper.columns([
     ),
   }),
   columnHelper.accessor("clientName", { header: "Client" }),
-  columnHelper.accessor("line", { header: "Line" }),
+  columnHelper.accessor("line", {
+    header: "Line",
+    cell: ({ row, getValue }) =>
+      row.original.entry ? (
+        <ServiceLabel kind={row.original.entry.service}>
+          {getValue()}
+        </ServiceLabel>
+      ) : (
+        getValue()
+      ),
+  }),
   columnHelper.accessor("ownership", {
     header: "Ownership",
     cell: ({ getValue }) => (getValue() === "irpc" ? "IRPC" : "Custom"),
   }),
   columnHelper.accessor("stage", {
     header: "Stage",
-    cell: ({ row, getValue }) => (
-      <span className="flex flex-wrap items-center gap-1">
-        <Badge variant="secondary">{stageLabels[getValue()]}</Badge>
-        {row.original.confirmations.some((c) => c.status === "disputed") ? (
-          <Badge variant="destructive">Weight disputed</Badge>
-        ) : null}
-      </span>
-    ),
+    cell: ({ row, getValue }) => {
+      const stage = getValue();
+      return (
+        <span className="flex flex-wrap items-center gap-1">
+          <Badge variant="secondary">
+            {isServiceIconKind(stage) ? <ServiceIcon kind={stage} /> : null}
+            {stageLabels[stage]}
+          </Badge>
+          {row.original.confirmations.some((c) => c.status === "disputed") ? (
+            <Badge variant="destructive">Weight disputed</Badge>
+          ) : null}
+        </span>
+      );
+    },
   }),
   columnHelper.accessor("kg", {
     header: "Weight",
