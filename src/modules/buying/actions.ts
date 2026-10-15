@@ -23,6 +23,7 @@ import {
 import { webOfferSchema, type WebOfferInput } from "./offer-schema";
 import {
   createOffer,
+  notifyOfferDecision,
   notifyOfferRecorded,
   purchaseByBatch,
   type Offer,
@@ -108,15 +109,21 @@ export async function offerOnline(input: unknown): Promise<OfferOnlineResult> {
   }
 }
 
-/** Accept or decline an offer. Manager only. Only an `offered` offer can be decided. */
+/**
+ * Accept or decline an offer and text the seller. Manager only. Only an
+ * `offered` offer can be decided.
+ */
 export async function decideOffer(id: string, accept: boolean): Promise<void> {
   await requireRole("manager");
-  const { error } = await db()
+  const { data, error } = await db()
     .from("sell_offers")
     .update({ status: accept ? "accepted" : "declined" })
     .eq("id", id)
-    .eq("status", "offered");
+    .eq("status", "offered")
+    .select()
+    .maybeSingle();
   if (error) throw new Error(`Decide offer: ${error.message}`);
+  if (data) await notifyOfferDecision(data, accept);
   revalidatePath("/selling");
 }
 

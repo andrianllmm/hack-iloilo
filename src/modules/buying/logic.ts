@@ -146,6 +146,10 @@ export const buyingSms = {
     'IRPC: Wala namon nakilala ang variety "{code}". Palihog i-check ang code kag tilawi liwat. I-text ang VARIETIES para sa listahan.',
   offerRecorded:
     "IRPC: Nalista na ang offer mo. Code {ref}: {kg} {variety} para sa harvest sa {date}. I-text ka namon kon may desisyon na ang manager.",
+  offerAccepted:
+    "IRPC: Accepted ang offer {ref}: {kg} palay, harvest sa {date}. Dal-a sa IRPC, Amamaros, Pototan kag ipakita ang code sa gate.",
+  offerDeclined:
+    "IRPC: Pasensya, indi mabakal ang offer {ref} ({kg}, {date}). I-text ang PRICE para sa presyo subong.",
 } as const;
 
 /**
