@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { assertForecastMetrics, lagWeights, parseArrivalsCsv } from "./logic";
+import {
+  assertForecastMetrics,
+  byMunicipality,
+  halfMonth,
+  lagWeights,
+  parseArrivalsCsv,
+  peak,
+  sumByDay,
+  sumByWeek,
+} from "./logic";
 
 const HEADER = "psgc_code,date,kg_low,kg_mid,kg_high,source";
 
@@ -67,6 +76,95 @@ describe("lagWeights", () => {
     ).toEqual([
       { halfMonths: 5, days: 76, weight: 0.4 },
       { halfMonths: 6, days: 91, weight: 0.6 },
+    ]);
+  });
+});
+
+const day = (date: string, kgMid: number) => ({
+  date,
+  kgLow: kgMid - 1,
+  kgMid,
+  kgHigh: kgMid + 1,
+});
+
+describe("sumByDay", () => {
+  it("sums per day and fills missing days with zero", () => {
+    expect(
+      sumByDay(
+        [day("2026-10-15", 5), day("2026-10-15", 3), day("2026-10-17", 2)],
+        "2026-10-15",
+        "2026-10-17",
+      ),
+    ).toEqual([
+      { date: "2026-10-15", kgLow: 6, kgMid: 8, kgHigh: 10 },
+      { date: "2026-10-16", kgLow: 0, kgMid: 0, kgHigh: 0 },
+      { date: "2026-10-17", kgLow: 1, kgMid: 2, kgHigh: 3 },
+    ]);
+  });
+});
+
+describe("sumByWeek", () => {
+  it("sums 7-day chunks, keeping a short last week", () => {
+    const days = sumByDay(
+      Array.from({ length: 9 }, (_, i) =>
+        day(`2026-10-${String(15 + i).padStart(2, "0")}`, 2),
+      ),
+      "2026-10-15",
+      "2026-10-23",
+    );
+    expect(sumByWeek(days)).toEqual([
+      { from: "2026-10-15", to: "2026-10-21", kgLow: 7, kgMid: 14, kgHigh: 21 },
+      { from: "2026-10-22", to: "2026-10-23", kgLow: 2, kgMid: 4, kgHigh: 6 },
+    ]);
+  });
+});
+
+describe("peak", () => {
+  it("picks the highest mid estimate", () => {
+    expect(peak([day("a", 1), day("b", 5), day("c", 3)])?.date).toBe("b");
+  });
+
+  it("is null when nothing is expected", () => {
+    expect(peak([{ date: "a", kgLow: 0, kgMid: 0, kgHigh: 0 }])).toBeNull();
+  });
+});
+
+describe("halfMonth", () => {
+  it("splits on the 15th and ends on the month's last day", () => {
+    expect(halfMonth("2026-10-15")).toEqual({
+      from: "2026-10-01",
+      to: "2026-10-15",
+    });
+    expect(halfMonth("2028-02-20")).toEqual({
+      from: "2028-02-16",
+      to: "2028-02-29",
+    });
+  });
+});
+
+describe("byMunicipality", () => {
+  it("totals per municipality with its peak half-month, largest first", () => {
+    const rows = [
+      { municipality: "Pototan", ...day("2026-10-14", 1) },
+      { municipality: "Pototan", ...day("2026-10-20", 4) },
+      { municipality: "Dingle", ...day("2026-10-02", 9) },
+      { municipality: "Batad", ...day("2026-10-02", 0) },
+    ];
+    expect(byMunicipality(rows)).toEqual([
+      {
+        municipality: "Dingle",
+        kgLow: 8,
+        kgMid: 9,
+        kgHigh: 10,
+        peak: { from: "2026-10-01", to: "2026-10-15" },
+      },
+      {
+        municipality: "Pototan",
+        kgLow: 3,
+        kgMid: 5,
+        kgHigh: 7,
+        peak: { from: "2026-10-16", to: "2026-10-31" },
+      },
     ]);
   });
 });

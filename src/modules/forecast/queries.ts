@@ -2,10 +2,12 @@
 // Server-side reads. May call other modules' queries.
 
 import "server-only";
+import { cache } from "react";
 import { db } from "@/lib/supabase/admin";
 import {
   assertForecastMetrics,
-  FORECAST_SOURCES,
+  sumByDay,
+  type DayArrivals,
   type ForecastMetrics,
   type ForecastSource,
 } from "./logic";
@@ -24,30 +26,46 @@ export async function latestForecastMetrics(): Promise<ForecastMetrics | null> {
   return data.metrics;
 }
 
-async function edgeDate(source: ForecastSource, ascending: boolean) {
-  const { data, error } = await db()
-    .from("forecast_arrivals")
-    .select("date")
-    .eq("source", source)
-    .order("date", { ascending })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw new Error(`Forecast coverage: ${error.message}`);
-  return data?.date ?? null;
-}
+export type ArrivalRow = DayArrivals & {
+  municipality: string;
+  source: ForecastSource;
+};
 
-/** Date span of imported arrivals per source; sources with no rows are left out. */
-export async function forecastCoverage(): Promise<
-  { source: ForecastSource; from: string; to: string }[]
-> {
-  const spans = await Promise.all(
-    FORECAST_SOURCES.map(async (source) => ({
-      source,
-      from: await edgeDate(source, true),
-      to: await edgeDate(source, false),
-    })),
-  );
-  return spans.flatMap((s) =>
-    s.from && s.to ? [{ source: s.source, from: s.from, to: s.to }] : [],
-  );
+const PAGE = 1000;
+
+/** Every forecast row from `from` to `to` (inclusive). Memoized per request. */
+export const arrivalRows = cache(
+  async (from: string, to: string): Promise<ArrivalRow[]> => {
+    const rows: ArrivalRow[] = [];
+    // PostgREST caps each response, so read in pages.
+    for (let start = 0; ; start += PAGE) {
+      const { data, error } = await db()
+        .from("forecast_arrivals")
+        .select("date, kg_low, kg_mid, kg_high, source, municipalities(name)")
+        .gte("date", from)
+        .lte("date", to)
+        .order("id")
+        .range(start, start + PAGE - 1);
+      if (error) throw new Error(`Forecast arrivals: ${error.message}`);
+      for (const r of data) {
+        rows.push({
+          date: r.date,
+          kgLow: r.kg_low,
+          kgMid: r.kg_mid,
+          kgHigh: r.kg_high,
+          source: r.source,
+          municipality: r.municipalities.name,
+        });
+      }
+      if (data.length < PAGE) return rows;
+    }
+  },
+);
+
+/** Forecast kg per day from `from` to `to`, already × IRPC's share; 0 on days without rows. */
+export async function expectedArrivals(
+  from: string,
+  to: string,
+): Promise<{ date: string; kgLow: number; kgMid: number; kgHigh: number }[]> {
+  return sumByDay(await arrivalRows(from, to), from, to);
 }

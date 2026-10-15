@@ -102,3 +102,106 @@ export function lagWeights(
     weight: m.lag_weights[i],
   }));
 }
+
+/** Expected kg arriving, mid estimate with its p10–p90 range. */
+export type KgRange = { kgLow: number; kgMid: number; kgHigh: number };
+
+export type DayArrivals = KgRange & { date: string };
+
+const DAY_MS = 86_400_000;
+const shift = (date: string, days: number) =>
+  new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+
+function add(a: KgRange, b: KgRange): KgRange {
+  return {
+    kgLow: a.kgLow + b.kgLow,
+    kgMid: a.kgMid + b.kgMid,
+    kgHigh: a.kgHigh + b.kgHigh,
+  };
+}
+
+const ZERO: KgRange = { kgLow: 0, kgMid: 0, kgHigh: 0 };
+
+/** Sums `rows` per day, one entry for every day from `from` to `to` (0 if none). */
+export function sumByDay(
+  rows: DayArrivals[],
+  from: string,
+  to: string,
+): DayArrivals[] {
+  const byDate = new Map<string, KgRange>();
+  for (const r of rows) byDate.set(r.date, add(byDate.get(r.date) ?? ZERO, r));
+  const days: DayArrivals[] = [];
+  for (let d = from; d <= to; d = shift(d, 1)) {
+    days.push({ date: d, ...(byDate.get(d) ?? ZERO) });
+  }
+  return days;
+}
+
+/** Sums consecutive 7-day chunks of `days` (in date order), labelled by first and last day. */
+export function sumByWeek(
+  days: DayArrivals[],
+): (KgRange & { from: string; to: string })[] {
+  const weeks = [];
+  for (let i = 0; i < days.length; i += 7) {
+    const chunk = days.slice(i, i + 7);
+    weeks.push({
+      from: chunk[0].date,
+      to: chunk[chunk.length - 1].date,
+      ...chunk.reduce<KgRange>(add, ZERO),
+    });
+  }
+  return weeks;
+}
+
+/** Sum of all ranges. */
+export function total(ranges: KgRange[]): KgRange {
+  return ranges.reduce<KgRange>(add, ZERO);
+}
+
+/** The entry with the highest mid estimate, or null if all are zero. */
+export function peak<T extends KgRange>(ranges: T[]): T | null {
+  let best: T | null = null;
+  for (const r of ranges) if (r.kgMid > (best?.kgMid ?? 0)) best = r;
+  return best;
+}
+
+/** Half-month of `date`: the 1st–15th or the 16th–end. */
+export function halfMonth(date: string): { from: string; to: string } {
+  const [y, m, d] = date.split("-").map(Number);
+  const mm = String(m).padStart(2, "0");
+  if (d <= 15) return { from: `${y}-${mm}-01`, to: `${y}-${mm}-15` };
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return { from: `${y}-${mm}-16`, to: `${y}-${mm}-${last}` };
+}
+
+export type MunicipalityArrivals = KgRange & {
+  municipality: string;
+  /** Half-month with the most expected arrivals. */
+  peak: { from: string; to: string } | null;
+};
+
+/** Totals and peak half-month per municipality, largest first; zero totals left out. */
+export function byMunicipality(
+  rows: (DayArrivals & { municipality: string })[],
+): MunicipalityArrivals[] {
+  const groups = new Map<string, Map<string, KgRange>>();
+  for (const r of rows) {
+    const halves = groups.get(r.municipality) ?? new Map<string, KgRange>();
+    const key = halfMonth(r.date).from;
+    halves.set(key, add(halves.get(key) ?? ZERO, r));
+    groups.set(r.municipality, halves);
+  }
+  return [...groups]
+    .map(([municipality, halves]) => {
+      const top = peak([...halves].map(([from, kg]) => ({ from, ...kg })));
+      return {
+        municipality,
+        ...total([...halves.values()]),
+        peak: top ? halfMonth(top.from) : null,
+      };
+    })
+    .filter((m) => m.kgMid > 0)
+    .sort((a, b) => b.kgMid - a.kgMid);
+}
