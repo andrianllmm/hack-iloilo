@@ -222,3 +222,48 @@ export function applyOverride(
     overrideReason: input.reason,
   };
 }
+
+// --- Buying budget (M5 P1). The manager sets working capital for a period
+// that starts on a date; purchases priced since then count as used. ---
+
+/** Validated budget: an amount (centavos) and an optional period start. */
+export const budgetFormSchema = z.object({
+  budgetMinor: overridePesos,
+  start: z
+    .string()
+    .trim()
+    .transform((d) => d || null)
+    .pipe(isoDate.nullable()),
+});
+export type BudgetInput = z.infer<typeof budgetFormSchema>;
+
+export type BudgetParseResult =
+  { ok: true; value: BudgetInput } | { ok: false; error: string };
+
+/** Parse and validate the raw budget form (amount in pesos, optional start date). */
+export function parseBudgetForm(
+  raw: Record<string, unknown>,
+): BudgetParseResult {
+  const parsed = budgetFormSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: "Enter a budget (₱) and, optionally, a valid start date.",
+    };
+  }
+  return { ok: true, value: parsed.data };
+}
+
+export type BudgetStatus = { usedMinor: number; remainingMinor: number };
+
+/**
+ * Working capital used (Σ purchase totals in the period) and remaining
+ * (budget − used). Remaining goes negative when purchases exceed the budget.
+ */
+export function budgetStatus(
+  budgetMinor: number,
+  purchaseTotalsMinor: number[],
+): BudgetStatus {
+  const usedMinor = purchaseTotalsMinor.reduce((sum, t) => sum + t, 0);
+  return { usedMinor, remainingMinor: budgetMinor - usedMinor };
+}

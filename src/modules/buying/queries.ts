@@ -29,6 +29,8 @@ import {
   listVarieties,
 } from "@/modules/setup/queries";
 import {
+  budgetStatus,
+  type BudgetStatus,
   formatVarietiesSms,
   purchasePriceChanged,
   purchaseText,
@@ -238,6 +240,33 @@ export async function purchaseCost(batchId: string): Promise<number> {
     .maybeSingle();
   if (error) throw new Error(`Purchase cost: ${error.message}`);
   return data?.total_minor ?? 0;
+}
+
+export type BuyingBudget = BudgetStatus & {
+  budgetMinor: number;
+  start: string | null;
+};
+
+/**
+ * The manager's buying budget and the working capital used and remaining:
+ * used is Σ `total_minor` of purchases priced on or after the period start
+ * (all purchases when no start is set).
+ */
+export async function buyingBudget(): Promise<BuyingBudget> {
+  const facility = await currentFacility();
+  let query = db().from("purchases").select("total_minor");
+  if (facility.buy_budget_start)
+    query = query.gte("price_date", facility.buy_budget_start);
+  const { data, error } = await query;
+  if (error) throw new Error(`Buying budget: ${error.message}`);
+  return {
+    budgetMinor: facility.buy_budget_minor,
+    start: facility.buy_budget_start,
+    ...budgetStatus(
+      facility.buy_budget_minor,
+      data.map((p) => p.total_minor),
+    ),
+  };
 }
 
 /** The purchase recorded for a batch, or null (a custom batch has none). */

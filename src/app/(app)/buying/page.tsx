@@ -11,6 +11,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { todayManila } from "@/lib/dates";
 import { clientsDirectory } from "@/modules/accounts/queries";
+import { BudgetCard } from "@/modules/buying/components/budget-card";
 import { OfferForm } from "@/modules/buying/components/offer-form";
 import { OffersView } from "@/modules/buying/components/offers-view";
 import type { BuyRules } from "@/modules/pricing/logic";
@@ -66,6 +67,10 @@ export default function BuyingPage({ searchParams }: PageProps<"/buying">) {
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
       <div className="flex flex-col gap-6">
+        <Suspense fallback={<Skeleton className="h-64" />}>
+          <BudgetCard />
+        </Suspense>
+
         <Card className="h-fit">
           <CardHeader>
             <CardTitle>Quote calculator</CardTitle>

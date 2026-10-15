@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   applyOverride,
+  budgetStatus,
   formatVarietiesSms,
+  parseBudgetForm,
   parseOfferForm,
   parseOverrideForm,
   parseQuoteArgs,
@@ -216,5 +218,52 @@ describe("applyOverride", () => {
       { priceMinorPerKg: 2300, reason: "Second override" },
     );
     expect(result.deductions.original_minor_per_kg).toBe(2100);
+  });
+});
+
+describe("parseBudgetForm", () => {
+  it("converts pesos to centavos and keeps the start date", () => {
+    expect(
+      parseBudgetForm({ budgetMinor: "1500000.50", start: "2026-10-01" }),
+    ).toEqual({
+      ok: true,
+      value: { budgetMinor: 150000050, start: "2026-10-01" },
+    });
+  });
+
+  it("treats a blank start date as no start (all purchases)", () => {
+    expect(parseBudgetForm({ budgetMinor: "0", start: " " })).toEqual({
+      ok: true,
+      value: { budgetMinor: 0, start: null },
+    });
+  });
+
+  it("rejects a blank or negative amount and a malformed date", () => {
+    expect(parseBudgetForm({ budgetMinor: "", start: "" }).ok).toBe(false);
+    expect(parseBudgetForm({ budgetMinor: "-1", start: "" }).ok).toBe(false);
+    expect(
+      parseBudgetForm({ budgetMinor: "100", start: "25/10/2026" }).ok,
+    ).toBe(false);
+  });
+});
+
+describe("budgetStatus", () => {
+  it("sums purchases in the period as used", () => {
+    // IRPC's sample form: 8,763 kg × ₱21 = ₱184,023.
+    expect(budgetStatus(50000000, [18402300, 1000000])).toEqual({
+      usedMinor: 19402300,
+      remainingMinor: 30597700,
+    });
+  });
+
+  it("leaves the whole budget remaining with no purchases", () => {
+    expect(budgetStatus(50000000, [])).toEqual({
+      usedMinor: 0,
+      remainingMinor: 50000000,
+    });
+  });
+
+  it("goes negative when purchases exceed the budget", () => {
+    expect(budgetStatus(1000000, [1500000]).remainingMinor).toBe(-500000);
   });
 });
