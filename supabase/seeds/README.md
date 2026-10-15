@@ -13,6 +13,7 @@
 | `NN_<module>.sql` | Each later ticket adds its own file; don't edit shared ones |
 | `90_peak.sql`     | Peak demo: dryer 30 t over in 2 weeks, idle in 3 weeks      |
 | `91_sms.sql`      | SMS threads for seeded bookings and offers, one open prompt |
+| `92_season.sql`   | Three months of past drying batches for the season heatmap  |
 
 Rules for every seed file:
 
