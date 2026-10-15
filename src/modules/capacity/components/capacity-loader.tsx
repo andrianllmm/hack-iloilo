@@ -1,9 +1,10 @@
 import { addDays, todayManila } from "@/lib/dates";
 import { requireRole } from "@/modules/accounts/auth";
+import { cardDates } from "@/modules/prescriptions/logic";
 import { PrescriptionList } from "@/modules/prescriptions/components/prescription-list";
 import { prescriptions as loadPrescriptions } from "@/modules/prescriptions/queries";
 import type { Prescription } from "@/modules/prescriptions/types";
-import { dateRange, WINDOW_DAYS } from "../logic";
+import { WINDOW_DAYS } from "../logic";
 import {
   acceptedOffers,
   capacityByDay,
@@ -52,10 +53,7 @@ export async function CapacityLoader() {
   const byDate: Record<string, Prescription[]> = {};
   for (const p of prescriptions) {
     if (p.decision) continue;
-    // A fill-idle card shows on every day of its stretch.
-    const dates =
-      p.kind === "move_bookings" ? [p.date] : dateRange(p.from, p.to);
-    for (const date of dates) (byDate[date] ??= []).push(p);
+    for (const date of cardDates(p)) (byDate[date] ??= []).push(p);
   }
   const suggestions = Object.fromEntries(
     Object.entries(byDate).map(([date, list]) => [

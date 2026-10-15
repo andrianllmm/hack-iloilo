@@ -12,12 +12,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { formatTonnes } from "@/lib/format";
+import { formatMoney, formatTonnes } from "@/lib/format";
 import { decidePrescription } from "../actions";
-import { shortDay, templateNote } from "../logic";
+import { dayList, shortDay, templateNote } from "../logic";
 import type {
   Decision,
   FillIdlePrescription,
+  MillFullLoadsPrescription,
   MoveBookingsPrescription,
   Prescription,
 } from "../types";
@@ -25,6 +26,7 @@ import type {
 const kindLabels: Record<Prescription["kind"], string> = {
   move_bookings: "Move bookings",
   fill_idle: "Fill idle days",
+  mill_full_loads: "Mill in full loads",
 };
 
 /** Recipients listed by name before "and N more". */
@@ -37,18 +39,12 @@ export function PrescriptionCard({
   prescription: Prescription;
 }) {
   const [pending, start] = useTransition();
-  const texts = p.kind === "fill_idle" ? p.recipients.length : 0;
+  const { accept, accepted } = acceptCopy(p);
   const decide = (decision: Decision) =>
     start(async () => {
       const result = await decidePrescription(p.key, decision);
       if (result.status === "error") toast.error(result.message);
-      else if (decision === "dismissed") toast.success("Dismissed.");
-      else
-        toast.success(
-          p.kind === "move_bookings"
-            ? "Clients asked to move."
-            : `${texts} texts sent.`,
-        );
+      else toast.success(decision === "accepted" ? accepted : "Dismissed.");
     });
 
   return (
@@ -59,13 +55,13 @@ export function PrescriptionCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <p className="text-pretty">{templateNote(p)}</p>
-        {p.kind === "move_bookings" ? <Moves p={p} /> : <Recipients p={p} />}
+        {p.kind === "move_bookings" && <Moves p={p} />}
+        {p.kind === "fill_idle" && <Recipients p={p} />}
+        {p.kind === "mill_full_loads" && <MillPlans p={p} />}
       </CardContent>
       <CardFooter className="gap-2">
         <Button size="sm" disabled={pending} onClick={() => decide("accepted")}>
-          {p.kind === "move_bookings"
-            ? "Ask to move"
-            : `Send ${texts} ${texts === 1 ? "text" : "texts"}`}
+          {accept}
         </Button>
         <Button
           size="sm"
@@ -139,6 +135,68 @@ function Recipients({ p }: { p: FillIdlePrescription }) {
           {p.message}
         </p>
       </div>
+    </>
+  );
+}
+
+/** The accept button label and the toast once accepted. */
+function acceptCopy(p: Prescription): { accept: string; accepted: string } {
+  switch (p.kind) {
+    case "move_bookings":
+      return { accept: "Ask to move", accepted: "Clients asked to move." };
+    case "fill_idle": {
+      const n = p.recipients.length;
+      return {
+        accept: `Send ${n} ${n === 1 ? "text" : "texts"}`,
+        accepted: `${n} ${n === 1 ? "text" : "texts"} sent.`,
+      };
+    }
+    case "mill_full_loads":
+      return {
+        accept: "Plan full loads",
+        accepted: "Full-load plan accepted.",
+      };
+  }
+}
+
+function MillPlans({ p }: { p: MillFullLoadsPrescription }) {
+  const plans = [
+    {
+      label: "Full loads",
+      dates: p.fullDates,
+      minorPerKg: p.fullMinorPerKg,
+    },
+    {
+      label: "Partial days (now)",
+      dates: p.spreadDates,
+      minorPerKg: p.spreadMinorPerKg,
+    },
+  ];
+  return (
+    <>
+      <ul className="divide-y rounded-lg border text-sm">
+        {plans.map((plan) => (
+          <li
+            key={plan.label}
+            className="flex items-center justify-between gap-3 p-2.5"
+          >
+            <div className="flex min-w-0 flex-col">
+              <span className="font-medium">{plan.label}</span>
+              <span className="text-xs text-muted-foreground">
+                {plan.dates.length} {plan.dates.length === 1 ? "day" : "days"} ·{" "}
+                {dayList(plan.dates)}
+              </span>
+            </div>
+            <span className="shrink-0 tabular-nums">
+              {formatMoney(plan.minorPerKg)}/kg
+            </span>
+          </li>
+        ))}
+      </ul>
+      <Badge variant="success">
+        Saves {formatMoney(p.spreadMinorPerKg - p.fullMinorPerKg)}/kg on{" "}
+        {formatTonnes(p.kg)}
+      </Badge>
     </>
   );
 }

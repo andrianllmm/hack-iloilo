@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
+import { electricityPerKg } from "@/modules/pricing/logic";
 import { isGsm7, SMS_MAX_CHARS } from "@/modules/sms/logic";
 import {
+  cardDates,
+  dayList,
   daySpan,
   fillIdle,
   type Candidate,
   type Rates,
   hashKey,
+  millFullLoads,
+  type MillDay,
   moveBookings,
   templateNote,
   type DryerDay,
@@ -139,6 +144,14 @@ describe("daySpan", () => {
   });
 });
 
+describe("dayList", () => {
+  it("shows runs of consecutive days as spans", () => {
+    expect(dayList(["2026-10-21", "2026-10-19", "2026-10-22"])).toBe(
+      "Oct 19, Oct 21–22",
+    );
+  });
+});
+
 describe("hashKey", () => {
   it("is stable and order-sensitive", () => {
     expect(hashKey(["a", 1])).toBe(hashKey(["a", 1]));
@@ -269,5 +282,97 @@ describe("fillIdle", () => {
         today: "2026-10-15",
       }),
     ).toEqual([]);
+  });
+});
+
+describe("millFullLoads", () => {
+  // 20 kW base load × 16 h × ₱12/kWh = ₱3,840 a day; mill 75 kW at 3,100 kg/h.
+  const perKg = ({ kg, daysRun }: { kg: number; daysRun: number }) =>
+    electricityPerKg({
+      machineKwh: (75 * kg) / 3_100,
+      kg,
+      daysRun,
+      baseLoadKw: 20,
+      hoursPerDay: 16,
+      tariffMinorPerKwh: 1_200,
+    });
+  const mill = (...rows: [number, number][]): MillDay[] =>
+    rows.map(([bookedKg, irpcKg], i) => ({
+      date: `2026-10-${16 + i}`,
+      capacityKg: 49_600,
+      bookedKg,
+      irpcKg,
+    }));
+
+  it("packs stock spread over partial days into ⌈kg ÷ capacity⌉ full days", () => {
+    // 90 t spread over 6 days: 60 t waits by Oct 19 (mill 49.6 t), and the
+    // last 40.4 t is cleared on Oct 21.
+    const [rx, ...rest] = millFullLoads({
+      days: mill(
+        [0, 15_000],
+        [0, 15_000],
+        [0, 15_000],
+        [0, 15_000],
+        [0, 15_000],
+        [0, 15_000],
+      ),
+      perKg,
+    });
+    expect(rest).toEqual([]);
+    expect(rx.title).toBe("Mill 90 t in 2 full days, not 6");
+    expect(rx.fullDates).toEqual(["2026-10-19", "2026-10-21"]);
+    expect(rx.spreadMinorPerKg).toBe(perKg({ kg: 90_000, daysRun: 6 }));
+    expect(rx.fullMinorPerKg).toBe(perKg({ kg: 90_000, daysRun: 2 }));
+    expect(rx.facts).toMatchObject({
+      full_dates: "Oct 19, Oct 21",
+      spread_dates: "Oct 16–21",
+      spread_per_kg: "₱0.55",
+      full_per_kg: "₱0.38",
+      saving_per_kg: "₱0.17",
+    });
+  });
+
+  it("fills around milling bookings", () => {
+    const [rx] = millFullLoads({
+      days: mill([49_600, 0], [40_000, 10_000], [0, 10_000], [0, 10_000]),
+      perKg,
+    });
+    // Oct 17 fills its 9.6 t room after bookings; Oct 19 clears the rest.
+    expect(rx.fullDates).toEqual(["2026-10-17", "2026-10-19"]);
+    expect(rx.spreadDates).toEqual(["2026-10-17", "2026-10-18", "2026-10-19"]);
+  });
+
+  it("gives no card when the stock already runs on full days", () => {
+    expect(
+      millFullLoads({ days: mill([0, 49_600], [0, 30_000]), perKg }),
+    ).toEqual([]);
+    expect(millFullLoads({ days: mill([0, 10_000]), perKg })).toEqual([]);
+  });
+});
+
+describe("cardDates", () => {
+  it("covers every day of an idle stretch", () => {
+    const [rx] = fillIdle({
+      stretches: [{ from: "2026-10-30", to: "2026-11-01" }],
+      candidates: [
+        {
+          clientId: "a",
+          name: "A",
+          phone: "+639170000001",
+          municipality: null,
+          pastKg: 0,
+          kind: "farmer",
+          hasOpenBooking: false,
+        },
+      ],
+      rates: {
+        dryingMinorPerKg: 160,
+        millingMinorPerKg: 330,
+        buyBaseMinorPerKg: 2100,
+        buyReferenceMc: 25,
+      },
+      today: "2026-10-15",
+    });
+    expect(cardDates(rx)).toEqual(["2026-10-30", "2026-10-31", "2026-11-01"]);
   });
 });
