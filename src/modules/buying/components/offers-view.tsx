@@ -64,25 +64,27 @@ export async function OffersView({
       {offers.length === 0 ? (
         <p className="text-sm text-muted-foreground">No offers.</p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Ref</TableHead>
-              <TableHead>Client</TableHead>
-              <TableHead className="text-right">Est. kg</TableHead>
-              <TableHead>Harvest</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {offers.map((offer) => (
-              <OfferRow key={offer.id} offer={offer} isManager={isManager} />
-            ))}
-          </TableBody>
-        </Table>
+        <div className="overflow-hidden rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ref</TableHead>
+                <TableHead>Client</TableHead>
+                <TableHead className="text-right">Est. kg</TableHead>
+                <TableHead>Harvest</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>
+                  <span className="sr-only">Actions</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {offers.map((offer) => (
+                <OfferRow key={offer.id} offer={offer} isManager={isManager} />
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );
