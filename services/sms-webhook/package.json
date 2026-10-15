@@ -7,6 +7,9 @@
   "engines": {
     "node": "24.x"
   },
+  "devDependencies": {
+    "@types/node": "^24.19.2"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
     "@vercel/functions": "^3.9.11",

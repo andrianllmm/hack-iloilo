@@ -1,4 +1,4 @@
-import { smsReceivedSchema, verifySignature } from "./verify";
+import { smsReceivedSchema, verifySignature } from "./verify.js";
 
 export type InboundRow = { phone: string; body: string; gatewayId: string };
 

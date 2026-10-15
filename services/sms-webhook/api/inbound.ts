@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { waitUntil } from "@vercel/functions";
 import { z } from "zod";
-import { relay } from "../lib/relay";
+import { relay } from "../lib/relay.js";
 
 const envSchema = z.object({
   SUPABASE_URL: z.url(),
