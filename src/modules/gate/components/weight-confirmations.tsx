@@ -87,9 +87,8 @@ export function WeightConfirmations({
                     })
                   }
                 >
-                  {pending ? <Spinner data-icon="inline-start" /> : null}Confirm{" "}
-                  {c.stage === "receiving" ? "receiving" : "drying"} weight in
-                  person
+                  {pending ? <Spinner data-icon="inline-start" /> : null}
+                  {`Confirm ${c.stage === "receiving" ? "receiving" : "drying"} weight in person`}
                 </Button>
               )}
             </div>

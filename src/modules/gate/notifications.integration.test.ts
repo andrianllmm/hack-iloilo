@@ -31,6 +31,7 @@ import {
   confirmWeightInPerson,
   dispatch,
   finishDrying,
+  finishMilling,
   listBatches,
   recordReceiving,
   start,
@@ -372,6 +373,25 @@ describe.skipIf(process.env.RUN_GATE_SMS_DB_TESTS !== "1")(
       await sms.handleInbound({ phone: clients[0].phone, body: `YES ${ref}` });
       expect((await confirmation(b.id)).status).toBe("pending");
     });
+
+    it("creates only one request for concurrent identical receiving submissions", async () => {
+      const b = await batch({ ownership: "custom" });
+      await Promise.all([
+        recordReceiving(b.id, receiving),
+        recordReceiving(b.id, receiving),
+      ]);
+      expect(await batchWeightConfirmations(b.id)).toHaveLength(1);
+      expect(await outbound(clients[0].phone)).toHaveLength(1);
+      expect(
+        (
+          await db()
+            .from("sms_prompts")
+            .select("id")
+            .eq("phone", clients[0].phone)
+            .eq("status", "open")
+        ).data,
+      ).toHaveLength(1);
+    });
     it("combines purchase and confirmation into one receiving message", async () => {
       const b = await batch();
       await recordReceiving(b.id, receiving);
@@ -508,6 +528,8 @@ describe.skipIf(process.env.RUN_GATE_SMS_DB_TESTS !== "1")(
       });
       expect((await confirmation(b.id)).status).toBe("disputed");
       expect((await confirmation(b.id, "drying")).status).toBe("pending");
+      await sms.handleInbound({ phone: clients[0].phone, body: `YES ${ref}` });
+      expect((await confirmation(b.id, "drying")).status).toBe("pending");
       await sms.handleInbound({
         phone: clients[0].phone,
         body: `YES ${(await refFor(b.id, "drying")).ref}`,
@@ -532,6 +554,123 @@ describe.skipIf(process.env.RUN_GATE_SMS_DB_TESTS !== "1")(
       expect((await outbound(clients[0].phone))[0].status).toBe("failed");
     });
 
+    const dried = {
+      dry_end: "2026-10-15T12:00:00+08:00",
+      dried_kg: 890,
+      mc_out: 14,
+    };
+    const milled = {
+      mill_end: "2026-10-15T13:00:00+08:00",
+      mill_in_kg: 890,
+      rice_kg: 600,
+      byproducts: { bran_kg: 100, husk_kg: 190 },
+    };
+    async function bookedBatch(stage: "drying" | "milling", samePhone = false) {
+      const { data: booking, error } = await db()
+        .from("bookings")
+        .insert({
+          facility_id: facility.id,
+          client_id: clients[0].id,
+          booked_by_phone: clients[samePhone ? 0 : 1].phone,
+          channel: "staff",
+          service: "drying",
+          est_kg: 1000,
+          preferred_date: todayManila(),
+          scheduled_date: todayManila(),
+          ref: randomUUID().replaceAll("-", "").slice(0, 6).toUpperCase(),
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      const q = await queue({ booking_id: booking.id });
+      return batch({ ownership: "custom", stage, queue_entry_id: q.id });
+    }
+    it("notifies the custom milling owner and distinct booker once", async () => {
+      const b = await bookedBatch("milling");
+      const saved = await finishMilling(b.id, milled);
+      expect(saved.stage).toBe("milled");
+      expect(gatewaySend).toHaveBeenCalledTimes(2);
+      for (const c of clients.slice(0, 2)) {
+        const texts = await outbound(c.phone);
+        expect(texts).toHaveLength(1);
+        expect(texts[0].body).toContain(
+          "600 kg rice, 100 kg darak/bran, 190 kg ipa/husk",
+        );
+      }
+      await expect(finishMilling(b.id, milled)).rejects.toThrow("moved on");
+      expect(gatewaySend).toHaveBeenCalledTimes(2);
+    });
+    it("deduplicates owner and booker when their phones match", async () => {
+      const b = await bookedBatch("milling", true);
+      await finishMilling(b.id, milled);
+      expect(gatewaySend).toHaveBeenCalledOnce();
+    });
+    it("combines drying pickup and weight confirmation for the owner", async () => {
+      const b = await bookedBatch("drying");
+      const saved = await finishDrying(b.id, {
+        ...dried,
+        ready_for_pickup: true,
+      });
+      expect(saved.pickup_after_drying).toBe(true);
+      expect(gatewaySend).toHaveBeenCalledTimes(2);
+      const owner = await outbound(clients[0].phone);
+      expect(owner).toHaveLength(1);
+      expect(owner[0].body).toContain("890 kg");
+      expect(owner[0].body).toContain("YES ");
+      expect(owner[0].body).toContain("Amamaros, Pototan");
+      const booker = await outbound(clients[1].phone);
+      expect(booker).toHaveLength(1);
+      expect(booker[0].body).toContain("890 kg dried palay");
+      expect(booker[0].body).not.toContain("YES ");
+    });
+    it("waits until milling finishes when the custom batch will continue", async () => {
+      const b = await bookedBatch("drying");
+      await finishDrying(b.id, { ...dried, ready_for_pickup: false });
+      expect(gatewaySend).toHaveBeenCalledOnce();
+      expect((await outbound(clients[0].phone))[0].body).not.toMatch(
+        /pickup|kuhaon/i,
+      );
+      expect(await outbound(clients[1].phone)).toHaveLength(0);
+      await db()
+        .from("batches")
+        .update({ stage: "milling" })
+        .eq("id", b.id)
+        .throwOnError();
+      await finishMilling(b.id, milled);
+      expect(gatewaySend).toHaveBeenCalledTimes(3);
+    });
+    it("sends no pickup alerts for IRPC-owned batches", async () => {
+      const drying = await batch({ stage: "drying" });
+      await finishDrying(drying.id, dried);
+      expect(gatewaySend).toHaveBeenCalledOnce(); // weight confirmation only
+      const milling = await batch({ stage: "milling" });
+      await finishMilling(milling.id, milled);
+      expect(gatewaySend).toHaveBeenCalledOnce();
+      expect((await outbound(clients[0].phone))[0].body).not.toMatch(
+        /pickup|kuhaon/i,
+      );
+    });
+    it("rejects a pickup flag on IRPC palay without advancing the stage", async () => {
+      const b = await batch({ stage: "drying" });
+      await expect(
+        finishDrying(b.id, { ...dried, ready_for_pickup: true }),
+      ).rejects.toMatchObject({
+        message: expect.stringContaining("pickup_requires_custom"),
+      });
+      expect(
+        (await db().from("batches").select("stage").eq("id", b.id).single())
+          .data?.stage,
+      ).toBe("drying");
+      expect(gatewaySend).not.toHaveBeenCalled();
+    });
+    it("keeps milling saved and still notifies the booker when the owner's SMS fails", async () => {
+      const b = await bookedBatch("milling");
+      gatewaySend.mockRejectedValueOnce(new Error("Gateway unavailable"));
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      expect((await finishMilling(b.id, milled)).stage).toBe("milled");
+      expect((await outbound(clients[0].phone))[0].status).toBe("failed");
+      expect((await outbound(clients[1].phone))[0].status).toBe("sent");
+    });
     it("texts each successful partial dispatch and rejects excess kg without texting", async () => {
       const milled = await batch({ stage: "milled", rice_kg: 1000 });
       const input = {

@@ -18,6 +18,7 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Spinner } from "@/components/ui/spinner";
 import { joinManila, splitManila } from "@/lib/dates";
 import {
@@ -59,7 +60,7 @@ export function BatchStages({
   mills,
   varieties,
 }: {
-  batch: Pick<Batch, "id" | "stage">;
+  batch: Pick<Batch, "id" | "stage" | "ownership">;
   dryers: Machine[];
   mills: Machine[];
   varieties: Variety[];
@@ -73,7 +74,12 @@ export function BatchStages({
         </div>
       );
     case "drying":
-      return <FinishDryingForm batchId={batch.id} />;
+      return (
+        <FinishDryingForm
+          batchId={batch.id}
+          custom={batch.ownership === "custom"}
+        />
+      );
     case "stored":
       return <StartMillingForm batchId={batch.id} mills={mills} />;
     case "milling":
@@ -361,7 +367,13 @@ function ReceivedForms({
   );
 }
 
-function FinishDryingForm({ batchId }: { batchId: string }) {
+function FinishDryingForm({
+  batchId,
+  custom,
+}: {
+  batchId: string;
+  custom: boolean;
+}) {
   const formId = useId();
   const form = useForm<FinishDryingInput>({
     resolver: zodResolver(finishDryingSchema),
@@ -369,12 +381,13 @@ function FinishDryingForm({ batchId }: { batchId: string }) {
       dry_end: nowManila(),
       mc_out: undefined,
       dried_kg: undefined,
+      ready_for_pickup: false,
     },
   });
   const { pending, message, submit } = useStageSubmit(
     form,
     (input) => finishDryingBatch(batchId, input),
-    "Drying finished — moved to storage.",
+    "Drying saved. Check weight confirmation and pickup details below.",
   );
   const errors = form.formState.errors;
 
@@ -387,6 +400,33 @@ function FinishDryingForm({ batchId }: { batchId: string }) {
       submit={submit}
       submitLabel={pending ? "Saving…" : "Finish drying"}
     >
+      {custom ? (
+        <Controller
+          control={form.control}
+          name="ready_for_pickup"
+          render={({ field }) => (
+            <Field>
+              <FieldLabel id={`${formId}-next`}>After drying</FieldLabel>
+              <ToggleGroup
+                variant="outline"
+                aria-labelledby={`${formId}-next`}
+                value={[field.value ? "pickup" : "mill"]}
+                disabled={pending}
+                onValueChange={(values) => {
+                  if (values.length) field.onChange(values[0] === "pickup");
+                }}
+              >
+                <ToggleGroupItem value="mill">
+                  Continue to milling
+                </ToggleGroupItem>
+                <ToggleGroupItem value="pickup">
+                  Ready for pickup
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </Field>
+          )}
+        />
+      ) : null}
       <Controller
         control={form.control}
         name="dry_end"

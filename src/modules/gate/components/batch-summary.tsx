@@ -64,6 +64,9 @@ export async function BatchSummaryCard({ id }: { id: string }) {
     ["Ownership", ownershipLabels[batch.ownership]],
     ["Est. weight", batch.entry?.est_kg ? formatKg(batch.entry.est_kg) : "—"],
     ["Started", when(batch.entry?.started_at ?? null)],
+    ...(batch.pickup_after_drying
+      ? [["After drying", "Ready for pickup"] as [string, string]]
+      : []),
   ];
   const showDrying = batch.dry_start || skippedDrying;
   const showMilling = batch.mill_start !== null;
@@ -188,7 +191,11 @@ export async function BatchSummaryCard({ id }: { id: string }) {
         <Card className="max-w-xl">
           <CardContent>
             <BatchStages
-              batch={{ id: batch.id, stage: batch.stage }}
+              batch={{
+                id: batch.id,
+                stage: batch.stage,
+                ownership: batch.ownership,
+              }}
               dryers={dryers.map((m) => ({ id: m.id, code: m.code }))}
               mills={mills.map((m) => ({ id: m.id, code: m.code }))}
               varieties={varieties.map((v) => ({

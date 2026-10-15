@@ -271,7 +271,9 @@ Any command accepts `FOR <phone>`.
 
 Weight confirmation: receiving and drying measurements each have a `batch_weight_confirmations` row (snapshot, pending/confirmed/disputed status, prompt and responder). A service-only SQL operation saves the measurements and `weight_confirm` SMS prompt atomically; gateway delivery runs afterward. Revised receiving weights expire the old prompt; unchanged weights preserve their confirmation. Owners and original booking/offer bookers may answer. Explicit closed references never fall through to another prompt. Staff can confirm the displayed snapshot in person; disputes flag the list and detail page. Confirmation never blocks processing, expires after the usual 24 hours, and historical batches are not backfilled. IRPC receiving combines purchase figures and the confirmation request into one bilingual text.
 
-**Tests:** stage transitions, recovery, confirmation authorization and lifecycle.
+Pickup alerts: finishing custom milling texts rice kg and recorded by-products to the owner and distinct original booker. Finishing custom drying records an explicit `pickup_after_drying` choice (form defaults to continuing to milling). If ready, the owner receives the pickup location in the weight-confirmation text and a distinct booker receives a separate pickup notice. IRPC-owned batches never send pickup alerts. Successful guarded transitions send once per recipient; failures are logged without undoing the stage or retrying automatically.
+
+**Tests:** stage transitions, recovery, confirmation authorization and lifecycle, pickup timing and recipient deduplication.
 
 ### M7. Pricing and Cost
 

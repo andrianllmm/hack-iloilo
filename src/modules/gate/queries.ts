@@ -28,6 +28,7 @@ import { PromptRefusal, type SmsPrompt } from "@/modules/sms/registry";
 import type { CommandContext } from "@/modules/sms/registry";
 import { send } from "@/modules/sms/queries";
 import {
+  pickupText,
   weightConfirmationText,
   weightAnswerText,
   type WeightStage,
@@ -502,7 +503,12 @@ export function startDrying(
 
 export async function finishDrying(
   batchId: string,
-  fields: { dry_end: string; mc_out: number; dried_kg: number },
+  fields: {
+    dry_end: string;
+    mc_out: number;
+    dried_kg: number;
+    ready_for_pickup?: boolean;
+  },
 ): Promise<Batch> {
   const { batch, promptRef } = await recordMeasurement(
     batchId,
@@ -510,6 +516,8 @@ export async function finishDrying(
     fields,
   );
   if (promptRef) await sendWeightRequest(batch, "drying", promptRef);
+  if (batch.ownership === "custom" && batch.pickup_after_drying)
+    await notifyPickup(batch, false);
   return batch;
 }
 
@@ -537,7 +545,7 @@ export async function startMilling(
   return advance(batchId, "stored", "start_milling", fields);
 }
 
-export function finishMilling(
+export async function finishMilling(
   batchId: string,
   fields: {
     mill_end: string;
@@ -546,7 +554,9 @@ export function finishMilling(
     byproducts: { bran_kg: number | null; husk_kg: number | null };
   },
 ): Promise<Batch> {
-  return advance(batchId, "milling", "finish_milling", fields);
+  const batch = await advance(batchId, "milling", "finish_milling", fields);
+  if (batch.ownership === "custom") await notifyPickup(batch, true);
+  return batch;
 }
 
 /**
@@ -702,15 +712,24 @@ function dispatchError(error: { message: string }): Error {
 async function recordMeasurement(
   batchId: string,
   stage: WeightStage,
-  fields: object,
+  fields: object & { ready_for_pickup?: boolean },
 ) {
   for (let attempt = 0; ; attempt++) {
-    const { data, error } = await db().rpc("record_batch_measurement", {
+    const args = {
       p_batch_id: batchId,
-      p_stage: stage,
       p_fields: fields as Json,
       p_ref: newRef(),
-    });
+    };
+    const { data, error } =
+      stage === "drying"
+        ? await db().rpc("finish_batch_drying", {
+            ...args,
+            p_ready_for_pickup: fields.ready_for_pickup ?? false,
+          })
+        : await db().rpc("record_batch_measurement", {
+            ...args,
+            p_stage: stage,
+          });
     if (error?.code === "23505" && attempt < 3) continue;
     if (error?.message.includes("stale_stage"))
       throw new GateError(
@@ -748,6 +767,10 @@ async function sendWeightRequest(
             ? { bags: batch.bags!, kg: batch.net_kg!, mc: batch.mc! }
             : { kg: batch.dried_kg!, mc: batch.mc_out! },
         ref,
+        readyForPickup:
+          stage === "drying" &&
+          batch.ownership === "custom" &&
+          batch.pickup_after_drying,
         purchase,
       }),
     );
@@ -804,4 +827,45 @@ export async function confirmWeightInPerson(
       "stale_stage",
       "These measurements have changed. Refresh the page.",
     );
+}
+
+/** Each recipient is isolated so a failed send never skips the other recipient. */
+async function notifyPickup(
+  batch: Batch,
+  includeOwner: boolean,
+): Promise<void> {
+  try {
+    const { data, error } = await db()
+      .from("batches")
+      .select(
+        "client:clients(phone), entry:queue_entries(booking:bookings(booked_by_phone), offer:sell_offers(booked_by_phone))",
+      )
+      .eq("id", batch.id)
+      .single();
+    if (error) throw error;
+    const owner = data.client.phone;
+    const booker =
+      data.entry?.booking?.booked_by_phone ??
+      data.entry?.offer?.booked_by_phone;
+    const phones = new Set(includeOwner ? [owner] : []);
+    if (booker && booker !== owner) phones.add(booker);
+    const body = pickupText({
+      batchNo: batch.batch_no,
+      stage: batch.rice_kg != null ? "milling" : "drying",
+      kg: batch.rice_kg ?? batch.dried_kg!,
+      byproducts: batch.byproducts as {
+        bran_kg?: number | null;
+        husk_kg?: number | null;
+      },
+    });
+    for (const phone of phones) {
+      try {
+        await send(phone, body);
+      } catch (error) {
+        console.error("Unable to send pickup alert", error);
+      }
+    }
+  } catch (error) {
+    console.error("Unable to read pickup recipients", error);
+  }
 }

@@ -389,6 +389,7 @@ export function weightConfirmationText(input: {
   stage: WeightStage;
   measurements: WeightMeasurements;
   ref: string;
+  readyForPickup?: boolean;
   purchase?: {
     paid_kg: number;
     price_minor_per_kg: number;
@@ -403,10 +404,22 @@ export function weightConfirmationText(input: {
   const price = purchase
     ? ` Paid: ${formatKg(purchase.paid_kg)} at ${formatMoneySms(purchase.price_minor_per_kg)}/kg. Total: ${formatMoneySms(purchase.total_minor)}.`
     : "";
-  return `IRPC: Batch ${batchNo}. ${label} ${formatKg(m.kg)}, MC ${m.mc}%.${price} Sakto ang timbang / Weight correct? YES ${ref} / NO ${ref}.`;
+  return `IRPC: Batch ${batchNo}. ${label} ${formatKg(m.kg)}, MC ${m.mc}%.${price}${input.readyForPickup ? " Ready / Pwede na kuhaon sa IRPC, Amamaros, Pototan." : ""} Sakto ang timbang / Weight correct? YES ${ref} / NO ${ref}.`;
 }
 export function weightAnswerText(yes: boolean): string {
   return yes
     ? "IRPC: Salamat. Timbang nakumpirma / Weight confirmed."
     : "IRPC: Timbang ginakontra / Weight disputed. Staff will check and re-weigh.";
+}
+
+export function pickupText(input: {
+  batchNo: string;
+  stage: "drying" | "milling";
+  kg: number;
+  byproducts?: { bran_kg?: number | null; husk_kg?: number | null };
+}): string {
+  const product = input.stage === "drying" ? "dried palay" : "rice";
+  const bran = input.byproducts?.bran_kg;
+  const husk = input.byproducts?.husk_kg;
+  return `IRPC: Pwede na kuhaon / Ready for pickup. Batch ${input.batchNo}: ${formatKg(input.kg)} ${product}${bran != null ? `, ${formatKg(bran)} darak/bran` : ""}${husk != null ? `, ${formatKg(husk)} ipa/husk` : ""}. Pick up at IRPC, Amamaros, Pototan.`;
 }
