@@ -28,6 +28,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import {
   bookingStatuses,
   formatRange,
@@ -38,6 +39,9 @@ import {
 import type { BookingClient, BookingRow } from "../types";
 import { BookingForm } from "./booking-form";
 import { BookingsTable } from "./bookings-table";
+
+// SMS bookings arrive from outside the page; pick them up without a reload.
+const REFRESH_MS = 15_000;
 
 const statusItems = [
   { value: "all" as const, label: "All" },
@@ -70,6 +74,7 @@ export function BookingsView({
   const period = formatRange(range.from, range.to);
   const refresh = () => startTransition(() => router.refresh());
   const filtered = filters.status !== "all" || filters.search.trim() !== "";
+  useAutoRefresh(REFRESH_MS);
 
   return (
     <section className="flex min-w-0 flex-col gap-6 font-sans [--font-sans:var(--font-geist-sans)]">
