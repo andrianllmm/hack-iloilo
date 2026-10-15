@@ -20,8 +20,20 @@ export type Command<T> = {
   schema: z.ZodType<T>;
   /** Raw tokens after the keyword, `FOR <phone>` already stripped. */
   parse: (args: string[]) => unknown;
+  /** Example for the help reply, e.g. `CANCEL K7P2QX`. Defaults to the keyword. */
+  usage?: string;
   /** Returns the reply text. */
   handle: (cmd: T, ctx: CommandContext) => Promise<string>;
+  /** Lets AI read free text as this command. Omit to keep it keyword-only. */
+  ai?: {
+    /** What the command does, for the AI. */
+    description: string;
+    /**
+     * Completes "you want to …?", asked before running, e.g. "cancel booking
+     * K7P2QX". Omit for read-only commands, which run right away.
+     */
+    summary?: (cmd: T) => string;
+  };
 };
 
 export type SmsPrompt = Database["public"]["Tables"]["sms_prompts"]["Row"];
@@ -60,8 +72,20 @@ export function findCommand(keyword: string): Command<unknown> | undefined {
   return commands.get(keyword.toUpperCase());
 }
 
-export function commandKeywords(): string[] {
-  return [...commands.keys()];
+/** AI-readable commands, each once under its first keyword. */
+export function aiCommands(): { keyword: string; command: Command<unknown> }[] {
+  const seen = new Set<Command<unknown>>();
+  return [...commands]
+    .filter(([, c]) => c.ai && !seen.has(c) && seen.add(c))
+    .map(([keyword, command]) => ({ keyword, command }));
+}
+
+/** Each command's usage once, for the help reply. */
+export function commandUsages(): string[] {
+  const seen = new Set<Command<unknown>>();
+  return [...commands]
+    .filter(([, c]) => !seen.has(c) && seen.add(c))
+    .map(([keyword, c]) => c.usage ?? keyword);
 }
 
 export function onPromptAnswer(kind: SmsPromptKind, fn: PromptHandler): void {

@@ -16,7 +16,7 @@ import {
 } from "@/modules/pricing/logic";
 import { priceOn } from "@/modules/pricing/queries";
 import { helpText, parseDayMonth } from "@/modules/sms/logic";
-import { commandKeywords, type CommandContext } from "@/modules/sms/registry";
+import { commandUsages, type CommandContext } from "@/modules/sms/registry";
 import { currentFacility, findVarietyByCode } from "@/modules/setup/queries";
 import type { CreateOfferInput, QuoteSmsInput, SellSmsInput } from "./logic";
 
@@ -257,7 +257,7 @@ export async function sellBySms(
   if (!variety)
     return `IRPC: We don't recognize variety "${input.varietyCode}". Please check the code and try again.`;
   const harvestDate = parseDayMonth(input.dayMonth, todayManila());
-  if (!harvestDate) return helpText(commandKeywords());
+  if (!harvestDate) return helpText(commandUsages());
 
   // FOR records the offer under another client; authority is never granted by it.
   const client =

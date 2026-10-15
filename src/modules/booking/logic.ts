@@ -2,6 +2,7 @@
 // Pure functions only: no I/O and no imports from other modules. Unit-test here.
 
 import { addDays } from "@/lib/dates";
+import { formatKg } from "@/lib/format";
 import type { Booking, BookingRow, BookingStatus, Service } from "./types";
 
 export const services = ["drying", "milling"] as const;
@@ -193,6 +194,39 @@ export function formatRange(from: string, to: string): string {
 const FLEX_ARG = /^[±+]\d+$/;
 
 /** Strict keyword arguments; invalid shapes are rejected by the SMS schema. */
+const weekdayDate = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+});
+
+/**
+ * "book drying for 1,000 kg on Mon, Oct 19, give or take 2 days".
+ * Falls back to `dayMonth` when the day can't be resolved (e.g. 31/02).
+ */
+export function describeBookingRequest({
+  service,
+  estKg,
+  dayMonth,
+  date,
+  flexDays,
+}: {
+  service: (typeof services)[number];
+  estKg: number;
+  dayMonth: string;
+  date: string | null;
+  flexDays: number;
+}): string {
+  const day = date
+    ? weekdayDate.format(new Date(`${date}T00:00:00Z`))
+    : dayMonth;
+  const flex = flexDays
+    ? `, give or take ${flexDays} day${flexDays === 1 ? "" : "s"}`
+    : "";
+  return `book ${service} for ${formatKg(estKg)} on ${day}${flex}`;
+}
+
 export function parseBookingArgs(args: string[]): unknown {
   if (args.length < 3 || args.length > 4) return null;
   const [service, kg, dayMonth, flex] = args;

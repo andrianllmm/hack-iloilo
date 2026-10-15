@@ -34,7 +34,12 @@ export type WebBookingInput = z.infer<typeof webBookingSchema>;
 /** SMS date resolution belongs to the shared SMS core. */
 export const bookingSmsSchema = bookingSchema
   .pick({ service: true, estKg: true, flexDays: true })
-  .extend({ dayMonth: z.string().regex(/^\d{1,2}\/\d{1,2}$/) });
+  .extend({
+    dayMonth: z
+      .string()
+      .regex(/^\d{1,2}\/\d{1,2}$/)
+      .describe("Preferred day as day/month, e.g. 20/10"),
+  });
 export type BookingSmsInput = z.infer<typeof bookingSmsSchema>;
 
 export const cancelSmsSchema = z.object({

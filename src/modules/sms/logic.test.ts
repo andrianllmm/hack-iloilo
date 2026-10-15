@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  aiConfirmText,
   fillTemplate,
   helpText,
   isGsm7,
@@ -52,21 +53,28 @@ describe("parseInbound", () => {
 });
 
 describe("parseAnswer", () => {
+  const answer = (text: string) => parseAnswer(parseInbound(text));
+
   it("reads YES and NO with a ref", () => {
-    expect(parseAnswer(parseInbound("yes k7p2qx"))).toEqual({
-      yes: true,
-      ref: "K7P2QX",
-    });
-    expect(parseAnswer(parseInbound("NO K7P2QX"))).toEqual({
-      yes: false,
-      ref: "K7P2QX",
-    });
+    expect(answer("yes k7p2qx")).toEqual({ yes: true, ref: "K7P2QX" });
+    expect(answer("NO K7P2QX")).toEqual({ yes: false, ref: "K7P2QX" });
   });
 
-  it("needs exactly one ref", () => {
-    expect(parseAnswer(parseInbound("YES"))).toBeNull();
-    expect(parseAnswer(parseInbound("YES A B"))).toBeNull();
-    expect(parseAnswer(parseInbound("BOOK A"))).toBeNull();
+  it("reads plain answers in English, Hiligaynon and Tagalog", () => {
+    for (const text of ["yes", "Oo sige", "huo!", "ok po", "Sige salamat"])
+      expect(answer(text)).toEqual({ yes: true });
+    for (const text of ["no", "Indi", "ayaw na lang", "hindi po"])
+      expect(answer(text)).toEqual({ yes: false });
+  });
+
+  it("keeps a word that looks like a ref for the caller to check", () => {
+    expect(answer("yes please")).toEqual({ yes: true, ref: "PLEASE" });
+  });
+
+  it("leaves longer texts and other keywords alone", () => {
+    expect(answer("ok book dry 20 sacks monday")).toBeNull();
+    expect(answer("BOOK A")).toBeNull();
+    expect(answer("")).toBeNull();
   });
 });
 
@@ -110,11 +118,21 @@ describe("fillTemplate", () => {
 });
 
 describe("helpText", () => {
-  it("lists commands once, sorted, within the SMS limit", () => {
-    const text = helpText(["price", "BOOK", "PRICE"]);
-    expect(text).toContain("BOOK, PRICE");
-    expect(text.length).toBeLessThanOrEqual(SMS_MAX_CHARS);
+  const usages = ["BOOK DRY 1000 20/10 +2", "CANCEL <ref>", "STATUS", "STATUS"];
+
+  it("lists the keyword formats once, within the SMS limit", () => {
+    const text = helpText(usages);
+    expect(text).toBe(
+      "IRPC: Sorry, we didn't get that. Please text: BOOK DRY 1000 20/10 +2; CANCEL <ref>; STATUS",
+    );
     expect(isGsm7(text)).toBe(true);
+  });
+
+  it("invites plain language only when AI is up", () => {
+    const text = helpText(usages, true);
+    expect(text).toMatch(/dry 20 sacks on Monday.*CANCEL <ref>/);
+    expect(text.length).toBeLessThanOrEqual(SMS_MAX_CHARS);
+    expect(helpText(usages)).not.toMatch(/sacks/);
   });
 });
 
@@ -122,5 +140,17 @@ describe("isGsm7", () => {
   it("rejects characters outside GSM-7", () => {
     expect(isGsm7("PHP 1,234.50 [ok]")).toBe(true);
     expect(isGsm7("₱1,234")).toBe(false);
+  });
+});
+
+describe("aiConfirmText", () => {
+  it("asks a plain question within one GSM-7 text", () => {
+    const text = aiConfirmText(
+      "book milling for 1,000,000 kg on Mon, Oct 19, give or take 7 days",
+    );
+    expect(text).toMatch(/you want to book milling .*\? Is that right\?$/);
+    expect(text).not.toMatch(/YES|NO/);
+    expect(isGsm7(text)).toBe(true);
+    expect(text.length).toBeLessThanOrEqual(160);
   });
 });

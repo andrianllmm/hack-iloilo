@@ -3,6 +3,8 @@ import { randomInt } from "node:crypto";
 import { z } from "zod";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
+const extract = vi.hoisted(() => vi.fn(async (): Promise<unknown> => null));
+vi.mock("@/lib/ai", () => ({ extract, aiEnabled: () => true }));
 import { db } from "@/lib/supabase/admin";
 import {
   handleInbound,
@@ -10,7 +12,7 @@ import {
   processInbound,
   smsThread,
 } from "./queries";
-import { onPromptAnswer, PromptRefusal, registerCommand } from "./registry";
+import { registerCommand } from "./registry";
 
 describe.skipIf(process.env.RUN_SMS_DB_TESTS !== "1")(
   "local Supabase SMS flow",
@@ -36,10 +38,10 @@ describe.skipIf(process.env.RUN_SMS_DB_TESTS !== "1")(
         parse: ([n]) => ({ n }),
         handle: async ({ n }, ctx) =>
           `n=${n} from=${ctx.phone} for=${ctx.forPhone ?? "-"} client=${ctx.client.phone}`,
-      });
-      onPromptAnswer("ai_confirm", async (prompt, yes, ctx) => {
-        if (ctx.phone !== prompt.phone) throw new PromptRefusal("Not yours.");
-        return `answered ${yes ? "yes" : "no"} ${prompt.ref}`;
+        ai: {
+          description: "Echo a number.",
+          summary: ({ n }) => `echo ${n}`,
+        },
       });
     });
 
@@ -59,7 +61,7 @@ describe.skipIf(process.env.RUN_SMS_DB_TESTS !== "1")(
         .eq("phone", phone)
         .single();
       expect(client?.name).toMatch(/^SMS /);
-      expect((await lastReply())?.body).toMatch(/Unknown command.*ECHOTEST/);
+      expect((await lastReply())?.body).toMatch(/Please text: .*ECHOTEST/);
       expect((await lastReply())?.status).toBe("sent");
     });
 
@@ -72,7 +74,7 @@ describe.skipIf(process.env.RUN_SMS_DB_TESTS !== "1")(
 
     it("replies with help when args fail the schema", async () => {
       await handleInbound({ phone, body: "ECHOTEST abc" });
-      expect((await lastReply())?.body).toMatch(/Unknown command/);
+      expect((await lastReply())?.body).toMatch(/didn't get that/);
     });
 
     it("dedupes on gateway id", async () => {
@@ -106,15 +108,85 @@ describe.skipIf(process.env.RUN_SMS_DB_TESTS !== "1")(
     });
 
     it("answers prompts by ref, refusing other phones", async () => {
-      const ref = await openPrompt({ phone, kind: "ai_confirm", payload: {} });
+      const ref = await openPrompt({
+        phone,
+        kind: "ai_confirm",
+        payload: { keyword: "ECHOTEST", args: { n: 3 } },
+      });
       await handleInbound({ phone: other, body: `YES ${ref}` });
-      expect((await lastReply(other))?.body).toBe("Not yours.");
+      expect((await lastReply(other))?.body).toMatch(/didn't get that/);
 
       await handleInbound({ phone, body: `yes ${ref.toLowerCase()}` });
-      expect((await lastReply())?.body).toBe(`answered yes ${ref}`);
+      expect((await lastReply())?.body).toMatch(/^n=3 /);
 
       await handleInbound({ phone, body: `NO ${ref}` });
-      expect((await lastReply())?.body).toMatch(/No open question/);
+      expect((await lastReply())?.body).toMatch(/no question waiting/);
+    });
+
+    it("reads free text with AI and runs it on a plain yes", async () => {
+      extract.mockResolvedValueOnce({
+        intent: { command: "ECHOTEST", args: { n: 7 } },
+      });
+      await handleInbound({ phone, body: "echo seven please" });
+      expect((await lastReply())?.body).toBe(
+        "IRPC: Just to check, you want to echo 7? Is that right?",
+      );
+      const inbound = (await smsThread(phone)).filter(
+        (m) => m.body === "echo seven please",
+      );
+      expect(inbound[0].via_ai).toBe(true);
+
+      await handleInbound({ phone, body: "Oo sige" });
+      expect((await lastReply())?.body).toMatch(/^n=7 /);
+    });
+
+    it("discards an AI reading on a plain no", async () => {
+      extract.mockResolvedValueOnce({
+        intent: { command: "ECHOTEST", args: { n: 8 } },
+      });
+      await handleInbound({ phone, body: "echo eight" });
+      await handleInbound({ phone, body: "indi" });
+      expect((await lastReply())?.body).toBe(
+        "IRPC: Okay, we didn't save anything.",
+      );
+      await handleInbound({ phone, body: "yes please" });
+      expect((await lastReply())?.body).toMatch(/no question waiting/);
+    });
+
+    it("runs AI readings without a summary right away", async () => {
+      registerCommand({
+        keywords: ["PEEKTEST"],
+        schema: z.object({}),
+        parse: () => ({}),
+        handle: async () => "peeked",
+        ai: { description: "Peek." },
+      });
+      extract.mockResolvedValueOnce({
+        intent: { command: "PEEKTEST", args: {} },
+      });
+      await handleInbound({ phone, body: "can i peek" });
+      expect((await lastReply())?.body).toBe("peeked");
+    });
+
+    it("falls back to the keyword formats when AI fails", async () => {
+      extract.mockResolvedValueOnce(null);
+      await handleInbound({ phone, body: "pa dry 20 sako" });
+      const reply = (await lastReply())?.body ?? "";
+      expect(reply).toMatch(/Please text: .*ECHOTEST/);
+      expect(reply).not.toMatch(/sacks/);
+      await handleInbound({ phone, body: "ECHOTEST 4" });
+      expect((await lastReply())?.body).toMatch(/^n=4 /);
+    });
+
+    it("replies with help when AI reads nothing valid", async () => {
+      extract.mockResolvedValueOnce({ intent: { command: "NONE" } });
+      await handleInbound({ phone, body: "hi" });
+      expect((await lastReply())?.body).toMatch(/didn't get that/);
+      extract.mockResolvedValueOnce({
+        intent: { command: "ECHOTEST", args: { n: "x" } },
+      });
+      await handleInbound({ phone, body: "echo x" });
+      expect((await lastReply())?.body).toMatch(/didn't get that/);
     });
 
     it("expires prompts after 24 hours", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bookingSmsSchema } from "./booking-schema";
-import { parseBookingArgs } from "./logic";
+import { describeBookingRequest, parseBookingArgs } from "./logic";
 
 const parse = (text: string) =>
   bookingSmsSchema.safeParse(parseBookingArgs(text.split(" ")));
@@ -38,5 +38,33 @@ describe("booking SMS arguments", () => {
     "DRY 99999999999999999999 20/10",
   ])("rejects invalid arguments: %s", (text) => {
     expect(parse(text).success).toBe(false);
+  });
+});
+
+describe("describeBookingRequest", () => {
+  const base = {
+    service: "drying" as const,
+    estKg: 1000,
+    dayMonth: "19/10",
+    date: "2026-10-19",
+    flexDays: 0,
+  };
+
+  it("reads like a sentence", () => {
+    expect(describeBookingRequest(base)).toBe(
+      "book drying for 1,000 kg on Mon, Oct 19",
+    );
+    expect(describeBookingRequest({ ...base, flexDays: 1 })).toMatch(
+      /give or take 1 day$/,
+    );
+    expect(describeBookingRequest({ ...base, flexDays: 3 })).toMatch(
+      /give or take 3 days$/,
+    );
+  });
+
+  it("falls back to the typed day", () => {
+    expect(
+      describeBookingRequest({ ...base, dayMonth: "31/02", date: null }),
+    ).toBe("book drying for 1,000 kg on 31/02");
   });
 });
