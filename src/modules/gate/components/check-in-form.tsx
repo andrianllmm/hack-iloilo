@@ -46,6 +46,7 @@ import {
   services,
 } from "../logic";
 import type { RefPreview, Service } from "../types";
+import { serviceIcons } from "./service-icons";
 
 /** Asks the form to switch tab, preselect a line and focus the first field. */
 export type CheckInRequest = {
@@ -373,11 +374,15 @@ export function CheckInForm({
                       if (value) field.onChange(value);
                     }}
                   >
-                    {services.map((value) => (
-                      <ToggleGroupItem key={value} value={value}>
-                        {serviceLabels[value]}
-                      </ToggleGroupItem>
-                    ))}
+                    {services.map((value) => {
+                      const Icon = serviceIcons[value];
+                      return (
+                        <ToggleGroupItem key={value} value={value}>
+                          <Icon aria-hidden />
+                          {serviceLabels[value]}
+                        </ToggleGroupItem>
+                      );
+                    })}
                   </ToggleGroup>
                   <FieldError errors={[fieldState.error]} />
                 </Field>

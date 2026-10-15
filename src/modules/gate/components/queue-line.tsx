@@ -51,6 +51,7 @@ import {
   type QueueLine as Line,
 } from "../logic";
 import type { QueueRow, Service } from "../types";
+import { serviceIcons } from "./service-icons";
 
 const clock = new Intl.DateTimeFormat("en-PH", {
   hour: "numeric",
@@ -82,6 +83,7 @@ export function QueueLine({
   const [busy, setBusy] = useState<string | null>(null);
   const [leaving, setLeaving] = useState<QueueRow | null>(null);
   const name = serviceLabels[service];
+  const Icon = serviceIcons[service];
   const next = line.waiting[0];
 
   const act = (
@@ -109,7 +111,10 @@ export function QueueLine({
   return (
     <Card className="min-h-[32rem] lg:min-h-0">
       <CardHeader>
-        <CardTitle>{name} line</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Icon className="size-4 text-primary" aria-hidden />
+          {name} line
+        </CardTitle>
         <CardAction>
           <Badge variant="secondary">{line.waiting.length} waiting</Badge>
         </CardAction>
