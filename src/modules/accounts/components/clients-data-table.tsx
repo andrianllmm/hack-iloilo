@@ -1,13 +1,7 @@
 "use client";
 
 import { Fragment, useMemo } from "react";
-import {
-  createColumnHelper,
-  createPaginatedRowModel,
-  rowPaginationFeature,
-  tableFeatures,
-  useTable,
-} from "@tanstack/react-table";
+import { createColumnHelper, useTable } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,17 +21,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { kindLabels, type ClientGroup } from "../logic";
+import { features, type DirectoryRow } from "./clients-table-model";
 import type { Client, Municipality } from "../types";
 
-const features = tableFeatures({
-  rowPaginationFeature,
-  paginatedRowModel: createPaginatedRowModel(),
-});
-type DirectoryRow = Client & {
-  coop: Client | null;
-  municipality: string;
-  coopName: string;
-};
 const columnHelper = createColumnHelper<typeof features, DirectoryRow>();
 const pageSizes = [10, 20, 50, 100].map((value) => ({
   value,
@@ -117,6 +103,8 @@ export function ClientsDataTable({
     data,
     columns,
     getRowId: (row) => row.id,
+    defaultColumn: { sortFn: "alphanumeric", sortDescFirst: false },
+    enableMultiSort: false,
   });
   const rows = table.getRowModel().rows;
   return (
@@ -127,8 +115,33 @@ export function ClientsDataTable({
             {table.getHeaderGroups().map((group) => (
               <TableRow key={group.id}>
                 {group.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder ? null : (
+                  <TableHead
+                    key={header.id}
+                    aria-sort={
+                      header.column.getIsSorted() === "asc"
+                        ? "ascending"
+                        : header.column.getIsSorted() === "desc"
+                          ? "descending"
+                          : undefined
+                    }
+                  >
+                    {header.isPlaceholder ? null : header.column.getCanSort() ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={header.column.getToggleSortingHandler()}
+                        aria-label={`Sort by ${header.column.columnDef.header}`}
+                      >
+                        <table.FlexRender header={header} />
+                        <span aria-hidden="true">
+                          {header.column.getIsSorted() === "asc"
+                            ? "↑"
+                            : header.column.getIsSorted() === "desc"
+                              ? "↓"
+                              : "↕"}
+                        </span>
+                      </Button>
+                    ) : (
                       <table.FlexRender header={header} />
                     )}
                   </TableHead>

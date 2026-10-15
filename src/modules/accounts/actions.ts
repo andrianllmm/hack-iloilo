@@ -7,6 +7,7 @@ import { requireRole } from "./auth";
 import { clientSchema, type ClientInput } from "./client-schema";
 import {
   ClientInputError,
+  deleteClientRecord,
   registerClientRecord,
   updateClientRecord,
 } from "./queries";
@@ -86,6 +87,31 @@ export async function saveClient(
     return {
       status: "error",
       message: "Unable to save the client. Please try again.",
+    };
+  }
+}
+
+export type DeleteClientResult =
+  { status: "deleted" } | { status: "error"; message: string };
+
+export async function deleteClient(id: string): Promise<DeleteClientResult> {
+  await requireRole();
+  if (!z.guid().safeParse(id).success)
+    return {
+      status: "error",
+      message: "Invalid client. Refresh the directory.",
+    };
+  try {
+    await deleteClientRecord(id);
+    revalidatePath("/clients");
+    return { status: "deleted" };
+  } catch (error) {
+    if (error instanceof ClientInputError)
+      return { status: "error", message: error.message };
+    console.error("Unable to delete client", error);
+    return {
+      status: "error",
+      message: "Unable to delete the client. Please try again.",
     };
   }
 }

@@ -22,7 +22,17 @@ import {
 } from "@/components/ui/combobox";
 import { SheetFooter } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
-import { saveClient } from "../actions";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+import { deleteClient, saveClient } from "../actions";
 import { clientSchema, type ClientInput } from "../client-schema";
 import type { Client, Municipality } from "../types";
 
@@ -97,6 +107,7 @@ export function ClientForm({
 }: Props) {
   const formId = useId();
   const [pending, startTransition] = useTransition();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [message, setMessage] = useState<string>();
   const [existing, setExisting] = useState<Client>();
   const form = useForm<ClientInput>({
@@ -144,6 +155,16 @@ export function ClientForm({
   );
   const actions = () => (
     <>
+      {client ? (
+        <Button
+          type="button"
+          variant="destructive"
+          disabled={pending}
+          onClick={() => setConfirmDelete(true)}
+        >
+          Delete client
+        </Button>
+      ) : null}
       <Button type="submit" disabled={pending}>
         {pending ? <Spinner data-icon="inline-start" /> : null}
         {pending ? "Saving…" : client ? "Save changes" : "Save client"}
@@ -172,6 +193,49 @@ export function ClientForm({
           : "flex flex-col gap-4"
       }
     >
+      <AlertDialog
+        open={confirmDelete}
+        onOpenChange={(open) => {
+          if (!pending) setConfirmDelete(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {client?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the client. Clients with linked records
+              or co-op members cannot be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              type="button"
+              variant="destructive"
+              disabled={pending}
+              onClick={() => {
+                if (!client) return;
+                startTransition(async () => {
+                  setMessage(undefined);
+                  try {
+                    const result = await deleteClient(client.id);
+                    if (result.status === "error") setMessage(result.message);
+                    else onSaved();
+                  } catch {
+                    setMessage(
+                      "Unable to delete the client. Please try again.",
+                    );
+                  } finally {
+                    setConfirmDelete(false);
+                  }
+                });
+              }}
+            >
+              {pending ? "Deleting…" : "Confirm deletion"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <FieldGroup className={presentation === "sheet" ? "p-4" : undefined}>
         <Field data-invalid={!!form.formState.errors.name}>
           <FieldLabel htmlFor={`${formId}-name`}>Name</FieldLabel>
@@ -255,7 +319,7 @@ export function ClientForm({
         />
         {message ? (
           <Alert variant="destructive">
-            <AlertTitle>Unable to save</AlertTitle>
+            <AlertTitle>Unable to complete request</AlertTitle>
             <AlertDescription>{message}</AlertDescription>
           </Alert>
         ) : null}

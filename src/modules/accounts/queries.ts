@@ -151,3 +151,24 @@ export async function updateClientRecord(
     );
   return data;
 }
+
+/** Deletes only unreferenced clients; foreign keys preserve operational history. */
+export async function deleteClientRecord(id: string): Promise<void> {
+  const { data, error } = await db()
+    .from("clients")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+  if (error?.code === "23503")
+    throw new ClientInputError(
+      "name",
+      "This client has linked records or co-op members and cannot be deleted.",
+    );
+  if (error) throw error;
+  if (!data)
+    throw new ClientInputError(
+      "name",
+      "This client no longer exists. Refresh the directory.",
+    );
+}

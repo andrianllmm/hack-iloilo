@@ -1,14 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const { from } = vi.hoisted(() => ({ from: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ db: () => ({ from }) }));
 import {
   clientsDirectory,
+  deleteClientRecord,
   findOrRegisterByPhone,
   registerClientRecord,
   updateClientRecord,
 } from "./queries";
-import type { Client } from "./types";
+import type { Client, ClientDefaults } from "./types";
 const existing: Client = {
   id: "11111111-1111-4111-8111-111111111111",
   name: "Original",
@@ -35,6 +36,7 @@ function response(data: unknown, error: unknown = null) {
     range: vi.fn(),
     insert: vi.fn(),
     update: vi.fn(),
+    delete: vi.fn(),
     limit: vi.fn(),
     maybeSingle: vi.fn(),
     single: vi.fn(),
@@ -46,6 +48,7 @@ function response(data: unknown, error: unknown = null) {
     "range",
     "insert",
     "update",
+    "delete",
     "limit",
     "maybeSingle",
     "single",
@@ -177,4 +180,44 @@ it("loads beyond the API response limit", async () => {
   expect(await clientsDirectory()).toHaveLength(1001);
   expect(first.range).toHaveBeenCalledWith(0, 999);
   expect(second.range).toHaveBeenCalledWith(1000, 1999);
+});
+
+describe("deletion", () => {
+  it("deletes by immutable id", async () => {
+    const query = response({ id: existing.id });
+    await expect(deleteClientRecord(existing.id)).resolves.toBeUndefined();
+    expect(query.delete).toHaveBeenCalledOnce();
+    expect(query.eq).toHaveBeenCalledWith("id", existing.id);
+  });
+  it("preserves clients referenced by operational records or co-op members", async () => {
+    response(null, { code: "23503" });
+    await expect(deleteClientRecord(existing.id)).rejects.toThrow(
+      "linked records or co-op members",
+    );
+  });
+  it("reports clients already removed", async () => {
+    response(null);
+    await expect(deleteClientRecord(existing.id)).rejects.toThrow(
+      "no longer exists",
+    );
+  });
+  it("propagates unexpected database failures", async () => {
+    response(null, { message: "offline" });
+    await expect(deleteClientRecord(existing.id)).rejects.toEqual({
+      message: "offline",
+    });
+  });
+});
+
+it("keeps the shared phone helper contract available without UI imports", () => {
+  expectTypeOf(findOrRegisterByPhone).toEqualTypeOf<
+    (phone: string, defaults?: ClientDefaults) => Promise<Client>
+  >();
+  expectTypeOf(clientsDirectory).toEqualTypeOf<() => Promise<Client[]>>();
+  expectTypeOf(registerClientRecord).toEqualTypeOf<
+    (
+      phone: string,
+      defaults?: ClientDefaults,
+    ) => Promise<{ client: Client; created: boolean }>
+  >();
 });
