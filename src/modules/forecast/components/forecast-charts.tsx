@@ -38,7 +38,7 @@ export type ArrivalBar = {
 
 const arrivalsConfig = {
   t: { label: "Expected", color: "var(--chart-2)" },
-  peak: { label: "Peak", color: "var(--chart-4)" },
+  peak: { label: "Peak", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
 function BarTooltip({
