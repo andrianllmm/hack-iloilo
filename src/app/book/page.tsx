@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { Wordmark } from "@/components/brand";
+import { PublicHeader } from "@/components/public-header";
 import {
   Card,
   CardContent,
@@ -40,12 +40,7 @@ async function TrackLoader({
 export default function BookPage({ searchParams }: PageProps<"/book">) {
   return (
     <main className="flex flex-1 flex-col items-center justify-start gap-6 p-4">
-      <div className="flex flex-col items-center gap-1">
-        <Wordmark className="h-8 w-auto text-primary" />
-        <p className="text-sm text-muted-foreground">
-          Iloilo Rice Processing Complex
-        </p>
-      </div>
+      <PublicHeader back="/" subtitle="Iloilo Rice Processing Complex" />
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Book drying or milling</CardTitle>

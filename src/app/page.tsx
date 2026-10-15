@@ -86,7 +86,9 @@ export default function LandingPage() {
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 p-4 pb-10">
       <header className="flex items-center justify-between gap-4">
-        <Wordmark className="h-7 w-auto text-primary" />
+        <Link href="/" aria-label="SACKTO home" className="rounded-md">
+          <Wordmark aria-hidden className="h-7 w-auto text-primary" />
+        </Link>
         <Link href="/login" className={buttonVariants({ variant: "outline" })}>
           <LogIn data-icon="inline-start" />
           Staff sign in
