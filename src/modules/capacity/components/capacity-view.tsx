@@ -88,6 +88,7 @@ export function CapacityView({
   range,
   today,
   suggestions,
+  actions,
 }: {
   /** Every pool, as `capacityByDay` returns it. */
   days: DayPool[] | null;
@@ -100,6 +101,8 @@ export function CapacityView({
   today: string;
   /** Suggested actions per date, shown in the day panel (M10). */
   suggestions?: Record<string, React.ReactNode>;
+  /** Suggested actions across the window, under the headline (M10). */
+  actions?: React.ReactNode;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -154,6 +157,8 @@ export function CapacityView({
             idleThresholdPct={idleThresholdPct}
             electricity={electricity}
           />
+
+          {actions}
 
           <Card>
             <CardContent className="flex flex-col gap-4">
@@ -409,7 +414,12 @@ function DayPanel({
             <p className="text-sm text-muted-foreground">No offers.</p>
           )}
         </section>
-        {suggestions}
+        {suggestions && (
+          <section className="flex flex-col gap-2">
+            <h3 className="text-sm font-medium">Suggestions</h3>
+            {suggestions}
+          </section>
+        )}
       </div>
     </>
   );

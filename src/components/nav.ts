@@ -31,7 +31,12 @@ export const nav: NavGroup[] = [
     label: "Plan",
     items: [
       { title: "Capacity", href: "/", icon: ChartColumn },
-      { title: "Suggestions", href: "/suggestions", icon: Lightbulb },
+      {
+        title: "Suggestions",
+        href: "/suggestions",
+        icon: Lightbulb,
+        role: "manager",
+      },
       { title: "Forecast", href: "/forecast", icon: ChartSpline },
     ],
   },

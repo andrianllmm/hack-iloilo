@@ -1,5 +1,8 @@
 import { addDays, todayManila } from "@/lib/dates";
 import { requireRole } from "@/modules/accounts/auth";
+import { PrescriptionList } from "@/modules/prescriptions/components/prescription-list";
+import { prescriptions as loadPrescriptions } from "@/modules/prescriptions/queries";
+import type { Prescription } from "@/modules/prescriptions/types";
 import { WINDOW_DAYS } from "../logic";
 import {
   acceptedOffers,
@@ -30,8 +33,9 @@ export async function CapacityLoader() {
   } catch (error) {
     console.error("Unable to load capacity", error);
   }
-  // Costs are manager-only: undefined hides the tile, null shows "—".
+  // Costs and suggestions are manager-only: undefined hides the tile, null shows "—".
   let electricity: Electricity | null | undefined;
+  let prescriptions: Prescription[] = [];
   if (staff.role === "manager") {
     electricity = null;
     try {
@@ -39,7 +43,21 @@ export async function CapacityLoader() {
     } catch (error) {
       console.error("Unable to load electricity cost", error);
     }
+    try {
+      if (data) prescriptions = await loadPrescriptions(data[0]);
+    } catch (error) {
+      console.error("Unable to load suggestions", error);
+    }
   }
+  const byDate: Record<string, Prescription[]> = {};
+  for (const p of prescriptions)
+    if (!p.decision) (byDate[p.date] ??= []).push(p);
+  const suggestions = Object.fromEntries(
+    Object.entries(byDate).map(([date, list]) => [
+      date,
+      <PrescriptionList key={date} prescriptions={list} />,
+    ]),
+  );
   const bookings: Record<string, PanelBooking[]> = {};
   for (const b of data?.[1] ?? []) {
     (bookings[b.scheduled_date] ??= []).push({
@@ -74,6 +92,13 @@ export async function CapacityLoader() {
       electricity={electricity}
       range={range}
       today={today}
+      suggestions={suggestions}
+      actions={
+        <PrescriptionList
+          prescriptions={prescriptions}
+          className="md:grid-cols-2 xl:grid-cols-3"
+        />
+      }
     />
   );
 }
