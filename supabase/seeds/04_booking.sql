@@ -31,16 +31,6 @@ from (
   ('F7AX2M', 'drying',  'c1000000-0000-0000-0000-000000000015', null,            'sms',    4000, 3, 1, 3, 'confirmed'),
   ('R3EH8P', 'drying',  'c1000000-0000-0000-0000-000000000016', null,            'staff',  3500, 3, 0, 3, 'confirmed'),
   ('N4VS6K', 'drying',  'c1000000-0000-0000-0000-000000000013', '+639171000002', 'sms',    4500, 3, 2, 3, 'reschedule_proposed'),
-  -- Peak: day 5 is 30 t over the 112 t dryer day.
-  -- Three flexible bookings (12 + 10 + 8 t) can move to clear it (M10).
-  ('D4KR7A', 'drying',  'c0000000-0000-0000-0000-000000000001', null,            'staff', 30000, 5, 0, 5, 'confirmed'),
-  ('E6MW2B', 'drying',  'c0000000-0000-0000-0000-000000000002', null,            'sms',   25000, 5, 0, 5, 'confirmed'),
-  ('G8PX3C', 'drying',  'c0000000-0000-0000-0000-000000000003', null,            'sms',   20000, 5, 0, 5, 'confirmed'),
-  ('H2QY4D', 'drying',  'c2000000-0000-0000-0000-000000000001', null,            'sms',   18000, 5, 0, 5, 'confirmed'),
-  ('J3RZ5E', 'drying',  'c2000000-0000-0000-0000-000000000003', null,            'staff', 15500, 5, 0, 5, 'confirmed'),
-  ('K4SA6F', 'drying',  'c1000000-0000-0000-0000-000000000017', null,            'sms',   12000, 5, 2, 5, 'confirmed'),
-  ('L5TB7G', 'drying',  'c1000000-0000-0000-0000-000000000023', null,            'sms',   10000, 5, 3, 5, 'confirmed'),
-  ('M6UC8H', 'drying',  'c1000000-0000-0000-0000-000000000026', '+639171000001', 'sms',    8000, 5, 1, 5, 'confirmed'),
   ('C9LT5G', 'milling', 'c2000000-0000-0000-0000-000000000002', null,            'sms',   15000, 2, 1, 2, 'confirmed'),
   ('J2PB7D', 'milling', 'c0000000-0000-0000-0000-000000000001', null,            'staff', 20000, 4, 3, 4, 'confirmed'),
   -- Mill peak: day 8 is 10.4 t over the 49.6 t mill day (M10 store now, mill later).

@@ -52,19 +52,19 @@ describe("describeBookingRequest", () => {
 
   it("reads like a sentence", () => {
     expect(describeBookingRequest(base)).toBe(
-      "book drying for 1,000 kg on Mon, Oct 19",
+      "mag-book sang drying para sa 1,000 kg sa Mon, Oct 19",
     );
     expect(describeBookingRequest({ ...base, flexDays: 1 })).toMatch(
-      /give or take 1 day$/,
+      /puwede 1 ka adlaw nga mas temprano ukon mas ulihi$/,
     );
     expect(describeBookingRequest({ ...base, flexDays: 3 })).toMatch(
-      /give or take 3 days$/,
+      /puwede 3 ka adlaw nga mas temprano ukon mas ulihi$/,
     );
   });
 
   it("falls back to the typed day", () => {
     expect(
       describeBookingRequest({ ...base, dayMonth: "31/02", date: null }),
-    ).toBe("book drying for 1,000 kg on 31/02");
+    ).toBe("mag-book sang drying para sa 1,000 kg sa 31/02");
   });
 });

@@ -97,14 +97,25 @@ export function fillTemplate(
 export function helpText(usages: string[], natural = false): string {
   const list = [...new Set(usages)].join("; ");
   const text = natural
-    ? `IRPC: Sorry, we didn't get that. Just tell us what you need, e.g. "dry 20 sacks on Monday". Or text: ${list}`
-    : `IRPC: Sorry, we didn't get that. Please text: ${list}`;
+    ? `IRPC: Pasensya, wala namon naintiendihan. Isugid lang kon ano kinahanglan mo, pareho sang "pa-dry 20 ka sako sa Lunes". Ukon i-text: ${list}`
+    : `IRPC: Pasensya, wala namon naintiendihan. Palihog i-text: ${list}`;
   return text.slice(0, SMS_MAX_CHARS);
 }
 
-/** Asks the sender to confirm what AI read, e.g. "cancel booking K7P2QX". */
+/** M3's own replies, in Hiligaynon. GSM-7. */
+export const smsReplies = {
+  error:
+    "IRPC: Pasensya, wala namon na-process ang text mo. Palihog tilawi liwat sa ulihi.",
+  aiDeclined: "IRPC: Sige, wala kami gin-save.",
+  noPrompt: "IRPC: Wala kami pamangkot nga ginahulat ang sabat mo.",
+  promptExpired:
+    "IRPC: Pasensya, expired na ina nga pamangkot. Palihog text liwat.",
+  alreadyAnswered: "IRPC: Nasabat mo na ina.",
+} as const;
+
+/** Asks the sender to confirm what AI read, e.g. "i-cancel ang booking K7P2QX". */
 export function aiConfirmText(summary: string): string {
-  return `IRPC: Just to check, you want to ${summary}? Is that right?`;
+  return `IRPC: Para sigurado, gusto mo ${summary}? Husto bala?`;
 }
 
 // GSM 03.38 basic set plus extension table (which costs 2 chars each).

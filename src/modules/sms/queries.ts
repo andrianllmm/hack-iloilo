@@ -21,6 +21,7 @@ import {
   parseAnswer,
   parseInbound,
   SMS_MAX_CHARS,
+  smsReplies,
   type ParsedInbound,
 } from "./logic";
 import {
@@ -42,9 +43,6 @@ import "@/modules/gate/sms";
 import "@/modules/pricing/sms";
 
 export type SmsMessage = Database["public"]["Tables"]["sms_messages"]["Row"];
-
-const ERROR_REPLY =
-  "IRPC: Sorry, we could not process your text. Please try again later.";
 
 /** Fills `{name}` and `vars`, logs to `sms_messages` and sends via the gateway. */
 export async function send(
@@ -175,7 +173,7 @@ export async function processInbound(id: string): Promise<void> {
   } catch (error) {
     console.error("[sms] inbound failed", error);
     await update(id, { phone, parsed: toJson(parsed), status: "failed" });
-    reply = ERROR_REPLY;
+    reply = smsReplies.error;
   }
   if (reply) await send(phone, reply);
 }
@@ -268,7 +266,7 @@ async function interpret(
 
 onPromptAnswer("ai_confirm", async (prompt, yes, ctx) => {
   if (prompt.phone !== ctx.phone) throw new PromptRefusal(help());
-  if (!yes) return "IRPC: Okay, we didn't save anything.";
+  if (!yes) return smsReplies.aiDeclined;
 
   const { keyword, args } = prompt.payload as { keyword: string; args: Json };
   const command = findCommand(keyword);
@@ -286,12 +284,11 @@ async function answerPrompt(
     (ref && (await openPromptByRef(ref))) ||
     (await latestOpenPrompt(ctx.phone));
   const handler = prompt && promptHandler(prompt.kind);
-  if (!prompt || !handler)
-    return "IRPC: We have no question waiting for your answer.";
+  if (!prompt || !handler) return smsReplies.noPrompt;
 
   if (new Date(prompt.expires_at) <= new Date()) {
     await setPromptStatus(prompt.id, "open", "expired");
-    return "IRPC: Sorry, that question has expired. Please text us again.";
+    return smsReplies.promptExpired;
   }
 
   const claimed = await setPromptStatus(
@@ -299,7 +296,7 @@ async function answerPrompt(
     "open",
     yes ? "accepted" : "declined",
   );
-  if (!claimed) return "IRPC: You already answered that one.";
+  if (!claimed) return smsReplies.alreadyAnswered;
   try {
     return await handler(claimed, yes, ctx);
   } catch (error) {

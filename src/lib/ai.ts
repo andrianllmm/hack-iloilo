@@ -33,7 +33,7 @@ export async function extract<T>(
       timeout: TIMEOUT_MS,
       maxRetries: 1,
       output: Output.object({ schema }),
-      system: `Extract the farmer's request from this SMS. Today is ${todayManila()}. Convert sacks to kg at ${SACK_KG} kg per sack. Leave out anything not stated.`,
+      system: `Extract the farmer's request from this SMS, which may be in Hiligaynon, Tagalog, English or a mix. Today is ${todayManila()}. Convert sacks to kg at ${SACK_KG} kg per sack. Leave out anything not stated.`,
       prompt: text,
     });
     return output;
