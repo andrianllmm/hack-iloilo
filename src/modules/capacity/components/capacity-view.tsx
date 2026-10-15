@@ -19,7 +19,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatTonnes } from "@/lib/format";
+import { formatMoney, formatTonnes } from "@/lib/format";
+import { cn } from "cn";
 import {
   dayLabel,
   expectedKg,
@@ -47,6 +48,9 @@ const poolNames: Record<Pool, string> = {
   storage: "Storage",
   mill: "Mill",
 };
+
+/** Electricity per kg over the window, in centavos. */
+export type Electricity = { minorPerKg: number; daysRun: number };
 
 /** A booking as the day panel lists it. */
 export type PanelBooking = {
@@ -80,6 +84,7 @@ export function CapacityView({
   bookings,
   offers,
   idleThresholdPct,
+  electricity,
   range,
   today,
   suggestions,
@@ -89,6 +94,8 @@ export function CapacityView({
   bookings: Record<string, PanelBooking[]>;
   offers: Record<string, PanelOffer[]>;
   idleThresholdPct: number;
+  /** Window electricity cost; undefined for non-managers. */
+  electricity?: Electricity | null;
   range: { from: string; to: string };
   today: string;
   /** Suggested actions per date, shown in the day panel (M10). */
@@ -145,6 +152,7 @@ export function CapacityView({
             pool={pool}
             days={days}
             idleThresholdPct={idleThresholdPct}
+            electricity={electricity}
           />
 
           <Card>
@@ -210,15 +218,22 @@ function Headline({
   pool,
   days,
   idleThresholdPct,
+  electricity,
 }: {
   pool: Pool;
   days: DayPool[];
   idleThresholdPct: number;
+  electricity?: Electricity | null;
 }) {
   const h = headline(days);
   const first = h.overloaded[0];
   return (
-    <div className="grid gap-5 sm:grid-cols-3">
+    <div
+      className={cn(
+        "grid gap-5 sm:grid-cols-3",
+        electricity !== undefined && "sm:grid-cols-2 xl:grid-cols-4",
+      )}
+    >
       <Tile
         label={`${poolNames[pool]} use`}
         value={h.utilizationPct === null ? "—" : `${h.utilizationPct}%`}
@@ -238,6 +253,19 @@ function Headline({
         value={String(h.idleDays)}
         note={`Under ${idleThresholdPct}% full`}
       />
+      {electricity !== undefined && (
+        <Tile
+          label="Electricity"
+          value={
+            electricity ? `${formatMoney(electricity.minorPerKg)}/kg` : "—"
+          }
+          note={
+            electricity
+              ? `Dried or milled, incl. base load, ${electricity.daysRun} ${electricity.daysRun === 1 ? "day" : "days"} running`
+              : "Nothing to dry or mill"
+          }
+        />
+      )}
     </div>
   );
 }

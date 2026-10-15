@@ -11,8 +11,9 @@ import {
 } from "@/modules/buying/queries";
 import { expectedArrivals } from "@/modules/forecast/queries";
 import { storageStockOn } from "@/modules/gate/queries";
+import { electricityPerKg } from "@/modules/pricing/logic";
 import { capacitySettings } from "@/modules/setup/queries";
-import { dayInputs, projectPools } from "./logic";
+import { dayInputs, electricityBasis, projectPools } from "./logic";
 import type { DayPool } from "./types";
 export type { DayPool, Pool, Range, Source } from "./types";
 
@@ -51,6 +52,36 @@ export async function capacityByDay(
       idleThresholdPct: settings.facility.idle_threshold_pct,
     },
   });
+}
+
+/**
+ * Electricity per kg dried or milled over `days`, base load included, in
+ * centavos (M7 `electricityPerKg`). Null when nothing runs. Managers only.
+ */
+export async function electricityHeadline(
+  days: DayPool[],
+): Promise<{ minorPerKg: number; daysRun: number } | null> {
+  const { facility, machines } = await capacitySettings();
+  const kw = (type: "dryer" | "mill") =>
+    machines
+      .filter((m) => m.active && m.type === type)
+      .reduce((sum, m) => sum + m.rated_kw, 0);
+  const basis = electricityBasis({
+    days,
+    dryerKw: kw("dryer"),
+    millKw: kw("mill"),
+    hoursPerDay: facility.operating_hours_per_day,
+  });
+  if (basis.kg <= 0) return null;
+  return {
+    minorPerKg: electricityPerKg({
+      ...basis,
+      baseLoadKw: facility.base_load_kw,
+      hoursPerDay: facility.operating_hours_per_day,
+      tariffMinorPerKwh: facility.tariff_minor_per_kwh,
+    }),
+    daysRun: basis.daysRun,
+  };
 }
 
 /** The idle threshold the page states, in percent of capacity. */
