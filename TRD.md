@@ -137,7 +137,7 @@ Every table has `id` (UUID), `created_at` and `updated_at`.
 - Mill kg/day = Σ active mills' `kg_per_hour` × `operating_hours_per_day`.
 - `dry_yield_pct` = dried kg per wet kg (default 89, from 23% to 14% MC), used only for forward projections.
 
-**Seed (`pnpm seed`):** IRPC with 5 × 10 t + 1 × 6 t dryers and one mill, rice varieties, Iloilo municipalities, staff, about 30 farmers in 3 Pototan co-ops, buyers from IRPC's top-clients list, today's prices, a live queue, and a peak scenario with an overloaded day and an idle stretch.
+**Seed (`pnpm db:reset`, `supabase/seeds/`):** IRPC with 5 × 10 t + 1 × 6 t dryers and one mill, rice varieties, Iloilo municipalities, staff, about 30 farmers in 3 Pototan co-ops, buyers from IRPC's top-clients list, today's prices, a live queue, and a peak scenario with an overloaded day and an idle stretch.
 
 ### M2. Accounts
 
