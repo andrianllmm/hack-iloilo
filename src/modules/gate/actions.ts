@@ -94,7 +94,7 @@ export async function checkInClient(input: unknown): Promise<CheckInResult> {
     const entry = await checkIn(params);
     revalidatePath("/queue");
     if (mode === "booking") revalidatePath("/bookings");
-    if (mode === "offer") revalidatePath("/buying");
+    if (mode === "offer") revalidatePath("/selling");
     return { status: "ok", entryId: entry.id };
   } catch (error) {
     if (error instanceof GateError)

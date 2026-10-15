@@ -3,6 +3,7 @@ import {
   CalendarSearch,
   LogIn,
   MessageSquareText,
+  ShoppingBasket,
   Wheat,
   Wind,
 } from "lucide-react";
@@ -146,6 +147,23 @@ export default function LandingPage() {
             <span className="text-lg font-semibold">Track a booking</span>
             <span className="text-sm text-muted-foreground">
               Check your place in line, move or cancel.
+            </span>
+          </span>
+          <ArrowRight className="size-5 shrink-0" aria-hidden />
+        </Link>
+
+        <Link
+          href="/buy"
+          className="flex items-center gap-4 rounded-xl border p-4"
+        >
+          <ShoppingBasket
+            className="size-8 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
+          <span className="flex flex-1 flex-col">
+            <span className="text-lg font-semibold">Buy rice</span>
+            <span className="text-sm text-muted-foreground">
+              Today&apos;s price and where your rice came from.
             </span>
           </span>
           <ArrowRight className="size-5 shrink-0" aria-hidden />

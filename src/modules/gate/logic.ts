@@ -2,7 +2,7 @@
 // Pure functions only: no I/O and no imports from other modules. Unit-test here.
 
 import { formatKg, formatMoneySms } from "@/lib/format";
-import { daysBetween } from "@/lib/dates";
+import { daysBetween, splitManila } from "@/lib/dates";
 import type { StatusTone } from "@/lib/status";
 import type {
   Batch,
@@ -476,4 +476,66 @@ export function pickupText(input: {
   const bran = input.byproducts?.bran_kg;
   const husk = input.byproducts?.husk_kg;
   return `IRPC: Pwede na kuhaon / Ready for pickup. Batch ${input.batchNo}: ${formatKg(input.kg)} ${product}${bran != null ? `, ${formatKg(bran)} darak/bran` : ""}${husk != null ? `, ${formatKg(husk)} ipa/husk` : ""}. Pick up at IRPC, Amamaros, Pototan.`;
+}
+
+/** IRPC-owned rice still on hand: what's left to dispatch across IRPC batches. */
+export function riceStockKg(
+  batches: readonly (Pick<
+    Batch,
+    "ownership" | "stage" | "rice_kg" | "dried_kg"
+  > & { dispatches: readonly Pick<Dispatch, "kg">[] })[],
+): number {
+  return batches
+    .filter((b) => b.ownership === "irpc")
+    .reduce(
+      (sum, b) =>
+        sum + remainingKg(dispatchableKg(b), dispatchedKg(b.dispatches)),
+      0,
+    );
+}
+
+/** `261015007`, ` 261015-007 ` → `261015-007`: batch nos are typed by hand. */
+export function normalizeBatchNo(input: string): string {
+  const digits = input.replace(/\D/g, "");
+  return digits.length > 6
+    ? `${digits.slice(0, 6)}-${digits.slice(6)}`
+    : digits;
+}
+
+/** `261015-007` → `2026-10-15`: the Manila day the batch was opened at receiving. */
+export function batchNoDate(no: string): string {
+  return `20${no.slice(0, 2)}-${no.slice(2, 4)}-${no.slice(4, 6)}`;
+}
+
+/** Stages a batch went through, as Manila dates; stages it skipped are left out. */
+export function traceSteps(batch: {
+  batchNo: string;
+  dryEnd: string | null;
+  millEnd: string | null;
+}): { label: string; date: string }[] {
+  const steps = [
+    { label: "Dried", at: batch.dryEnd },
+    { label: "Milled", at: batch.millEnd },
+  ];
+  return [
+    { label: "Received", date: batchNoDate(batch.batchNo) },
+    ...steps.flatMap(({ label, at }) =>
+      at ? [{ label, date: splitManila(at).date }] : [],
+    ),
+  ];
+}
+
+/**
+ * Where a batch came from, safe to show the public (Data Privacy Act): a co-op
+ * by name, a co-op member as their co-op, anyone else by municipality only.
+ */
+export function traceOrigin(client: {
+  kind: string;
+  name: string;
+  coopName: string | null;
+  municipality: string | null;
+}): string | null {
+  if (client.kind === "coop") return client.name;
+  if (client.coopName) return client.coopName;
+  return client.municipality ? `${client.municipality} farmers` : null;
 }
