@@ -58,7 +58,7 @@ describe.skipIf(process.env.RUN_BOOKING_SMS_DB_TESTS !== "1")(
       await inbound(body, phone);
       const reply = await lastReply(phone);
       expect(reply.body).toContain("Confirmed na ang booking");
-      const ref = /Ref ([A-Z0-9]{6})/.exec(reply.body)![1];
+      const ref = /Code ([A-Z0-9]{6})/.exec(reply.body)![1];
       return (await findByRef(ref))!;
     };
 
