@@ -51,6 +51,7 @@ export function TrackOrder({ defaultRef }: { defaultRef: string }) {
         const result = await action();
         if (result.status === "error") {
           setMessage(result.message ?? "Check the code and mobile number.");
+          if (result.order) setOrder(result.order);
           return;
         }
         setOrder(result.order);

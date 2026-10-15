@@ -97,6 +97,8 @@ export type TrackOrderResult =
       status: "error";
       message?: string;
       fieldErrors?: Partial<Record<keyof TrackLookupInput, string>>;
+      /** The order as it is now, when the lookup worked but the change didn't. */
+      order?: BuyerOrder;
     };
 
 const TRACK_NOT_FOUND = "No request matches that code and phone.";
@@ -125,7 +127,15 @@ async function trackRequest(
       return { status: "error", message: TRACK_NOT_FOUND };
     }
     const result = await run(order);
-    if (typeof result === "string") return { status: "error", message: result };
+    if (typeof result === "string") {
+      // Someone else changed it first: show where it stands now.
+      const current = await trackedOrder(order.ref, phone);
+      return {
+        status: "error",
+        message: result,
+        order: buyerView(current ?? order),
+      };
+    }
     return { status: "found", order: buyerView(result) };
   } catch (error) {
     console.error(failure, error);
