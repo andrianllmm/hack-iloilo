@@ -3,6 +3,7 @@ import {
   daySpan,
   hashKey,
   moveBookings,
+  templateNote,
   type DryerDay,
   type OpenBooking,
 } from "./logic";
@@ -138,5 +139,31 @@ describe("hashKey", () => {
   it("is stable and order-sensitive", () => {
     expect(hashKey(["a", 1])).toBe(hashKey(["a", 1]));
     expect(hashKey(["a", 1])).not.toBe(hashKey([1, "a"]));
+  });
+});
+
+describe("templateNote", () => {
+  const rx = (bookings: OpenBooking[]) =>
+    moveBookings({
+      days: dryer(30_000, 70_000, 20_000),
+      bookings,
+      today: "2026-10-18",
+    })[0];
+
+  it("words a cleared overflow from the facts", () => {
+    const p = rx([
+      booking("AAAAAA", 20_000, "2026-10-19", 1),
+      booking("BBBBBB", 10_000, "2026-10-19", 1),
+    ]);
+    expect(templateNote(p)).toBe(
+      "Oct 19 is 30 t over. Moving 2 flexible bookings to Oct 18–20 clears it without turning anyone away.",
+    );
+  });
+
+  it("states what is left over", () => {
+    const p = rx([booking("AAAAAA", 20_000, "2026-10-19", 1)]);
+    expect(templateNote(p)).toBe(
+      "Oct 19 is 30 t over. Moving 1 flexible booking to Oct 20 leaves 10 t over.",
+    );
   });
 });

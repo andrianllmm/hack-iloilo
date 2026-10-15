@@ -11,7 +11,7 @@ type Base = {
   key: string;
   /** e.g. "Oct 20 is 30 t over". */
   title: string;
-  /** Every number the card shows; the only input to `explain()`. */
+  /** Every number the card shows; the only input to its note. */
   facts: Record<string, string | number>;
   decision: Decision | null;
 };

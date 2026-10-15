@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { formatTonnes } from "@/lib/format";
 import { decidePrescription } from "../actions";
-import { shortDay } from "../logic";
+import { shortDay, templateNote } from "../logic";
 import type { Decision, Prescription } from "../types";
 
 const kindLabels: Record<Prescription["kind"], string> = {
@@ -45,6 +45,7 @@ export function PrescriptionCard({
         <CardTitle>{p.title}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
+        <p className="text-pretty">{templateNote(p)}</p>
         {p.incomingKg > 0 && (
           <p className="text-muted-foreground">
             Includes {formatTonnes(p.incomingKg)} already asked to move here.
