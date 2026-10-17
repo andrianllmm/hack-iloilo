@@ -1,4 +1,9 @@
-# hack-iloilo
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/brand/wordmark-white.svg">
+    <img src="public/brand/wordmark.svg" alt="SACKTO" width="320">
+  </picture>
+</p>
 
 Post-harvest facility capacity planning for the Iloilo Rice Processing Complex (IRPC). Built for Hack Iloilo 2026.
 
